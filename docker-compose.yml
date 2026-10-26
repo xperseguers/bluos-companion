@@ -1,0 +1,12 @@
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: bluos-companion-ha
+    ports:
+      - "8123:8123"
+    volumes:
+      - ./config:/config
+      - ./custom_components/bluos_companion:/config/custom_components/bluos_companion
+    environment:
+      TZ: Europe/Zurich
+    restart: unless-stopped
