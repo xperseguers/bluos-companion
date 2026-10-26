@@ -25,7 +25,7 @@ input selection.
 
 ## Requirements
 
-- Home Assistant 2025.6 or newer
+- Home Assistant 2025.6 or newer (2026.3 or newer to see the integration icon)
 - A BluOS player reachable from Home Assistant on your network (TCP port 11000)
 - A fixed IP address (or DHCP reservation) for the player is recommended
 
