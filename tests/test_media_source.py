@@ -154,7 +154,7 @@ async def test_resolve_is_not_supported(
     hass: HomeAssistant, init_integration: MockConfigEntry
 ) -> None:
     """Library items cannot be turned into a URL."""
-    with pytest.raises(Unresolvable):
+    with pytest.raises(Unresolvable, match="select your BluOS player"):
         await async_resolve_media(
             hass, f"{ROOT}/{init_integration.entry_id}/preset/1", "media_player.sejour"
         )

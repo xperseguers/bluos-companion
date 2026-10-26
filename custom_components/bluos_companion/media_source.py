@@ -89,7 +89,10 @@ class BluOSMediaSource(MediaSource):
 
     async def async_resolve_media(self, item: MediaSourceItem) -> PlayMedia:
         """Library items are played by the player itself, not through a URL."""
-        raise Unresolvable("Play this item on a BluOS Companion media player")
+        raise Unresolvable(
+            "BluOS Companion items can only be played on a BluOS player: "
+            "select your BluOS player as the target"
+        )
 
     async def async_browse_media(self, item: MediaSourceItem) -> BrowseMediaSource:
         """Browse players, library and presets."""
