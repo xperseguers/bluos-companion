@@ -9,9 +9,7 @@ from xml.etree import ElementTree as ET
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
 REQUEST_TIMEOUT = 20
-LIBRARY_ALBUMS_KEY = (
-    "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic"
-)
+MAX_BROWSE_PAGES = 8
 
 
 class BluOSError(Exception):
@@ -49,12 +47,15 @@ class Status:
 
 
 @dataclass(frozen=True, slots=True)
-class Section:
-    """A section (letter) of the album index."""
+class Node:
+    """An entry of the BluOS browse hierarchy (section, artist, album, track...)."""
 
-    key: str
-    name: str
-    count: int
+    type: str
+    title: str
+    subtitle: str
+    browse_key: str | None
+    play_path: str | None
+    image: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,29 +195,29 @@ class BluOSClient:
             duration=_int(duration) if duration else None,
         )
 
-    async def async_get_album_sections(self) -> list[Section]:
-        """Return the sections of the album index."""
-        root = await self._get_xml("/Browse", {"key": LIBRARY_ALBUMS_KEY})
-        return [
-            Section(
-                item.get("browseKey", ""), item.get("text", ""), _int(item.get("text2"))
-            )
-            for item in root.iter("item")
-            if item.get("type") == "section"
-        ]
+    async def async_browse(self, key: str) -> list[Node]:
+        """Return all entries below a browse key.
 
-    async def async_get_albums(self, section_key: str) -> list[Album]:
-        """Return the albums of a section."""
-        root = await self._get_xml("/Browse", {"key": section_key})
-        return [
-            Album(
-                item.get("text", ""),
-                item.get("text2", ""),
-                item.get("browseKey", "").partition("?")[2],
-            )
-            for item in root.iter("item")
-            if item.get("type") == "album"
-        ]
+        Long listings are split in pages. The player may repeat earlier entries
+        in later pages, so entries are merged in order of first appearance.
+        """
+        nodes: dict[Node, None] = {}
+        next_key: str | None = key
+        for _ in range(MAX_BROWSE_PAGES):
+            root = await self._get_xml("/Browse", {"key": next_key})
+            for item in root.iter("item"):
+                node = Node(
+                    type=item.get("type", ""),
+                    title=item.get("text", ""),
+                    subtitle=item.get("text2", ""),
+                    browse_key=item.get("browseKey"),
+                    play_path=item.get("autoplayURL") or item.get("playURL"),
+                    image=item.get("image"),
+                )
+                nodes.setdefault(node, None)
+            if not (next_key := root.get("nextKey")):
+                break
+        return list(nodes)
 
     async def async_get_recent_albums(self) -> list[Album]:
         """Return the most recently added albums of the library."""

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import json
 from urllib.parse import parse_qs
 
 from homeassistant.components.media_player import BrowseError, MediaClass, MediaType
@@ -16,13 +17,42 @@ from homeassistant.components.media_source import (
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
-from .api import Album, BluOSError
+from .api import Album, BluOSError, Node
 from .const import DOMAIN
 from .coordinator import BluOSConfigEntry
 from .http import async_artwork_url
 
 URI_PREFIX = f"media-source://{DOMAIN}/"
 PLAY_PATH_PREFIXES = ("/Add?", "/Preset?", "/Load?")
+
+LIBRARY = {
+    "artists": (
+        "Artists",
+        "LocalMusic:bySection:Artist/%2Flibrary%2Fv1%2FArtists%3Fservice=LocalMusic",
+    ),
+    "albums": (
+        "Albums",
+        "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic",
+    ),
+    "songs": (
+        "Songs",
+        "LocalMusic:bySection:Song/%2Flibrary%2Fv1%2FSongs%3Fall=1&service=LocalMusic",
+    ),
+    "genres": ("Genres", "LocalMusic:GG/Genres"),
+    "playlists": ("Playlists", "BluOS:"),
+    "composers": (
+        "Composers",
+        "LocalMusic:bySection:Composer/%2Flibrary%2Fv1%2FComposers%3Fservice=LocalMusic",
+    ),
+}
+NODE_CLASSES = {
+    "artist": (MediaClass.ARTIST, MediaType.ARTIST),
+    "album": (MediaClass.ALBUM, MediaType.ALBUM),
+    "track": (MediaClass.TRACK, MediaType.TRACK),
+    "playlist": (MediaClass.PLAYLIST, MediaType.PLAYLIST),
+    "genre": (MediaClass.GENRE, MediaType.GENRE),
+    "composer": (MediaClass.COMPOSER, MediaType.COMPOSER),
+}
 
 
 async def async_get_media_source(hass: HomeAssistant) -> BluOSMediaSource:
@@ -32,6 +62,22 @@ async def async_get_media_source(hass: HomeAssistant) -> BluOSMediaSource:
 
 def _encode(value: str) -> str:
     return base64.urlsafe_b64encode(value.encode()).decode()
+
+
+def _encode_node(node: Node) -> str:
+    return _encode(
+        json.dumps({"k": node.browse_key, "p": node.play_path, "t": node.title})
+    )
+
+
+def _decode_node(value: str) -> dict[str, str | None]:
+    try:
+        data = json.loads(_decode(value))
+    except ValueError as err:
+        raise BrowseError("Invalid media identifier") from err
+    if not isinstance(data, dict):
+        raise BrowseError("Invalid media identifier")
+    return data
 
 
 def _decode(value: str) -> str:
@@ -51,6 +97,8 @@ def play_path_from_media_id(media_id: str) -> tuple[str, str]:
             path = _decode(encoded_path)
         case [entry_id, "preset", preset_id] if preset_id.isdigit():
             path = f"/Preset?id={preset_id}"
+        case [entry_id, "node", payload]:
+            path = _decode_node(payload).get("p") or ""
         case _:
             raise BrowseError("This item cannot be played")
     if not path.startswith(PLAY_PATH_PREFIXES):
@@ -128,7 +176,10 @@ class BluOSMediaSource(MediaSource):
                     entry.title,
                     [
                         _directory(f"{eid}/recent", "Recently added"),
-                        _directory(f"{eid}/albums", "Albums"),
+                        *(
+                            _directory(f"{eid}/{category}", title)
+                            for category, (title, _) in LIBRARY.items()
+                        ),
                         _directory(f"{eid}/presets", "Presets"),
                     ],
                 )
@@ -140,26 +191,15 @@ class BluOSMediaSource(MediaSource):
                     [self._album(entry, album) for album in albums],
                     MediaClass.ALBUM,
                 )
-            case ["albums"]:
-                sections = await client.async_get_album_sections()
-                return _directory(
-                    f"{eid}/albums",
-                    "Albums",
-                    [
-                        _directory(
-                            f"{eid}/albums/{_encode(section.key)}",
-                            f"{section.name} ({section.count})",
-                        )
-                        for section in sections
-                    ],
-                )
-            case ["albums", section]:
-                albums = await client.async_get_albums(_decode(section))
-                return _directory(
-                    f"{eid}/albums/{section}",
-                    "Albums",
-                    [self._album(entry, album) for album in albums],
-                    MediaClass.ALBUM,
+            case [category] if category in LIBRARY:
+                title, key = LIBRARY[category]
+                return await self._browse_node(entry, f"{eid}/{category}", title, key)
+            case ["node", payload]:
+                data = _decode_node(payload)
+                if not (key := data.get("k")):
+                    raise BrowseError("This item cannot be browsed")
+                return await self._browse_node(
+                    entry, f"{eid}/node/{payload}", data.get("t") or "", key
                 )
             case ["album", query]:
                 album_query = _decode(query)
@@ -217,6 +257,48 @@ class BluOSMediaSource(MediaSource):
                     MediaClass.MUSIC,
                 )
         raise BrowseError("Unknown media item")
+
+    async def _browse_node(
+        self, entry: BluOSConfigEntry, identifier: str, title: str, key: str
+    ) -> BrowseMediaSource:
+        nodes = await entry.runtime_data.client.async_browse(key)
+        return _directory(
+            identifier,
+            title,
+            [
+                item
+                for node in nodes
+                if (item := self._node_item(entry, node)) is not None
+            ],
+        )
+
+    def _node_item(self, entry: BluOSConfigEntry, node: Node) -> BrowseMediaSource | None:
+        can_expand = node.browse_key is not None and node.type != "playlist"
+        can_play = node.play_path is not None
+        if not (can_expand or can_play):
+            return None
+        media_class, media_type = NODE_CLASSES.get(
+            node.type, (MediaClass.DIRECTORY, "")
+        )
+        title = node.title
+        if node.type == "section":
+            title = f"{node.title} ({node.subtitle})"
+        elif node.type in ("album", "track") and node.subtitle:
+            title = f"{node.title} - {node.subtitle}"
+        return BrowseMediaSource(
+            domain=DOMAIN,
+            identifier=f"{entry.entry_id}/node/{_encode_node(node)}",
+            media_class=media_class,
+            media_content_type=media_type,
+            title=title,
+            can_play=can_play,
+            can_expand=can_expand,
+            thumbnail=(
+                async_artwork_url(self.hass, entry.entry_id, node.image)
+                if node.image and node.type != "track"
+                else None
+            ),
+        )
 
     def _album(self, entry: BluOSConfigEntry, album: Album) -> BrowseMediaSource:
         return BrowseMediaSource(

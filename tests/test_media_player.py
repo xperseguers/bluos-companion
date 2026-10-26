@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import json
 
 import aiohttp
 import pytest
@@ -56,6 +57,10 @@ def _media_id(entry: MockConfigEntry, tail: str) -> str:
 
 def _b64(value: str) -> str:
     return base64.urlsafe_b64encode(value.encode()).decode()
+
+
+def _node(play_path: str | None) -> str:
+    return _b64(json.dumps({"k": "key", "p": play_path, "t": "title"}))
 
 
 async def _refresh(
@@ -202,6 +207,12 @@ async def test_command_failure(
             id="track",
         ),
         pytest.param("preset/3", "/Preset", {"id": "3"}, id="preset"),
+        pytest.param(
+            f"node/{_node('/Load?service=BluOS&name=Relaxing')}",
+            "/Load",
+            {"service": "BluOS", "name": "Relaxing"},
+            id="playlist-node",
+        ),
     ],
 )
 async def test_play_library_media(
@@ -233,6 +244,9 @@ async def test_play_library_media(
         pytest.param("preset/abc", id="bad-preset"),
         pytest.param(f"track/{_b64('/Settings?id=x')}", id="path-not-allowed"),
         pytest.param(f"track/{_b64('http://evil/')}", id="absolute-url"),
+        pytest.param(f"node/{_node(None)}", id="node-without-play-path"),
+        pytest.param(f"node/{_node('/Settings?id=x')}", id="node-path-not-allowed"),
+        pytest.param("node/!!!", id="node-invalid"),
     ],
 )
 async def test_play_rejects_invalid_items(

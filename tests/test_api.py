@@ -10,8 +10,10 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.bluos_companion.api import (
     Album,
+    MAX_BROWSE_PAGES,
     BluOSClient,
     BluOSError,
+    Node,
 )
 
 from .conftest import (
@@ -126,20 +128,53 @@ async def test_recent_albums(client: BluOSClient) -> None:
 
 
 @pytest.mark.usefixtures("player_api")
-async def test_sections_and_albums(client: BluOSClient) -> None:
-    """Sections and the albums of a section are parsed."""
-    sections = await client.async_get_album_sections()
-    assert [(s.name, s.count) for s in sections] == [("A", 84), ("#", 36)]
-    assert sections[0].key == SECTION_A_KEY
+async def test_browse(client: BluOSClient) -> None:
+    """Entries of a browse key are parsed."""
+    nodes = await client.async_browse(SECTION_A_KEY)
+    assert nodes[0] == Node(
+        type="album",
+        title="À côté du soleil",
+        subtitle="Cristina Marocco",
+        browse_key="LocalMusic:MG/LocalMusic-Album?album=%C3%80+c%C3%B4t%C3%A9+du+soleil&artist=Cristina+Marocco",
+        play_path="/Add?playnow=1&service=LocalMusic&album=x",
+        image="/Artwork?service=LocalMusic&album=x",
+    )
+    assert nodes[1].type == "link"
+    assert nodes[1].browse_key is None
 
-    albums = await client.async_get_albums(SECTION_A_KEY)
-    assert albums == [
-        Album(
-            "À côté du soleil",
-            "Cristina Marocco",
-            "album=%C3%80+c%C3%B4t%C3%A9+du+soleil&artist=Cristina+Marocco",
-        )
-    ]
+
+async def test_browse_merges_pages(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """Pages repeating earlier entries do not duplicate them."""
+    first = '<browse nextKey="page2"><item text="a" type="track" playURL="/Add?a"/></browse>'
+    second = (
+        '<browse nextKey="page3"><item text="a" type="track" playURL="/Add?a"/>'
+        '<item text="b" type="track" playURL="/Add?b"/></browse>'
+    )
+    third = (
+        '<browse><item text="a" type="track" playURL="/Add?a"/>'
+        '<item text="b" type="track" playURL="/Add?b"/>'
+        '<item text="c" type="track" playURL="/Add?c"/></browse>'
+    )
+    for key, text in (("page1", first), ("page2", second), ("page3", third)):
+        aioclient_mock.get(browse_url(key), text=text)
+
+    nodes = await client.async_browse("page1")
+
+    assert [node.title for node in nodes] == ["a", "b", "c"]
+
+
+async def test_browse_stops_after_page_limit(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """A player looping on nextKey does not loop forever."""
+    aioclient_mock.get(
+        browse_url("loop"), text='<browse nextKey="loop"><item text="a" type="link" browseKey="k"/></browse>'
+    )
+    nodes = await client.async_browse("loop")
+    assert len(nodes) == 1
+    assert len(calls(aioclient_mock)) == MAX_BROWSE_PAGES
 
 
 @pytest.mark.usefixtures("player_api")

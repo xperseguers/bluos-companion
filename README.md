@@ -14,14 +14,14 @@ It aims to bring much of the BluOS controller app into Home Assistant.
   and now-playing metadata with cover art
 - Media browser (also in the sidebar **Media** panel), with cover art:
   - recently added albums of your local library
-  - all albums by letter, with their tracks
-  - presets
-- Play an album, a track or a preset on the player
+  - artists, albums, songs, genres and composers of your library, by letter where relevant
+  - playlists and presets
+- Play an album, a song, a playlist or a preset on the player
 - Cover art is proxied through Home Assistant, so it works when you use HTTPS
 - Status is pushed by the player (long polling), no heavy polling
 
-Roadmap: sidebar panel with a dedicated UI, queue, search, playlists, player grouping,
-input selection.
+Roadmap: sidebar panel with a dedicated UI, queue, search, playlist contents, player
+grouping, input selection.
 
 ## Requirements
 

@@ -12,6 +12,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from yarl import URL
 
 from custom_components.bluos_companion.const import CONF_PORT, DOMAIN
+from custom_components.bluos_companion.media_source import LIBRARY
 
 HOST = "192.168.1.100"
 BASE = f"http://{HOST}:11000"
@@ -49,6 +50,21 @@ PRESETS = """<presets prid="0">
   <preset id="2" name="Rouge FM" url="TuneIn:s58290" image="https://cdn.example/s58290.png"></preset>
   <preset id="3" name="No image" url="TuneIn:s1"></preset>
 </presets>"""
+
+
+ARTISTS_SECTIONS = """<browse type="sections">
+  <item browseKey="LocalMusic:S:Artist/x&amp;section=A" text="A" text2="67" type="section"></item>
+</browse>"""
+GENRES = """<browse type="genres">
+  <item browseKey="LocalMusic:MG/Genres?genre=Pop" text="Pop" type="genre"></item>
+  <item text="Not browsable" type="text"></item>
+</browse>"""
+PLAYLISTS = """<browse type="playlists">
+  <item browseKey="BluOS:MG/BluOS-Playlist?playlist=Relaxing" playURL="/Load?service=BluOS&amp;name=Relaxing" text="Relaxing" type="playlist"></item>
+</browse>"""
+SONGS_SECTION = """<browse type="tracks">
+  <item playURL="/Add?playnow=1&amp;file=%2Fa.m4a" text="À 82 ans" text2="Axelle Red • Toujours moi" image="/Artwork?service=LocalMusic&amp;album=x" type="track"></item>
+</browse>"""
 
 
 def status_xml(state: str = "play", **overrides: str) -> str:
@@ -105,18 +121,20 @@ def player_api(aioclient_mock: AiohttpClientMocker) -> AiohttpClientMocker:
     aioclient_mock.get(f"{BASE}/Status", text=status_xml())
     aioclient_mock.get(f"{BASE}/Presets", text=PRESETS)
     aioclient_mock.get(f"{BASE}/Albums", text=RECENT)
-    aioclient_mock.get(
-        browse_url(
-            "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic"
-        ),
-        text=SECTIONS,
-    )
+    for category, text in (
+        ("albums", SECTIONS),
+        ("artists", ARTISTS_SECTIONS),
+        ("genres", GENRES),
+        ("playlists", PLAYLISTS),
+    ):
+        aioclient_mock.get(browse_url(LIBRARY[category][1]), text=text)
     aioclient_mock.get(browse_url(SECTION_A_KEY), text=ALBUMS)
     aioclient_mock.get(browse_url(ALBUM_KEY), text=TRACKS)
     for path in ("Play", "Pause", "Stop", "Skip", "Back", "Volume", "Shuffle", "Repeat"):
         aioclient_mock.get(f"{BASE}/{path}", text="<state>play</state>")
     aioclient_mock.get(f"{BASE}/Add", text="<ok/>")
     aioclient_mock.get(f"{BASE}/Preset", text="<ok/>")
+    aioclient_mock.get(f"{BASE}/Load", text="<ok/>")
     aioclient_mock.get(f"{BASE}/Artwork", content=b"image", headers={"Content-Type": "image/jpeg"})
     return aioclient_mock
 

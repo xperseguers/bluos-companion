@@ -19,7 +19,10 @@ from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 
 from custom_components.bluos_companion.const import DOMAIN
 
-from .conftest import BASE, SECTION_A_KEY, calls
+from custom_components.bluos_companion.api import Node
+from custom_components.bluos_companion.media_source import _encode_node
+
+from .conftest import BASE, SONGS_SECTION, browse_url, calls
 
 ROOT = f"media-source://{DOMAIN}"
 
@@ -47,11 +50,16 @@ async def test_root_lists_players(
 
 
 async def test_player_menu(hass: HomeAssistant, init_integration: MockConfigEntry) -> None:
-    """The player offers recent albums, albums and presets."""
+    """The player offers the recent albums, the library categories and presets."""
     item = await async_browse_media(hass, f"{ROOT}/{init_integration.entry_id}")
     assert [child.title for child in item.children] == [
         "Recently added",
+        "Artists",
         "Albums",
+        "Songs",
+        "Genres",
+        "Playlists",
+        "Composers",
         "Presets",
     ]
 
@@ -76,18 +84,68 @@ async def test_recent_albums(
 async def test_albums_by_section(
     hass: HomeAssistant, init_integration: MockConfigEntry
 ) -> None:
-    """Sections lead to the albums of a letter."""
+    """Sections lead to the albums of a letter, which can be played and expanded."""
     eid = init_integration.entry_id
     sections = await async_browse_media(hass, f"{ROOT}/{eid}/albums")
     assert [child.title for child in sections.children] == ["A (84)", "# (36)"]
-    assert sections.children[0].media_content_id == (
-        f"{ROOT}/{eid}/albums/{_b64(SECTION_A_KEY)}"
-    )
+    assert not sections.children[0].can_play
+    assert sections.children[0].can_expand
 
     albums = await async_browse_media(hass, sections.children[0].media_content_id)
+    assert albums.title == "A"
     assert [child.title for child in albums.children] == [
         "À côté du soleil - Cristina Marocco"
     ]
+    album = albums.children[0]
+    assert (album.media_class, album.can_play, album.can_expand) == ("album", True, True)
+    assert album.thumbnail.startswith(f"/api/{DOMAIN}/{eid}/artwork?path=/Artwork")
+
+
+@pytest.mark.parametrize(
+    ("category", "title", "media_class", "can_play", "can_expand"),
+    [
+        pytest.param("artists", "A (67)", "directory", False, True, id="artists"),
+        pytest.param("genres", "Pop", "genre", False, True, id="genres"),
+        pytest.param("playlists", "Relaxing", "playlist", True, False, id="playlists"),
+    ],
+)
+async def test_library_categories(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    category: str,
+    title: str,
+    media_class: str,
+    can_play: bool,
+    can_expand: bool,
+) -> None:
+    """Library categories are browsable, entries without target are hidden."""
+    item = await async_browse_media(
+        hass, f"{ROOT}/{init_integration.entry_id}/{category}"
+    )
+    assert len(item.children) == 1
+    child = item.children[0]
+    assert (child.title, child.media_class, child.can_play, child.can_expand) == (
+        title,
+        media_class,
+        can_play,
+        can_expand,
+    )
+
+
+async def test_tracks_have_artist_and_no_thumbnail(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Songs show their artist and album and do not load a cover each."""
+    node = Node("section", "A", "1", "songs-a", None, None)
+    player_api.get(browse_url("songs-a"), text=SONGS_SECTION)
+    item = await async_browse_media(
+        hass, f"{ROOT}/{init_integration.entry_id}/node/{_encode_node(node)}"
+    )
+    track = item.children[0]
+    assert track.title == "À 82 ans - Axelle Red • Toujours moi"
+    assert (track.can_play, track.can_expand, track.thumbnail) == (True, False, None)
 
 
 async def test_album_tracks(
@@ -125,7 +183,8 @@ async def test_presets(hass: HomeAssistant, init_integration: MockConfigEntry) -
     [
         pytest.param("unknown", id="unknown-entry"),
         pytest.param("{eid}/nope", id="unknown-item"),
-        pytest.param("{eid}/albums/!!!", id="bad-identifier"),
+        pytest.param("{eid}/node/!!!", id="bad-identifier"),
+        pytest.param("{eid}/node/e30=", id="node-without-key"),
     ],
 )
 async def test_browse_errors(
