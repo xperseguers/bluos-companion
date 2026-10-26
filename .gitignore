@@ -4,3 +4,4 @@ __pycache__/
 /config/*
 !/config/configuration.yaml
 .pytest_cache/
+.idea/
