@@ -207,6 +207,7 @@ async def test_command_failure(
             id="track",
         ),
         pytest.param("preset/3", "/Preset", {"id": "3"}, id="preset"),
+        pytest.param("queue/3", "/Play", {"id": "3"}, id="queue"),
         pytest.param(
             f"node/{_node('/Load?service=BluOS&name=Relaxing')}",
             "/Load",
@@ -242,6 +243,7 @@ async def test_play_library_media(
     [
         pytest.param("recent", id="not-playable"),
         pytest.param("preset/abc", id="bad-preset"),
+        pytest.param("queue/abc", id="bad-queue-position"),
         pytest.param(f"track/{_b64('/Settings?id=x')}", id="path-not-allowed"),
         pytest.param(f"track/{_b64('http://evil/')}", id="absolute-url"),
         pytest.param(f"node/{_node(None)}", id="node-without-play-path"),

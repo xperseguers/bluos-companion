@@ -16,7 +16,7 @@ from .const import CONF_PORT, DOMAIN, ICONS_URL
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import BluOSArtworkView
 
-PLATFORMS = [Platform.MEDIA_PLAYER]
+PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SELECT]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 

@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from urllib.parse import urlencode
+from urllib.parse import unquote, urlencode
 from xml.etree import ElementTree as ET
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
 REQUEST_TIMEOUT = 20
 MAX_BROWSE_PAGES = 8
+MAX_QUEUE_LENGTH = 500
+SLEEP_OPTIONS = (15, 30, 45, 60, 90)
 
 
 class BluOSError(Exception):
@@ -44,6 +46,62 @@ class Status:
     can_seek: bool
     position: int | None
     duration: int | None
+    sync_stat: str | None = None
+    sleep: int | None = None
+    stream_url: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Member:
+    """A player grouped with another one, as listed by /SyncStatus."""
+
+    host: str
+    port: int
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class Source:
+    """An input of the player (Bluetooth, optical...), selected by its type and index."""
+
+    name: str
+    type_index: str
+    url: str
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalSource:
+    """An input of an amplifier (TV, Phono...), selected by its id."""
+
+    id: str
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class SyncStatus:
+    """Group and input information of a player."""
+
+    group: str | None
+    master: Member | None
+    slaves: tuple[Member, ...]
+    external_source: str | None
+    external_sources: tuple[ExternalSource, ...] = ()
+
+    @property
+    def is_grouped(self) -> bool:
+        """Return whether the player is part of a group."""
+        return self.master is not None or bool(self.slaves)
+
+
+@dataclass(frozen=True, slots=True)
+class QueueItem:
+    """A track of the play queue."""
+
+    id: int
+    title: str
+    artist: str
+    album: str
+    image: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +224,34 @@ class BluOSClient:
             brand=root.get("brand", ""),
         )
 
+    async def async_get_sync_status(self) -> SyncStatus:
+        """Return the group and external source of the player."""
+        root = await self._get_xml("/SyncStatus")
+        master = root.find("master")
+        external = root.find("externalSource")
+        return SyncStatus(
+            group=root.get("group"),
+            master=(
+                Member(
+                    (master.text or "").strip(),
+                    _int(master.get("port"), 11000),
+                    master.get("name", ""),
+                )
+                if master is not None and (master.text or "").strip()
+                else None
+            ),
+            slaves=tuple(
+                Member(slave.get("id", ""), _int(slave.get("port"), 11000), slave.get("name", ""))
+                for slave in root.findall("slave")
+            ),
+            external_source=external.get("name") if external is not None else None,
+            external_sources=tuple(
+                ExternalSource(item.get("id", ""), item.get("name", ""))
+                for item in (external.findall("item") if external is not None else [])
+                if item.get("id")
+            ),
+        )
+
     async def async_get_status(
         self, etag: str | None = None, long_poll_timeout: int | None = None
     ) -> Status:
@@ -193,6 +279,9 @@ class BluOSClient:
             can_seek=root.findtext("canSeek") == "1",
             position=_int(position) if position else None,
             duration=_int(duration) if duration else None,
+            sync_stat=root.findtext("syncStat"),
+            sleep=_int(root.findtext("sleep")) or None,
+            stream_url=root.findtext("streamUrl"),
         )
 
     async def async_browse(self, key: str) -> list[Node]:
@@ -249,6 +338,31 @@ class BluOSClient:
         return [
             Preset(_int(item.get("id")), item.get("name", ""), item.get("image"))
             for item in root.iter("preset")
+        ]
+
+    async def async_get_sources(self) -> list[Source]:
+        """Return the inputs that can be selected on the player."""
+        root = await self._get_xml("/RadioBrowse", {"service": "Capture"})
+        return [
+            Source(item.get("text", ""), type_index, unquote(item.get("URL", "")))
+            for item in root.iter("item")
+            if (type_index := item.get("typeIndex"))
+        ]
+
+    async def async_get_queue(self) -> list[QueueItem]:
+        """Return the tracks of the play queue (the first MAX_QUEUE_LENGTH)."""
+        root = await self._get_xml(
+            "/Playlist", {"start": "0", "end": str(MAX_QUEUE_LENGTH - 1)}
+        )
+        return [
+            QueueItem(
+                id=_int(song.get("id")),
+                title=song.findtext("title", ""),
+                artist=song.findtext("art", ""),
+                album=song.findtext("alb", ""),
+                image=song.findtext("image"),
+            )
+            for song in root.iter("song")
         ]
 
     async def async_get_image(self, path: str) -> tuple[bytes, str]:
@@ -316,3 +430,47 @@ class BluOSClient:
     async def async_load_preset(self, preset_id: int) -> None:
         """Load a preset."""
         await self.async_command("/Preset", {"id": str(preset_id)})
+
+    async def async_play_queue_item(self, item_id: int) -> None:
+        """Play a track of the queue."""
+        await self.async_command("/Play", {"id": str(item_id)})
+
+    async def async_clear_queue(self) -> None:
+        """Remove all the tracks of the queue."""
+        await self.async_command("/Clear")
+
+    async def async_select_source(self, type_index: str) -> None:
+        """Switch to an input."""
+        await self.async_command("/Play", {"inputTypeIndex": type_index})
+
+    async def async_select_external_source(self, source_id: str) -> None:
+        """Switch to an external input of an amplifier."""
+        await self.async_command("/ExternalSource", {"id": source_id})
+
+    async def async_add_slave(self, host: str, port: int) -> None:
+        """Group another player with this one, which becomes the primary player."""
+        await self.async_command("/AddSlave", {"slave": host, "port": str(port)})
+
+    async def async_remove_slave(self, host: str, port: int) -> None:
+        """Remove a secondary player from the group of this player."""
+        await self.async_command("/RemoveSlave", {"slave": host, "port": str(port)})
+
+    async def async_set_sleep(self, minutes: int) -> None:
+        """Set the sleep timer to one of SLEEP_OPTIONS, 0 to turn it off.
+
+        The player only offers a command that moves to the next value, so it is
+        pressed until the status reports the wanted one.
+        """
+        for _ in range(len(SLEEP_OPTIONS)):
+            if sleep_bucket((await self.async_get_status()).sleep) == minutes:
+                return
+            await self.async_command("/Sleep")
+        if sleep_bucket((await self.async_get_status()).sleep) != minutes:
+            raise BluOSError("Could not set the sleep timer")
+
+
+def sleep_bucket(remaining: int | None) -> int:
+    """Return the sleep timer option matching the minutes remaining, 0 if off."""
+    if not remaining:
+        return 0
+    return next((option for option in SLEEP_OPTIONS if option >= remaining), SLEEP_OPTIONS[-1])

@@ -62,6 +62,7 @@ async def test_player_menu(hass: HomeAssistant, init_integration: MockConfigEntr
         "Playlists",
         "Composers",
         "Presets",
+        "Queue",
     ]
 
 
@@ -304,6 +305,7 @@ async def test_titles_follow_the_language(
         "Listes de lecture",
         "Compositeurs",
         "Préréglages",
+        "File d'attente",
     ]
 
     songs = await async_browse_media(hass, f"{ROOT}/{eid}/playlists")
@@ -409,6 +411,7 @@ async def test_menu_items_have_icons(
             "playlists",
             "composers",
             "presets",
+            "queue",
         )
     ]
 
@@ -450,3 +453,15 @@ async def test_icons_are_served(
     response = await client.get(f"{ICONS_URL}/{name}.svg")
     assert response.status == 200
     assert response.content_type == "image/svg+xml"
+
+
+async def test_queue(hass: HomeAssistant, init_integration: MockConfigEntry) -> None:
+    """The queue lists its tracks, each playable by position."""
+    eid = init_integration.entry_id
+    queue = await async_browse_media(hass, f"{ROOT}/{eid}/queue")
+    assert [(child.identifier, child.title, child.can_play) for child in queue.children] == [
+        (f"{eid}/queue/0", "U Got the Look - Prince", True),
+        (f"{eid}/queue/1", "Kiss", True),
+    ]
+    assert queue.children[0].thumbnail is not None
+    assert queue.children[1].thumbnail is None

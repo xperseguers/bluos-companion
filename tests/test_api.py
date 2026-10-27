@@ -28,14 +28,6 @@ from .conftest import (
 )
 
 
-@pytest.fixture
-async def client(
-    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
-) -> BluOSClient:
-    """Return a client."""
-    return BluOSClient(async_get_clientsession(hass), HOST, 11000)
-
-
 @pytest.mark.usefixtures("player_api")
 async def test_player_info(client: BluOSClient) -> None:
     """The identity is read from SyncStatus."""

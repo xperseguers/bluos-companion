@@ -24,7 +24,7 @@ from .coordinator import BluOSConfigEntry
 from .http import async_artwork_url
 
 URI_PREFIX = f"media-source://{DOMAIN}/"
-PLAY_PATH_PREFIXES = ("/Add?", "/Preset?", "/Load?")
+PLAY_PATH_PREFIXES = ("/Add?", "/Preset?", "/Load?", "/Play?id=")
 
 LIBRARY = {
     "artists": "LocalMusic:bySection:Artist/%2Flibrary%2Fv1%2FArtists%3Fservice=LocalMusic",
@@ -34,7 +34,7 @@ LIBRARY = {
     "playlists": "BluOS:",
     "composers": "LocalMusic:bySection:Composer/%2Flibrary%2Fv1%2FComposers%3Fservice=LocalMusic",
 }
-TITLES = ("recently_added", *LIBRARY, "presets", "favourites", "folders")
+TITLES = ("recently_added", *LIBRARY, "presets", "queue", "favourites", "folders")
 MENU_LABELS = {
     **{category.capitalize(): category for category in LIBRARY},
     "Favourites": "favourites",
@@ -95,6 +95,8 @@ def play_path_from_media_id(media_id: str) -> tuple[str, str]:
             path = _decode(encoded_path)
         case [entry_id, "preset", preset_id] if preset_id.isdigit():
             path = f"/Preset?id={preset_id}"
+        case [entry_id, "queue", item_id] if item_id.isdigit():
+            path = f"/Play?id={item_id}"
         case [entry_id, "node", payload]:
             path = _decode_node(payload).get("p") or ""
         case _:
@@ -209,6 +211,11 @@ class BluOSMediaSource(MediaSource):
                             titles["presets"],
                             thumbnail=_icon("presets"),
                         ),
+                        _directory(
+                            f"{eid}/queue",
+                            titles["queue"],
+                            thumbnail=_icon("queue"),
+                        ),
                     ],
                 )
             case ["recent"]:
@@ -264,6 +271,34 @@ class BluOSMediaSource(MediaSource):
                     thumbnail=async_artwork_url(
                         self.hass, eid, f"/Artwork?service=LocalMusic&{album_query}"
                     ),
+                )
+            case ["queue"]:
+                queue = await client.async_get_queue()
+                return _directory(
+                    f"{eid}/queue",
+                    titles["queue"],
+                    [
+                        BrowseMediaSource(
+                            domain=DOMAIN,
+                            identifier=f"{eid}/queue/{item.id}",
+                            media_class=MediaClass.TRACK,
+                            media_content_type=MediaType.TRACK,
+                            title=(
+                                f"{item.title} - {item.artist}"
+                                if item.artist
+                                else item.title
+                            ),
+                            can_play=True,
+                            can_expand=False,
+                            thumbnail=(
+                                async_artwork_url(self.hass, eid, item.image)
+                                if item.image
+                                else None
+                            ),
+                        )
+                        for item in queue
+                    ],
+                    MediaClass.TRACK,
                 )
             case ["presets"]:
                 presets = await client.async_get_presets()

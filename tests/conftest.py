@@ -7,10 +7,12 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from yarl import URL
 
+from custom_components.bluos_companion.api import BluOSClient
 from custom_components.bluos_companion.const import CONF_PORT, DOMAIN
 from custom_components.bluos_companion.media_source import LIBRARY
 
@@ -51,6 +53,21 @@ PRESETS = """<presets prid="0">
   <preset id="3" name="No image" url="TuneIn:s1"></preset>
 </presets>"""
 
+
+SOURCES = """<radiotime service="Capture">
+  <item text="Bluetooth" id="input1" type="audio" inputType="bluetooth" URL="Capture%3Abluez%3Abluetooth" typeIndex="bluetooth-1"></item>
+  <item text="No index" type="audio" URL="x"></item>
+</radiotime>"""
+QUEUE = """<playlist length="2" id="1491">
+  <song service="LocalMusic" id="0"><art>Prince</art><alb>Hits</alb><title>U Got the Look</title><image>/Artwork?service=LocalMusic&amp;album=Hits</image></song>
+  <song service="LocalMusic" id="1"><art></art><alb></alb><title>Kiss</title></song>
+</playlist>"""
+GROUPED_SYNC_STATUS = (
+    f'<SyncStatus id="{HOST}:11000" mac="{MAC}" name="Séjour" group="Séjour+Pulse" '
+    'syncStat="2" volume="25"><slave id="192.168.1.101" port="11000" name="Pulse"/>'
+    '<externalSource id="10" name="AppleTV"><item id="5" name="Phono"/><item id="9" name="BluOS" isBluos="true"/><item name="Broken"/></externalSource>'
+    "</SyncStatus>"
+)
 
 ARTISTS_SECTIONS = """<browse type="sections">
   <item browseKey="LocalMusic:S:Artist/x&amp;section=A" text="A" text2="67" type="section"></item>
@@ -98,9 +115,23 @@ def calls(aioclient_mock: AiohttpClientMocker) -> list[tuple[str, dict[str, str]
     return [(call[1].path, dict(call[1].query)) for call in aioclient_mock.mock_calls]
 
 
+def respond(mocker: AiohttpClientMocker, url: str | URL, **kwargs: object) -> None:
+    """Mock a GET that takes precedence over the ones registered earlier."""
+    mocker.get(url, **kwargs)
+    mocker._mocks.insert(0, mocker._mocks.pop())  # noqa: SLF001
+
+
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
     """Enable loading the custom integration."""
+
+
+@pytest.fixture
+async def client(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> BluOSClient:
+    """Return a client."""
+    return BluOSClient(async_get_clientsession(hass), HOST, 11000)
 
 
 @pytest.fixture
@@ -121,6 +152,8 @@ def player_api(aioclient_mock: AiohttpClientMocker) -> AiohttpClientMocker:
     aioclient_mock.get(f"{BASE}/Status", text=status_xml())
     aioclient_mock.get(f"{BASE}/Presets", text=PRESETS)
     aioclient_mock.get(f"{BASE}/Albums", text=RECENT)
+    aioclient_mock.get(f"{BASE}/RadioBrowse", text=SOURCES)
+    aioclient_mock.get(f"{BASE}/Playlist", text=QUEUE)
     for category, text in (
         ("albums", SECTIONS),
         ("artists", ARTISTS_SECTIONS),
@@ -130,7 +163,7 @@ def player_api(aioclient_mock: AiohttpClientMocker) -> AiohttpClientMocker:
         aioclient_mock.get(browse_url(LIBRARY[category]), text=text)
     aioclient_mock.get(browse_url(SECTION_A_KEY), text=ALBUMS)
     aioclient_mock.get(browse_url(ALBUM_KEY), text=TRACKS)
-    for path in ("Play", "Pause", "Stop", "Skip", "Back", "Volume", "Shuffle", "Repeat"):
+    for path in ("Play", "Pause", "Stop", "Skip", "Back", "Volume", "Shuffle", "Repeat", "Clear", "Sleep", "AddSlave", "RemoveSlave"):
         aioclient_mock.get(f"{BASE}/{path}", text="<state>play</state>")
     aioclient_mock.get(f"{BASE}/Add", text="<ok/>")
     aioclient_mock.get(f"{BASE}/Preset", text="<ok/>")

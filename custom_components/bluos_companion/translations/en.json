@@ -17,6 +17,21 @@
       "already_configured": "This player is already configured."
     }
   },
+  "entity": {
+    "select": {
+      "sleep_timer": {
+        "name": "Sleep timer",
+        "state": {
+          "off": "Off",
+          "15": "15 minutes",
+          "30": "30 minutes",
+          "45": "45 minutes",
+          "60": "60 minutes",
+          "90": "90 minutes"
+        }
+      }
+    }
+  },
   "common": {
     "recently_added": "Recently added",
     "artists": "Artists",
@@ -26,6 +41,7 @@
     "playlists": "Playlists",
     "composers": "Composers",
     "presets": "Presets",
+    "queue": "Queue",
     "favourites": "Favourites",
     "folders": "Folders"
   }

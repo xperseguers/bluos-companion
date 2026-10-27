@@ -16,16 +16,18 @@ from homeassistant.components.media_player import (
     RepeatMode,
     async_process_play_media_url,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from .api import BluOSError
-from .const import DOMAIN
+from .const import CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .media_source import URI_PREFIX, play_path_from_media_id
 
@@ -35,6 +37,7 @@ STATES = {
     "pause": MediaPlayerState.PAUSED,
     "connecting": MediaPlayerState.BUFFERING,
 }
+EXTERNAL_SOURCE_URL = "Capture:External"
 REPEAT_TO_BLUOS = {RepeatMode.ALL: 0, RepeatMode.ONE: 1, RepeatMode.OFF: 2}
 REPEAT_FROM_BLUOS = {value: key for key, value in REPEAT_TO_BLUOS.items()}
 
@@ -68,6 +71,9 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
         | MediaPlayerEntityFeature.REPEAT_SET
         | MediaPlayerEntityFeature.PLAY_MEDIA
         | MediaPlayerEntityFeature.BROWSE_MEDIA
+        | MediaPlayerEntityFeature.SELECT_SOURCE
+        | MediaPlayerEntityFeature.GROUPING
+        | MediaPlayerEntityFeature.CLEAR_PLAYLIST
     )
 
     def __init__(self, coordinator: BluOSCoordinator) -> None:
@@ -113,6 +119,59 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
     def repeat(self) -> RepeatMode:
         """Return the repeat mode."""
         return REPEAT_FROM_BLUOS.get(self.coordinator.data.repeat, RepeatMode.OFF)
+
+    @property
+    def source_list(self) -> list[str]:
+        """Return the inputs that can be selected."""
+        names = [source.name for source in self.coordinator.sources]
+        if sync := self.coordinator.sync:
+            names += [source.name for source in sync.external_sources]
+        return names
+
+    @property
+    def source(self) -> str | None:
+        """Return the active input, if the player is playing one."""
+        status = self.coordinator.data
+        if status.stream_url == EXTERNAL_SOURCE_URL and self.coordinator.sync:
+            return self.coordinator.sync.external_source
+        return next(
+            (s.name for s in self.coordinator.sources if s.url == status.stream_url),
+            None,
+        )
+
+    @property
+    def group_members(self) -> list[str] | None:
+        """Return the entity ids of the players playing together, primary first."""
+        if (sync := self.coordinator.sync) is None or not sync.is_grouped:
+            return None
+        if sync.master is not None:
+            master = self._coordinator_of(sync.master.host)
+            if master is None or master.sync is None:
+                return None
+            hosts = [sync.master.host, *(m.host for m in master.sync.slaves)]
+        else:
+            hosts = [self._host, *(m.host for m in sync.slaves)]
+        registry = er.async_get(self.hass)
+        entity_ids = (self._entity_id_of(registry, host) for host in hosts)
+        return [entity_id for entity_id in entity_ids if entity_id]
+
+    def _coordinator_of(self, host: str) -> BluOSCoordinator | None:
+        for entry in self.hass.config_entries.async_loaded_entries(DOMAIN):
+            if entry.data[CONF_HOST] == host:
+                return entry.runtime_data
+        return None
+
+    def _entity_id_of(self, registry: er.EntityRegistry, host: str) -> str | None:
+        coordinator = self._coordinator_of(host)
+        if coordinator is None or not coordinator.config_entry.unique_id:
+            return None
+        return registry.async_get_entity_id(
+            "media_player", DOMAIN, coordinator.config_entry.unique_id
+        )
+
+    @property
+    def _host(self) -> str:
+        return self.coordinator.config_entry.data[CONF_HOST]
 
     @property
     def media_title(self) -> str | None:
@@ -203,6 +262,71 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
     async def async_set_repeat(self, repeat: RepeatMode) -> None:
         """Set repeat."""
         await self._async_call(self._client.async_set_repeat(REPEAT_TO_BLUOS[repeat]))
+
+    async def async_select_source(self, source: str) -> None:
+        """Switch to an input."""
+        for candidate in self.coordinator.sources:
+            if candidate.name == source:
+                await self._async_call(
+                    self._client.async_select_source(candidate.type_index)
+                )
+                return
+        if sync := self.coordinator.sync:
+            for external in sync.external_sources:
+                if external.name == source:
+                    await self._async_call(
+                        self._client.async_select_external_source(external.id)
+                    )
+                    return
+        raise HomeAssistantError(f"Unknown source: {source}")
+
+    async def async_clear_playlist(self) -> None:
+        """Empty the play queue."""
+        await self._async_call(self._client.async_clear_queue())
+
+    async def async_join_players(self, group_members: list[str]) -> None:
+        """Add players to the group of this one, which becomes the primary player."""
+        registry = er.async_get(self.hass)
+        for entity_id in group_members:
+            if entity_id == self.entity_id:
+                continue
+            entry = self._entry_of_entity(registry, entity_id)
+            await self._async_call(
+                self._client.async_add_slave(
+                    entry.data[CONF_HOST], entry.data[CONF_PORT]
+                )
+            )
+
+    async def async_unjoin_player(self) -> None:
+        """Leave the group. The primary player dissolves the whole group."""
+        sync = self.coordinator.sync
+        if sync is None:
+            return
+        if sync.master is not None:
+            master = self._coordinator_of(sync.master.host)
+            if master is None:
+                raise HomeAssistantError("The primary player of the group is not configured")
+            await self._async_call(
+                master.client.async_remove_slave(
+                    self._host, self.coordinator.config_entry.data[CONF_PORT]
+                )
+            )
+            return
+        for member in sync.slaves:
+            await self._async_call(
+                self._client.async_remove_slave(member.host, member.port)
+            )
+
+    def _entry_of_entity(self, registry: er.EntityRegistry, entity_id: str) -> ConfigEntry:
+        entity = registry.async_get(entity_id)
+        entry = (
+            self.hass.config_entries.async_get_entry(entity.config_entry_id)
+            if entity and entity.config_entry_id
+            else None
+        )
+        if entry is None or entry.domain != DOMAIN:
+            raise HomeAssistantError(f"{entity_id} is not a BluOS Companion player")
+        return entry
 
     async def async_browse_media(
         self, media_content_type: str | None = None, media_content_id: str | None = None

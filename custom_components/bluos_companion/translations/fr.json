@@ -17,6 +17,21 @@
       "already_configured": "Ce lecteur est déjà configuré."
     }
   },
+  "entity": {
+    "select": {
+      "sleep_timer": {
+        "name": "Minuterie de sommeil",
+        "state": {
+          "off": "Désactivée",
+          "15": "15 minutes",
+          "30": "30 minutes",
+          "45": "45 minutes",
+          "60": "60 minutes",
+          "90": "90 minutes"
+        }
+      }
+    }
+  },
   "common": {
     "recently_added": "Nouveautés",
     "artists": "Artistes",
@@ -26,6 +41,7 @@
     "playlists": "Listes de lecture",
     "composers": "Compositeurs",
     "presets": "Préréglages",
+    "queue": "File d'attente",
     "favourites": "Favoris",
     "folders": "Dossiers"
   }
