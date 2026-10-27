@@ -35,6 +35,7 @@ LIBRARY = {
     "composers": "LocalMusic:bySection:Composer/%2Flibrary%2Fv1%2FComposers%3Fservice=LocalMusic",
 }
 TITLES = ("recently_added", *LIBRARY, "presets")
+MENU_LABELS = {category.capitalize(): category for category in LIBRARY}
 NODE_CLASSES = {
     "artist": (MediaClass.ARTIST, MediaType.ARTIST),
     "album": (MediaClass.ALBUM, MediaType.ALBUM),
@@ -54,9 +55,11 @@ def _encode(value: str) -> str:
     return base64.urlsafe_b64encode(value.encode()).decode()
 
 
-def _encode_node(node: Node) -> str:
+def _encode_node(node: Node, title: str | None = None) -> str:
     return _encode(
-        json.dumps({"k": node.browse_key, "p": node.play_path, "t": node.title})
+        json.dumps(
+            {"k": node.browse_key, "p": node.play_path, "t": title or node.title}
+        )
     )
 
 
@@ -195,14 +198,18 @@ class BluOSMediaSource(MediaSource):
                 )
             case [category] if category in LIBRARY:
                 return await self._browse_node(
-                    entry, f"{eid}/{category}", titles[category], LIBRARY[category]
+                    entry,
+                    f"{eid}/{category}",
+                    titles[category],
+                    LIBRARY[category],
+                    titles,
                 )
             case ["node", payload]:
                 data = _decode_node(payload)
                 if not (key := data.get("k")):
                     raise BrowseError("This item cannot be browsed")
                 return await self._browse_node(
-                    entry, f"{eid}/node/{payload}", data.get("t") or "", key
+                    entry, f"{eid}/node/{payload}", data.get("t") or "", key, titles
                 )
             case ["album", query]:
                 album_query = _decode(query)
@@ -262,7 +269,12 @@ class BluOSMediaSource(MediaSource):
         raise BrowseError("Unknown media item")
 
     async def _browse_node(
-        self, entry: BluOSConfigEntry, identifier: str, title: str, key: str
+        self,
+        entry: BluOSConfigEntry,
+        identifier: str,
+        title: str,
+        key: str,
+        titles: dict[str, str],
     ) -> BrowseMediaSource:
         nodes = await entry.runtime_data.client.async_browse(key)
         return _directory(
@@ -271,11 +283,13 @@ class BluOSMediaSource(MediaSource):
             [
                 item
                 for node in nodes
-                if (item := self._node_item(entry, node)) is not None
+                if (item := self._node_item(entry, node, titles)) is not None
             ],
         )
 
-    def _node_item(self, entry: BluOSConfigEntry, node: Node) -> BrowseMediaSource | None:
+    def _node_item(
+        self, entry: BluOSConfigEntry, node: Node, titles: dict[str, str]
+    ) -> BrowseMediaSource | None:
         can_expand = node.browse_key is not None and node.type != "playlist"
         can_play = node.play_path is not None
         if not (can_expand or can_play):
@@ -283,14 +297,17 @@ class BluOSMediaSource(MediaSource):
         media_class, media_type = NODE_CLASSES.get(
             node.type, (MediaClass.DIRECTORY, "")
         )
-        title = node.title
+        label = node.title
+        if node.type == "link" and node.title in MENU_LABELS:
+            label = titles[MENU_LABELS[node.title]]
+        title = label
         if node.type == "section":
             title = f"{node.title} ({node.subtitle})"
         elif node.type in ("album", "track") and node.subtitle:
             title = f"{node.title} - {node.subtitle}"
         return BrowseMediaSource(
             domain=DOMAIN,
-            identifier=f"{entry.entry_id}/node/{_encode_node(node)}",
+            identifier=f"{entry.entry_id}/node/{_encode_node(node, label)}",
             media_class=media_class,
             media_content_type=media_type,
             title=title,

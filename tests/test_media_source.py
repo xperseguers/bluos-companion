@@ -320,3 +320,58 @@ async def test_unsupported_language_falls_back_to_english(
     hass.config.language = "de"
     menu = await async_browse_media(hass, f"{ROOT}/{init_integration.entry_id}")
     assert menu.children[0].title == "Recently added"
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        pytest.param("fr", ["Albums", "Chansons", "Favourites"], id="french"),
+        pytest.param("en", ["Albums", "Songs", "Favourites"], id="english"),
+    ],
+)
+async def test_player_menu_labels_are_translated(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    language: str,
+    expected: list[str],
+) -> None:
+    """Known labels of the player menus follow the language, others are kept."""
+    hass.config.language = language
+    player_api.get(
+        browse_url("artist-menu"),
+        text='''<browse type="menu">
+  <item browseKey="albums-key" text="Albums" type="link"></item>
+  <item browseKey="songs-key" text="Songs" type="link"></item>
+  <item browseKey="fav-key" text="Favourites" type="link"></item>
+</browse>''',
+    )
+    player_api.get(browse_url("songs-key"), text=SONGS_SECTION)
+    node = Node("artist", "a-ha", "", "artist-menu", None, None)
+    item = await async_browse_media(
+        hass, f"{ROOT}/{init_integration.entry_id}/node/{_encode_node(node)}"
+    )
+    assert [child.title for child in item.children] == expected
+
+    songs = await async_browse_media(hass, item.children[1].media_content_id)
+    assert songs.title == expected[1]
+
+
+async def test_album_named_like_a_menu_is_not_translated(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Only menu links are translated, not music called "Songs"."""
+    hass.config.language = "fr"
+    player_api.get(
+        browse_url("artist-albums"),
+        text='''<browse type="albums">
+  <item browseKey="k" playURL="/Add?playnow=1" text="Songs" text2="Someone" type="album"></item>
+</browse>''',
+    )
+    node = Node("artist", "x", "", "artist-albums", None, None)
+    item = await async_browse_media(
+        hass, f"{ROOT}/{init_integration.entry_id}/node/{_encode_node(node)}"
+    )
+    assert item.children[0].title == "Songs - Someone"
