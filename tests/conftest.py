@@ -127,7 +127,7 @@ def player_api(aioclient_mock: AiohttpClientMocker) -> AiohttpClientMocker:
         ("genres", GENRES),
         ("playlists", PLAYLISTS),
     ):
-        aioclient_mock.get(browse_url(LIBRARY[category][1]), text=text)
+        aioclient_mock.get(browse_url(LIBRARY[category]), text=text)
     aioclient_mock.get(browse_url(SECTION_A_KEY), text=ALBUMS)
     aioclient_mock.get(browse_url(ALBUM_KEY), text=TRACKS)
     for path in ("Play", "Pause", "Stop", "Skip", "Back", "Volume", "Shuffle", "Repeat"):

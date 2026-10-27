@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion à votre lecteur BluOS",
+        "description": "Saisissez l'adresse IP de votre lecteur BluOS (amplificateur, streamer...).",
+        "data": {
+          "host": "Hôte",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter à un lecteur BluOS à cette adresse."
+    },
+    "abort": {
+      "already_configured": "Ce lecteur est déjà configuré."
+    }
+  },
+  "common": {
+    "recently_added": "Nouveautés",
+    "artists": "Artistes",
+    "albums": "Albums",
+    "songs": "Chansons",
+    "genres": "Genres",
+    "playlists": "Listes de lecture",
+    "composers": "Compositeurs",
+    "presets": "Préréglages"
+  }
+}

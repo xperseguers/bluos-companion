@@ -284,3 +284,39 @@ async def test_artwork_proxy_requires_auth(
         f"/api/{DOMAIN}/{init_integration.entry_id}/artwork", params={"path": "/Artwork"}
     )
     assert response.status == 401
+
+
+async def test_titles_follow_the_language(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """The menu uses the language of Home Assistant."""
+    hass.config.language = "fr"
+    eid = init_integration.entry_id
+
+    menu = await async_browse_media(hass, f"{ROOT}/{eid}")
+    assert [child.title for child in menu.children] == [
+        "Nouveautés",
+        "Artistes",
+        "Albums",
+        "Chansons",
+        "Genres",
+        "Listes de lecture",
+        "Compositeurs",
+        "Préréglages",
+    ]
+
+    songs = await async_browse_media(hass, f"{ROOT}/{eid}/playlists")
+    assert songs.title == "Listes de lecture"
+    recent = await async_browse_media(hass, f"{ROOT}/{eid}/recent")
+    assert recent.title == "Nouveautés"
+    presets = await async_browse_media(hass, f"{ROOT}/{eid}/presets")
+    assert presets.title == "Préréglages"
+
+
+async def test_unsupported_language_falls_back_to_english(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """Other languages get the English titles."""
+    hass.config.language = "de"
+    menu = await async_browse_media(hass, f"{ROOT}/{init_integration.entry_id}")
+    assert menu.children[0].title == "Recently added"

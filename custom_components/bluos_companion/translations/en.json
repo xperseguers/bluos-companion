@@ -16,5 +16,15 @@
     "abort": {
       "already_configured": "This player is already configured."
     }
+  },
+  "common": {
+    "recently_added": "Recently added",
+    "artists": "Artists",
+    "albums": "Albums",
+    "songs": "Songs",
+    "genres": "Genres",
+    "playlists": "Playlists",
+    "composers": "Composers",
+    "presets": "Presets"
   }
 }

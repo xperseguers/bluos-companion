@@ -16,6 +16,7 @@ from homeassistant.components.media_source import (
 )
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.translation import async_get_translations
 
 from .api import Album, BluOSError, Node
 from .const import DOMAIN
@@ -26,25 +27,14 @@ URI_PREFIX = f"media-source://{DOMAIN}/"
 PLAY_PATH_PREFIXES = ("/Add?", "/Preset?", "/Load?")
 
 LIBRARY = {
-    "artists": (
-        "Artists",
-        "LocalMusic:bySection:Artist/%2Flibrary%2Fv1%2FArtists%3Fservice=LocalMusic",
-    ),
-    "albums": (
-        "Albums",
-        "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic",
-    ),
-    "songs": (
-        "Songs",
-        "LocalMusic:bySection:Song/%2Flibrary%2Fv1%2FSongs%3Fall=1&service=LocalMusic",
-    ),
-    "genres": ("Genres", "LocalMusic:GG/Genres"),
-    "playlists": ("Playlists", "BluOS:"),
-    "composers": (
-        "Composers",
-        "LocalMusic:bySection:Composer/%2Flibrary%2Fv1%2FComposers%3Fservice=LocalMusic",
-    ),
+    "artists": "LocalMusic:bySection:Artist/%2Flibrary%2Fv1%2FArtists%3Fservice=LocalMusic",
+    "albums": "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic",
+    "songs": "LocalMusic:bySection:Song/%2Flibrary%2Fv1%2FSongs%3Fall=1&service=LocalMusic",
+    "genres": "LocalMusic:GG/Genres",
+    "playlists": "BluOS:",
+    "composers": "LocalMusic:bySection:Composer/%2Flibrary%2Fv1%2FComposers%3Fservice=LocalMusic",
 }
+TITLES = ("recently_added", *LIBRARY, "presets")
 NODE_CLASSES = {
     "artist": (MediaClass.ARTIST, MediaType.ARTIST),
     "album": (MediaClass.ALBUM, MediaType.ALBUM),
@@ -159,13 +149,25 @@ class BluOSMediaSource(MediaSource):
         if entry is None or entry.domain != DOMAIN or entry.state is not ConfigEntryState.LOADED:
             raise BrowseError("Unknown player")
 
+        titles = await self._async_get_titles()
         try:
-            return await self._browse(entry, parts[1:])
+            return await self._browse(entry, parts[1:], titles)
         except BluOSError as err:
             raise BrowseError(str(err)) from err
 
+    async def _async_get_titles(self) -> dict[str, str]:
+        translations = await async_get_translations(
+            self.hass, self.hass.config.language, "common", [DOMAIN]
+        )
+        return {
+            key: translations.get(
+                f"component.{DOMAIN}.common.{key}", key.replace("_", " ").capitalize()
+            )
+            for key in TITLES
+        }
+
     async def _browse(
-        self, entry: BluOSConfigEntry, parts: list[str]
+        self, entry: BluOSConfigEntry, parts: list[str], titles: dict[str, str]
     ) -> BrowseMediaSource:
         client = entry.runtime_data.client
         eid = entry.entry_id
@@ -175,25 +177,26 @@ class BluOSMediaSource(MediaSource):
                     eid,
                     entry.title,
                     [
-                        _directory(f"{eid}/recent", "Recently added"),
+                        _directory(f"{eid}/recent", titles["recently_added"]),
                         *(
-                            _directory(f"{eid}/{category}", title)
-                            for category, (title, _) in LIBRARY.items()
+                            _directory(f"{eid}/{category}", titles[category])
+                            for category in LIBRARY
                         ),
-                        _directory(f"{eid}/presets", "Presets"),
+                        _directory(f"{eid}/presets", titles["presets"]),
                     ],
                 )
             case ["recent"]:
                 albums = await client.async_get_recent_albums()
                 return _directory(
                     f"{eid}/recent",
-                    "Recently added",
+                    titles["recently_added"],
                     [self._album(entry, album) for album in albums],
                     MediaClass.ALBUM,
                 )
             case [category] if category in LIBRARY:
-                title, key = LIBRARY[category]
-                return await self._browse_node(entry, f"{eid}/{category}", title, key)
+                return await self._browse_node(
+                    entry, f"{eid}/{category}", titles[category], LIBRARY[category]
+                )
             case ["node", payload]:
                 data = _decode_node(payload)
                 if not (key := data.get("k")):
@@ -236,7 +239,7 @@ class BluOSMediaSource(MediaSource):
                 presets = await client.async_get_presets()
                 return _directory(
                     f"{eid}/presets",
-                    "Presets",
+                    titles["presets"],
                     [
                         BrowseMediaSource(
                             domain=DOMAIN,

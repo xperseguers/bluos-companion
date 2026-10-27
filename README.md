@@ -19,6 +19,7 @@ It aims to bring much of the BluOS controller app into Home Assistant.
 - Play an album, a song, a playlist or a preset on the player
 - Cover art is proxied through Home Assistant, so it works when you use HTTPS
 - Status is pushed by the player (long polling), no heavy polling
+- Available in English and French (follows the language set in Home Assistant)
 
 Roadmap: sidebar panel with a dedicated UI, queue, search, playlist contents, player
 grouping, input selection.
