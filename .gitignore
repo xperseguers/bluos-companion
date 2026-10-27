@@ -5,3 +5,5 @@ __pycache__/
 !/config/configuration.yaml
 .pytest_cache/
 .idea/
+# API manual from Lenbrook (confidential, not for redistribution): never commit
+/docs/

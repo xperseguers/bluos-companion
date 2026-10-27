@@ -15,14 +15,16 @@ It aims to bring much of the BluOS controller app into Home Assistant.
 - Media browser (also in the sidebar **Media** panel), with cover art:
   - recently added albums of your local library
   - artists, albums, songs, genres and composers of your library, by letter where relevant
-  - playlists and presets
-- Play an album, a song, a playlist or a preset on the player
+  - playlists, presets and the play queue
+- Play an album, a song, a playlist, a preset or a track of the queue on the player
+- Input selection (Bluetooth, and the TV/Phono... inputs of an amplifier), clear the queue, and a sleep timer (`select` entity)
+- Player grouping: use the standard `media_player.join` / `unjoin` services, add each player
+  as its own entry. The group is shown in `group_members` (primary player first)
 - Cover art is proxied through Home Assistant, so it works when you use HTTPS
 - Status is pushed by the player (long polling), no heavy polling
 - Available in English and French (follows the language set in Home Assistant)
 
-Roadmap: sidebar panel with a dedicated UI, queue, search, playlist contents, player
-grouping, input selection.
+Roadmap: sidebar panel with a dedicated UI, search, playlist contents.
 
 ## Requirements
 
