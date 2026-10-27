@@ -19,7 +19,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.translation import async_get_translations
 
 from .api import Album, BluOSError, Node
-from .const import DOMAIN
+from .const import DOMAIN, ICONS_URL
 from .coordinator import BluOSConfigEntry
 from .http import async_artwork_url
 
@@ -104,11 +104,16 @@ def play_path_from_media_id(media_id: str) -> tuple[str, str]:
     return entry_id, path
 
 
+def _icon(name: str) -> str:
+    return f"{ICONS_URL}/{name}.svg"
+
+
 def _directory(
     identifier: str | None,
     title: str,
     children: list[BrowseMediaSource] | None = None,
     children_media_class: str | None = None,
+    thumbnail: str | None = None,
 ) -> BrowseMediaSource:
     return BrowseMediaSource(
         domain=DOMAIN,
@@ -120,6 +125,7 @@ def _directory(
         can_expand=True,
         children=children,
         children_media_class=children_media_class or MediaClass.DIRECTORY,
+        thumbnail=thumbnail,
     )
 
 
@@ -148,7 +154,7 @@ class BluOSMediaSource(MediaSource):
                 None,
                 self.name,
                 [
-                    _directory(entry.entry_id, entry.title)
+                    _directory(entry.entry_id, entry.title, thumbnail=_icon("player"))
                     for entry in self.hass.config_entries.async_loaded_entries(DOMAIN)
                 ],
             )
@@ -185,12 +191,24 @@ class BluOSMediaSource(MediaSource):
                     eid,
                     entry.title,
                     [
-                        _directory(f"{eid}/recent", titles["recently_added"]),
+                        _directory(
+                            f"{eid}/recent",
+                            titles["recently_added"],
+                            thumbnail=_icon("recently_added"),
+                        ),
                         *(
-                            _directory(f"{eid}/{category}", titles[category])
+                            _directory(
+                                f"{eid}/{category}",
+                                titles[category],
+                                thumbnail=_icon(category),
+                            )
                             for category in LIBRARY
                         ),
-                        _directory(f"{eid}/presets", titles["presets"]),
+                        _directory(
+                            f"{eid}/presets",
+                            titles["presets"],
+                            thumbnail=_icon("presets"),
+                        ),
                     ],
                 )
             case ["recent"]:
@@ -303,8 +321,12 @@ class BluOSMediaSource(MediaSource):
             node.type, (MediaClass.DIRECTORY, "")
         )
         label = node.title
+        thumbnail = None
+        if node.image and node.type != "track":
+            thumbnail = async_artwork_url(self.hass, entry.entry_id, node.image)
         if node.type == "link" and node.title in MENU_LABELS:
             label = titles[MENU_LABELS[node.title]]
+            thumbnail = _icon(MENU_LABELS[node.title])
         title = label
         if node.type == "section":
             title = f"{node.title} ({node.subtitle})"
@@ -318,11 +340,7 @@ class BluOSMediaSource(MediaSource):
             title=title,
             can_play=can_play,
             can_expand=can_expand,
-            thumbnail=(
-                async_artwork_url(self.hass, entry.entry_id, node.image)
-                if node.image and node.type != "track"
-                else None
-            ),
+            thumbnail=thumbnail,
         )
 
     def _album(self, entry: BluOSConfigEntry, album: Album) -> BrowseMediaSource:

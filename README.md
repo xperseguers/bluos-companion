@@ -72,3 +72,8 @@ python3.14 -m venv .venv
 .venv/bin/pip install -r requirements_test.txt
 .venv/bin/pytest
 ```
+
+## Credits
+
+Menu icons are based on [Material Design Icons](https://pictogrammers.com/library/mdi/)
+(Apache License 2.0), see `custom_components/bluos_companion/icons/README.md`.

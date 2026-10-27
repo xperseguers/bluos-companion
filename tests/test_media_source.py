@@ -20,7 +20,8 @@ from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 from custom_components.bluos_companion.const import DOMAIN
 
 from custom_components.bluos_companion.api import Node
-from custom_components.bluos_companion.media_source import _encode_node
+from custom_components.bluos_companion.const import ICONS_URL
+from custom_components.bluos_companion.media_source import TITLES, _encode_node
 
 from .conftest import BASE, SONGS_SECTION, browse_url, calls
 
@@ -327,12 +328,12 @@ async def test_unsupported_language_falls_back_to_english(
     [
         pytest.param(
             "fr",
-            ["Albums", "Chansons", "Favoris", "Favoris", "Dossiers", "Dossiers", "Radio"],
+            ["Albums", "Chansons", "Favoris", "Favoris", "Dossiers", "Radio"],
             id="french",
         ),
         pytest.param(
             "en",
-            ["Albums", "Songs", "Favourites", "Favourites", "Folders", "Folders", "Radio"],
+            ["Albums", "Songs", "Favourites", "Favourites", "Folders", "Radio"],
             id="english",
         ),
     ],
@@ -353,7 +354,6 @@ async def test_player_menu_labels_are_translated(
   <item browseKey="songs-key" text="Songs" type="link"></item>
   <item browseKey="fav-key" text="Favourites" type="link"></item>
   <item browseKey="fav2-key" text="Favorites" type="link"></item>
-  <item browseKey="folder-key" text="Folder" type="link"></item>
   <item browseKey="folders-key" text="Folders" type="link"></item>
   <item browseKey="radio-key" text="Radio" type="link"></item>
 </browse>''',
@@ -387,3 +387,66 @@ async def test_album_named_like_a_menu_is_not_translated(
         hass, f"{ROOT}/{init_integration.entry_id}/node/{_encode_node(node)}"
     )
     assert item.children[0].title == "Songs - Someone"
+
+
+async def test_menu_items_have_icons(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """Players and categories get a dedicated icon instead of a folder."""
+    eid = init_integration.entry_id
+    root = await async_browse_media(hass, ROOT)
+    assert [child.thumbnail for child in root.children] == [f"{ICONS_URL}/player.svg"]
+
+    menu = await async_browse_media(hass, f"{ROOT}/{eid}")
+    assert [child.thumbnail for child in menu.children] == [
+        f"{ICONS_URL}/{name}.svg"
+        for name in (
+            "recently_added",
+            "artists",
+            "albums",
+            "songs",
+            "genres",
+            "playlists",
+            "composers",
+            "presets",
+        )
+    ]
+
+
+async def test_player_menu_links_have_icons(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Known links below an artist get the icon of their category."""
+    player_api.get(
+        browse_url("artist-menu"),
+        text="""<browse type="menu">
+  <item browseKey="a" text="Albums" type="link"></item>
+  <item browseKey="f" text="Favorites" type="link"></item>
+  <item browseKey="r" text="Radio" type="link"></item>
+</browse>""",
+    )
+    node = Node("artist", "a-ha", "", "artist-menu", None, None)
+    item = await async_browse_media(
+        hass, f"{ROOT}/{init_integration.entry_id}/node/{_encode_node(node)}"
+    )
+    assert [child.thumbnail for child in item.children] == [
+        f"{ICONS_URL}/albums.svg",
+        f"{ICONS_URL}/favourites.svg",
+        None,
+    ]
+
+
+@pytest.mark.parametrize("name", ["player", *TITLES])
+async def test_icons_are_served(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    hass_client_no_auth: ClientSessionGenerator,
+    name: str,
+) -> None:
+    """Every icon used by the menus exists and loads without authentication."""
+    client = await hass_client_no_auth()
+    response = await client.get(f"{ICONS_URL}/{name}.svg")
+    assert response.status == 200
+    assert response.content_type == "image/svg+xml"
