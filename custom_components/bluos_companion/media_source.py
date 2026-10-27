@@ -34,8 +34,13 @@ LIBRARY = {
     "playlists": "BluOS:",
     "composers": "LocalMusic:bySection:Composer/%2Flibrary%2Fv1%2FComposers%3Fservice=LocalMusic",
 }
-TITLES = ("recently_added", *LIBRARY, "presets")
-MENU_LABELS = {category.capitalize(): category for category in LIBRARY}
+TITLES = ("recently_added", *LIBRARY, "presets", "favourites", "folders")
+MENU_LABELS = {
+    **{category.capitalize(): category for category in LIBRARY},
+    "Favourites": "favourites",
+    "Favorites": "favourites",
+    "Folders": "folders",
+}
 NODE_CLASSES = {
     "artist": (MediaClass.ARTIST, MediaType.ARTIST),
     "album": (MediaClass.ALBUM, MediaType.ALBUM),

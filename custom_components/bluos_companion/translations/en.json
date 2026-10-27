@@ -25,6 +25,8 @@
     "genres": "Genres",
     "playlists": "Playlists",
     "composers": "Composers",
-    "presets": "Presets"
+    "presets": "Presets",
+    "favourites": "Favourites",
+    "folders": "Folders"
   }
 }

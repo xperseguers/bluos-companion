@@ -325,8 +325,16 @@ async def test_unsupported_language_falls_back_to_english(
 @pytest.mark.parametrize(
     ("language", "expected"),
     [
-        pytest.param("fr", ["Albums", "Chansons", "Favourites"], id="french"),
-        pytest.param("en", ["Albums", "Songs", "Favourites"], id="english"),
+        pytest.param(
+            "fr",
+            ["Albums", "Chansons", "Favoris", "Favoris", "Dossiers", "Dossiers", "Radio"],
+            id="french",
+        ),
+        pytest.param(
+            "en",
+            ["Albums", "Songs", "Favourites", "Favourites", "Folders", "Folders", "Radio"],
+            id="english",
+        ),
     ],
 )
 async def test_player_menu_labels_are_translated(
@@ -344,6 +352,10 @@ async def test_player_menu_labels_are_translated(
   <item browseKey="albums-key" text="Albums" type="link"></item>
   <item browseKey="songs-key" text="Songs" type="link"></item>
   <item browseKey="fav-key" text="Favourites" type="link"></item>
+  <item browseKey="fav2-key" text="Favorites" type="link"></item>
+  <item browseKey="folder-key" text="Folder" type="link"></item>
+  <item browseKey="folders-key" text="Folders" type="link"></item>
+  <item browseKey="radio-key" text="Radio" type="link"></item>
 </browse>''',
     )
     player_api.get(browse_url("songs-key"), text=SONGS_SECTION)

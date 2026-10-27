@@ -25,6 +25,8 @@
     "genres": "Genres",
     "playlists": "Listes de lecture",
     "composers": "Compositeurs",
-    "presets": "Préréglages"
+    "presets": "Préréglages",
+    "favourites": "Favoris",
+    "folders": "Dossiers"
   }
 }
