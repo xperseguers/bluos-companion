@@ -52,6 +52,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_actions)
     websocket_api.async_register_command(hass, ws_group)
+    websocket_api.async_register_command(hass, ws_move)
     websocket_api.async_register_command(hass, ws_group_volumes)
     websocket_api.async_register_command(hass, ws_home)
     websocket_api.async_register_command(hass, ws_locate)
@@ -110,6 +111,7 @@ def _snapshot(
         "sleep_options": list(SLEEP_OPTIONS),
         "queue_id": status.queue_id,
         "queue_position": status.queue_position,
+        "can_move": status.can_move,
         "presets_id": status.presets_id,
         "stream_url": status.stream_url,
         "preset_name": status.preset_name,
@@ -486,6 +488,31 @@ def _primary(hass: HomeAssistant, coordinator: BluOSCoordinator) -> BluOSCoordin
     if (primary := _coordinator_of_host(hass, sync.master.host)) is None:
         raise HomeAssistantError("The primary player of the group is not configured")
     return primary
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/move",
+        vol.Required("entry_id"): str,
+        vol.Required("target"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_move(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Move what a player plays to another player."""
+    source = _coordinator(hass, msg["entry_id"])
+    target = _coordinator(hass, msg["target"])
+    if source is target:
+        raise HomeAssistantError("The player is already the target")
+    if not source.data.can_move:
+        raise HomeAssistantError("This player cannot move its playback")
+    if source.data.state == "stop":
+        raise HomeAssistantError("Nothing to move, the player is stopped")
+    host, port = _address(target)
+    await _async_call(source.client.async_move_playback(host, port))
+    connection.send_result(msg["id"])
 
 
 @websocket_api.websocket_command(

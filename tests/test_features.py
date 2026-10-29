@@ -689,3 +689,72 @@ async def test_group_volumes_are_the_own_volume_of_each_player(
             (init_integration.entry_id, 49, False),
             (pulse.entry_id, 20, True),
         ]
+
+
+async def test_panel_moves_the_playback(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The source player is asked to move its playback to the address of the target."""
+    respond(
+        player_api, f"{BASE}/Status", text=status_xml().replace("<state>", "<canMovePlayback>true</canMovePlayback><state>")
+    )
+    await init_integration.runtime_data.async_refresh()
+    respond(player_api, f"{BASE}/MovePlayback", text="<state>play</state>")
+    player_api.mock_calls.clear()
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/move",
+            "entry_id": init_integration.entry_id,
+            "target": pulse.entry_id,
+        }
+    )
+    assert (await client.receive_json())["success"]
+    assert calls(player_api) == [
+        ("/MovePlayback", {"id": OTHER_HOST, "port": "11000"})
+    ]
+
+    for entry_id, target, message in (
+        (init_integration.entry_id, init_integration.entry_id, "already the target"),
+        (pulse.entry_id, init_integration.entry_id, "cannot move"),
+    ):
+        await client.send_json_auto_id(
+            {"type": "bluos_companion/move", "entry_id": entry_id, "target": target}
+        )
+        response = await client.receive_json()
+        assert response["success"] is False
+        assert message in response["error"]["message"]
+
+
+async def test_panel_does_not_move_a_stopped_player(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Moving nothing would replace what the target plays with silence."""
+    respond(
+        player_api,
+        f"{BASE}/Status",
+        text=status_xml("stop").replace("<state>", "<canMovePlayback>true</canMovePlayback><state>"),
+    )
+    await init_integration.runtime_data.async_refresh()
+    player_api.mock_calls.clear()
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/move",
+            "entry_id": init_integration.entry_id,
+            "target": pulse.entry_id,
+        }
+    )
+    response = await client.receive_json()
+    assert response["success"] is False
+    assert "stopped" in response["error"]["message"]
+    assert calls(player_api) == []
