@@ -11,7 +11,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import BluOSClient, BluOSError, Source, Status, SyncStatus
-from .const import DOMAIN, EXTERNAL_SOURCE_URL, LONG_POLL_TIMEOUT, MIN_POLL_INTERVAL, RETRY_INTERVAL
+from .const import CONF_MAX_VOLUME, DOMAIN, EXTERNAL_SOURCE_URL, LONG_POLL_TIMEOUT, MIN_POLL_INTERVAL, RETRY_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +32,11 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         self.sync: SyncStatus | None = None
         self.sources: list[Source] = []
         self._sync_stat: str | None = None
+
+    @property
+    def max_volume(self) -> int:
+        """Return the volume (0..100) the player may be set to from Home Assistant."""
+        return int(self.config_entry.options.get(CONF_MAX_VOLUME, 100))
 
     def _input_name(self, source: Source) -> str:
         """Return the name of a player input, told apart from an amplifier input."""

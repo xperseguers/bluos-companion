@@ -239,7 +239,8 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
 
     async def async_set_volume_level(self, volume: float) -> None:
         """Set the volume."""
-        await self._async_call(self._client.async_set_volume(round(volume * 100)))
+        level = min(round(volume * 100), self.coordinator.max_volume)
+        await self._async_call(self._client.async_set_volume(level))
 
     async def async_mute_volume(self, mute: bool) -> None:
         """Mute or unmute."""

@@ -111,7 +111,7 @@ async def test_options_hide_services(
         ]
 
         result = await hass.config_entries.options.async_configure(
-            result["flow_id"], {"hidden_services": ["Deezer:"]}
+            result["flow_id"], {"hidden_services": ["Deezer:"], "max_volume": 60}
         )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert config_entry.options == {"hidden_services": ["Deezer:"]}
+    assert config_entry.options == {"hidden_services": ["Deezer:"], "max_volume": 60}

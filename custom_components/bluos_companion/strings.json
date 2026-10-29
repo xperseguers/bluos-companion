@@ -21,9 +21,10 @@
     "step": {
       "init": {
         "title": "Services shown in the panel",
-        "description": "Hide the services you do not use, for example a music service you have no account for. They stay available in the BluOS app.",
+        "description": "Hide the services you do not use, for example a music service you have no account for. They stay available in the BluOS app. The maximum volume applies to Home Assistant (panel, cards, services), not to the BluOS app or the remote.",
         "data": {
-          "hidden_services": "Hidden services"
+          "hidden_services": "Hidden services",
+          "max_volume": "Maximum volume"
         }
       }
     }

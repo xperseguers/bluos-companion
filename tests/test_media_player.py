@@ -338,3 +338,19 @@ async def test_unload(hass: HomeAssistant, init_integration: MockConfigEntry) ->
     """The entry unloads cleanly."""
     assert await hass.config_entries.async_unload(init_integration.entry_id)
     assert hass.states.get(ENTITY_ID).state == STATE_UNAVAILABLE
+
+
+async def test_set_volume_is_limited_to_the_maximum(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The volume entity service cannot go above the maximum volume option."""
+    hass.config_entries.async_update_entry(init_integration, options={"max_volume": 40})
+    await hass.services.async_call(
+        MEDIA_PLAYER_DOMAIN,
+        SERVICE_VOLUME_SET,
+        {ATTR_ENTITY_ID: "media_player.sejour", ATTR_MEDIA_VOLUME_LEVEL: 0.9},
+        blocking=True,
+    )
+    assert calls(player_api) == [("/Volume", {"level": "40"})]

@@ -16,12 +16,15 @@ from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     SelectOptionDict,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
 )
 
 from .api import BluOSClient, BluOSError
-from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DEFAULT_PORT, DOMAIN
+from .const import CONF_HIDDEN_SERVICES, CONF_MAX_VOLUME, CONF_PORT, DEFAULT_PORT, DOMAIN
 
 
 class BluOSConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -75,9 +78,15 @@ class BluOSOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         """Let the user hide the services they do not use."""
         if user_input is not None:
-            return self.async_create_entry(data=user_input)
+            return self.async_create_entry(
+                data={
+                    **user_input,
+                    CONF_MAX_VOLUME: int(user_input.get(CONF_MAX_VOLUME, 100)),
+                }
+            )
 
-        hidden = self.config_entry.options.get(CONF_HIDDEN_SERVICES, [])
+        options = self.config_entry.options
+        hidden = options.get(CONF_HIDDEN_SERVICES, [])
         client = BluOSClient(
             async_get_clientsession(self.hass),
             self.config_entry.data[CONF_HOST],
@@ -102,7 +111,14 @@ class BluOSOptionsFlow(OptionsFlow):
                             ],
                             multiple=True,
                         )
-                    )
+                    ),
+                    vol.Optional(
+                        CONF_MAX_VOLUME, default=options.get(CONF_MAX_VOLUME, 100)
+                    ): NumberSelector(
+                        NumberSelectorConfig(
+                            min=10, max=100, step=1, mode=NumberSelectorMode.SLIDER
+                        )
+                    ),
                 }
             ),
         )

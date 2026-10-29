@@ -199,6 +199,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     this._prev.disabled = this._next.disabled = !player.available;
     this._volumeRow.hidden = this._config.show_volume === false;
     this._volume.disabled = player.volume < 0;
+    this._volume.max = player.max_volume;
     this._volume.value = Math.max(player.volume, 0);
     this._mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
     this._progress.hidden = !(player.duration > 0);

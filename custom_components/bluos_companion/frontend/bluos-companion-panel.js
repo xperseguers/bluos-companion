@@ -890,7 +890,7 @@ class BluOSCompanionPanel extends HTMLElement {
       const slider = el("input", {
         type: "range",
         min: 0,
-        max: 100,
+        max: player.max_volume,
         value: Math.max(player.volume, 0),
         onchange: (event) => this._control("volume", Number(event.target.value), player.entry_id),
       });
@@ -1077,6 +1077,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._buttons.repeat.firstChild.setAttribute("icon", player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat");
     this._buttons.mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
     this._volume.disabled = player.volume < 0;
+    this._volume.max = player.max_volume;
     this._volume.value = Math.max(player.volume, 0);
     this._buttons.next.disabled = this._buttons.previous.disabled = !player.available;
     this._progress.hidden = !(player.duration > 0);
