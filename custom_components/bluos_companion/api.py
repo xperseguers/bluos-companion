@@ -284,8 +284,8 @@ class BluOSClient:
             stream_url=root.findtext("streamUrl"),
         )
 
-    async def async_browse(self, key: str) -> list[Node]:
-        """Return all entries below a browse key.
+    async def async_browse(self, key: str | None) -> list[Node]:
+        """Return all entries below a browse key (the root of all sources if None).
 
         Long listings are split in pages. The player may repeat earlier entries
         in later pages, so entries are merged in order of first appearance.
@@ -293,7 +293,9 @@ class BluOSClient:
         nodes: dict[Node, None] = {}
         next_key: str | None = key
         for _ in range(MAX_BROWSE_PAGES):
-            root = await self._get_xml("/Browse", {"key": next_key})
+            root = await self._get_xml(
+                "/Browse", {"key": next_key} if next_key else None
+            )
             for item in root.iter("item"):
                 node = Node(
                     type=item.get("type", ""),

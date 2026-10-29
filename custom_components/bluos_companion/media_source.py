@@ -110,6 +110,27 @@ def _icon(name: str) -> str:
     return f"{ICONS_URL}/{name}.svg"
 
 
+async def async_get_titles(hass: HomeAssistant) -> dict[str, str]:
+    """Return the translated titles of the browse menus."""
+    translations = await async_get_translations(
+        hass, hass.config.language, "common", [DOMAIN]
+    )
+    return {
+        key: translations.get(
+            f"component.{DOMAIN}.common.{key}", key.replace("_", " ").capitalize()
+        )
+        for key in TITLES
+    }
+
+
+def menu_label(node: Node, titles: dict[str, str]) -> tuple[str, str | None]:
+    """Return the translated label of a menu link and its icon, if it has one."""
+    if node.type == "link" and node.title in MENU_LABELS:
+        category = MENU_LABELS[node.title]
+        return titles[category], _icon(category)
+    return node.title, None
+
+
 def _directory(
     identifier: str | None,
     title: str,
@@ -172,15 +193,7 @@ class BluOSMediaSource(MediaSource):
             raise BrowseError(str(err)) from err
 
     async def _async_get_titles(self) -> dict[str, str]:
-        translations = await async_get_translations(
-            self.hass, self.hass.config.language, "common", [DOMAIN]
-        )
-        return {
-            key: translations.get(
-                f"component.{DOMAIN}.common.{key}", key.replace("_", " ").capitalize()
-            )
-            for key in TITLES
-        }
+        return await async_get_titles(self.hass)
 
     async def _browse(
         self, entry: BluOSConfigEntry, parts: list[str], titles: dict[str, str]
@@ -355,13 +368,9 @@ class BluOSMediaSource(MediaSource):
         media_class, media_type = NODE_CLASSES.get(
             node.type, (MediaClass.DIRECTORY, "")
         )
-        label = node.title
-        thumbnail = None
-        if node.image and node.type != "track":
+        label, thumbnail = menu_label(node, titles)
+        if thumbnail is None and node.image and node.type != "track":
             thumbnail = async_artwork_url(self.hass, entry.entry_id, node.image)
-        if node.type == "link" and node.title in MENU_LABELS:
-            label = titles[MENU_LABELS[node.title]]
-            thumbnail = _icon(MENU_LABELS[node.title])
         title = label
         if node.type == "section":
             title = f"{node.title} ({node.subtitle})"
