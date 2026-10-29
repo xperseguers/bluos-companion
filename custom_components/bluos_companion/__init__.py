@@ -15,6 +15,8 @@ from .api import BluOSClient
 from .const import CONF_PORT, DOMAIN, ICONS_URL
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import BluOSArtworkView
+from .panel import async_register_panel, async_register_static_path, async_remove_panel
+from .websocket_api import async_setup_websocket_api
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SELECT]
 
@@ -27,6 +29,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         [StaticPathConfig(ICONS_URL, str(Path(__file__).parent / "icons"), True)]
     )
     hass.http.register_view(BluOSArtworkView())
+    await async_register_static_path(hass)
+    async_setup_websocket_api(hass)
     return True
 
 
@@ -40,6 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> boo
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await async_register_panel(hass)
     entry.async_create_background_task(
         hass, coordinator.async_long_poll(), "bluos_companion_long_poll"
     )
@@ -48,4 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> boo
 
 async def async_unload_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> bool:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded and not hass.config_entries.async_loaded_entries(DOMAIN):
+        async_remove_panel(hass)
+    return unloaded
