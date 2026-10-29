@@ -32,6 +32,8 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         self.sync: SyncStatus | None = None
         self.sources: list[Source] = []
         self._sync_stat: str | None = None
+        # Cover (player path) of the first track of a playlist, with the time it was read.
+        self.playlist_covers: dict[str, tuple[float, str | None]] = {}
 
     @property
     def max_volume(self) -> int:

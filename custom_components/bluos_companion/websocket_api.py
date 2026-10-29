@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from urllib.parse import urlencode
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -19,7 +20,12 @@ from .api import SLEEP_OPTIONS, BluOSClient, BluOSError, Node, sleep_bucket
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import async_artwork_url
-from .media_source import PLAY_PATH_PREFIXES, async_get_titles, menu_label
+from .media_source import (
+    PLAY_PATH_PREFIXES,
+    async_get_titles,
+    menu_label,
+    node_can_expand,
+)
 
 CONTROLS: dict[str, Callable[[BluOSClient, Any, bool], Awaitable[None]]] = {
     "play": lambda client, _, __: client.async_play(),
@@ -52,6 +58,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_actions)
     websocket_api.async_register_command(hass, ws_group)
+    websocket_api.async_register_command(hass, ws_playlist_covers)
     websocket_api.async_register_command(hass, ws_move)
     websocket_api.async_register_command(hass, ws_group_volumes)
     websocket_api.async_register_command(hass, ws_home)
@@ -130,6 +137,22 @@ def _snapshot(
     }
 
 
+def _image_path(node: Node) -> str | None:
+    """Return the player path of the cover of an entry.
+
+    The tracks of a saved playlist come with an empty song id, so their cover is
+    looked up with the artist and the album written in the subtitle.
+    """
+    if node.image and node.image.endswith("songid="):
+        artist, _, album = node.subtitle.partition(" \u2022 ")
+        if artist and album:
+            return "/Artwork?" + urlencode(
+                {"service": "LocalMusic", "artist": artist, "album": album}
+            )
+        return None
+    return node.image
+
+
 def _items(
     hass: HomeAssistant, entry_id: str, nodes: list[Node], titles: dict[str, str]
 ) -> list[dict[str, Any]]:
@@ -137,13 +160,13 @@ def _items(
     items = []
     for node in nodes:
         can_play = bool(node.play_path and node.play_path.startswith(PLAY_PATH_PREFIXES))
-        can_expand = node.browse_key is not None and node.type != "playlist"
+        can_expand = node_can_expand(node)
         if not (can_play or can_expand):
             continue
         title, icon = menu_label(node, titles)
         image = icon
-        if image is None and node.image:
-            image = async_artwork_url(hass, entry_id, node.image)
+        if image is None and (path := _image_path(node)):
+            image = async_artwork_url(hass, entry_id, path)
         items.append(
             {
                 "type": node.type,
@@ -274,6 +297,7 @@ async def ws_browse(
         {
             "items": _items(hass, msg["entry_id"], nodes, titles),
             "search_key": page.search_key,
+            "next_key": page.next_key,
         },
     )
 
@@ -400,6 +424,47 @@ async def ws_presets(
 
 
 HOME_ALBUMS = 12
+PLAYLIST_KEY_PREFIX = "BluOS:MG/BluOS-Playlist?"
+PLAYLIST_COVER_TTL = 600
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/playlist_covers",
+        vol.Required("entry_id"): str,
+        vol.Required("keys"): vol.All([str], vol.Length(max=50)),
+    }
+)
+@websocket_api.async_response
+async def ws_playlist_covers(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the cover of saved playlists: the one of their first track.
+
+    The first tracks of an old playlist may be missing, so this can take a few
+    requests, and the result is kept for a while.
+    """
+    entry_id = msg["entry_id"]
+    coordinator = _coordinator(hass, entry_id)
+
+    async def cover(key: str) -> tuple[str, str | None]:
+        cached = coordinator.playlist_covers.get(key)
+        if cached and time.monotonic() - cached[0] < PLAYLIST_COVER_TTL:
+            path = cached[1]
+        else:
+            path = None
+            try:
+                page = await coordinator.client.async_browse_page(key, None, 1)
+                path = next((p for node in page.nodes if (p := _image_path(node))), None)
+            except BluOSError:
+                pass
+            coordinator.playlist_covers[key] = (time.monotonic(), path)
+        return key, path and async_artwork_url(hass, entry_id, path)
+
+    keys = [key for key in msg["keys"] if key.startswith(PLAYLIST_KEY_PREFIX)]
+    connection.send_result(
+        msg["id"], {"covers": dict(await asyncio.gather(*(cover(key) for key in keys)))}
+    )
 
 
 @websocket_api.websocket_command(

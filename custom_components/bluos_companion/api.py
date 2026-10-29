@@ -11,6 +11,7 @@ from aiohttp import ClientError, ClientSession, ClientTimeout
 
 REQUEST_TIMEOUT = 20
 MAX_BROWSE_PAGES = 8
+MAX_EMPTY_BROWSE_PAGES = 60
 MAX_QUEUE_LENGTH = 500
 SLEEP_OPTIONS = (15, 30, 45, 60, 90)
 
@@ -138,6 +139,7 @@ class BrowsePage:
 
     nodes: list[Node]
     search_key: str | None
+    next_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -340,14 +342,21 @@ class BluOSClient:
         nodes: dict[Node, None] = {}
         search_key: str | None = None
         next_key: str | None = key
-        for page in range(max_pages):
+        first = True
+        useful_pages = 0
+        # Pages without entries are skipped: the player answers an empty first page
+        # for a saved playlist, and more for the entries it cannot find any more.
+        for _ in range(max_pages + MAX_EMPTY_BROWSE_PAGES):
             params = {"key": next_key} if next_key else {}
-            if query is not None and page == 0:
+            if query is not None and first:
                 params["q"] = query
             root = await self._get_xml("/Browse", params or None)
-            if page == 0:
+            if first:
                 search_key = root.get("searchKey")
+                first = False
+            found = False
             for item in root.iter("item"):
+                found = True
                 node = Node(
                     type=item.get("type", ""),
                     title=item.get("text", ""),
@@ -358,9 +367,10 @@ class BluOSClient:
                     context_key=item.get("contextMenuKey"),
                 )
                 nodes.setdefault(node, None)
-            if not (next_key := root.get("nextKey")):
+            useful_pages += found
+            if not (next_key := root.get("nextKey")) or useful_pages >= max_pages:
                 break
-        return BrowsePage(list(nodes), search_key)
+        return BrowsePage(list(nodes), search_key, next_key)
 
     async def async_find_album(self, title: str, artist: str | None) -> Node | None:
         """Find an album of the library by its title.

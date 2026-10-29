@@ -125,6 +125,17 @@ async def async_get_titles(hass: HomeAssistant) -> dict[str, str]:
     }
 
 
+def node_can_expand(node: Node) -> bool:
+    """Return whether an entry has something to list.
+
+    Playlists saved on the player (BluOS) list their tracks, after an empty first
+    page. Library playlists are only played.
+    """
+    return node.browse_key is not None and (
+        node.type != "playlist" or node.browse_key.startswith("BluOS:")
+    )
+
+
 def menu_label(node: Node, titles: dict[str, str]) -> tuple[str, str | None]:
     """Return the translated label of a menu link and its icon, if it has one."""
     if node.browse_key in SOURCE_ICONS:
@@ -365,7 +376,7 @@ class BluOSMediaSource(MediaSource):
     def _node_item(
         self, entry: BluOSConfigEntry, node: Node, titles: dict[str, str]
     ) -> BrowseMediaSource | None:
-        can_expand = node.browse_key is not None and node.type != "playlist"
+        can_expand = node_can_expand(node)
         can_play = node.play_path is not None
         if not (can_expand or can_play):
             return None
