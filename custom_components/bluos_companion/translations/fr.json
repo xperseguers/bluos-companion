@@ -101,7 +101,8 @@
       "editor_player": "Lecteur",
       "editor_columns": "Colonnes",
       "editor_show_footer": "Afficher le volume et l'entrée",
-      "editor_show_volume": "Afficher le volume"
+      "editor_show_volume": "Afficher le volume",
+      "input": "Entrée"
     }
   },
   "services": {
