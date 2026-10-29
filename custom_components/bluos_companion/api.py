@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from urllib.parse import unquote, urlencode
+from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from xml.etree import ElementTree as ET
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
@@ -12,6 +12,8 @@ from aiohttp import ClientError, ClientSession, ClientTimeout
 REQUEST_TIMEOUT = 20
 MAX_BROWSE_PAGES = 8
 MAX_EMPTY_BROWSE_PAGES = 60
+HOME_ROWS = ("mostUsed", "recent-stations", "recent")
+UI_HEADERS = {"x-sovi-schema-version": "35", "x-sovi-ui-schema-version": "7"}
 MAX_QUEUE_LENGTH = 500
 SLEEP_OPTIONS = (15, 30, 45, 60, 90)
 
@@ -177,6 +179,28 @@ class Album:
 
 
 @dataclass(frozen=True, slots=True)
+class HomeItem:
+    """An album, song or station of the home screen of the player."""
+
+    kind: str
+    title: str
+    subtitle: str
+    image: str | None
+    browse_key: str | None
+    play_path: str
+    context_key: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class HomeRow:
+    """A row of the home screen of the player, titled in the language asked."""
+
+    id: str
+    title: str
+    items: list[HomeItem]
+
+
+@dataclass(frozen=True, slots=True)
 class Track:
     """A track of an album."""
 
@@ -195,6 +219,54 @@ class Preset:
     name: str
     image: str | None
     url: str = ""
+
+
+def _ui_query(uri: str, name: str) -> str | None:
+    """Return a parameter of a URI of the player's screens (already decoded once)."""
+    values = parse_qs(urlparse(uri).query).get(name)
+    return values[0] if values else None
+
+
+def _home_item(element: ET.Element) -> HomeItem | None:
+    """Turn an item of the home screen into an album, a song or a station."""
+    play = element.find("playAction")
+    actions = element.findall("action")
+    play_uri = (play if play is not None else next(iter(actions), None))
+    play_path = _ui_query(play_uri.get("URI", ""), "u") if play_uri is not None else None
+    title = unquote(element.get("title", ""))
+    if not title:
+        return None
+    browse = next((a for a in actions if a.get("type") == "browse"), None)
+    target = _ui_query(browse.get("URI", ""), "url") if browse is not None else None
+    query = parse_qs(urlparse(target).query) if target else {}
+    if element.get("objectType") == "album" and query.get("service") == ["LocalMusic"]:
+        if query.get("album") and query.get("artist"):
+            album = Album.from_names(query["album"][0], query["artist"][0])
+            return HomeItem(
+                "album",
+                album.title,
+                album.artist,
+                album.image,
+                album.browse_key,
+                album.play_path,
+                album.context_key,
+            )
+        return None
+    if not play_path:
+        return None
+    if element.get("objectType") == "song":
+        context = element.find("contextMenu")
+        params = parse_qs(urlparse(context.get("URI", "")).query) if context is not None else {}
+        context_key = None
+        if params.get("filename"):
+            wanted = {k: params[k][0] for k in ("album", "artist", "filename", "title") if k in params}
+            context_key = f"LocalMusic:CM/LocalMusic-Song?{urlencode(wanted)}"
+        return HomeItem(
+            "song", title, element.get("subTitle", ""), element.get("image"), None, play_path, context_key
+        )
+    if play_path.startswith("/Play?url="):
+        return HomeItem("station", title, "", element.get("image"), None, play_path, None)
+    return None
 
 
 def _int(value: str | None, default: int = 0) -> int:
@@ -217,11 +289,13 @@ class BluOSClient:
         path: str,
         params: dict[str, str] | None = None,
         timeout: float = REQUEST_TIMEOUT,
+        headers: dict[str, str] | None = None,
     ) -> bytes:
         try:
             async with self._session.get(
                 f"{self.base_url}{path}",
                 params=params,
+                headers=headers,
                 timeout=ClientTimeout(total=timeout),
             ) as response:
                 response.raise_for_status()
@@ -234,8 +308,9 @@ class BluOSClient:
         path: str,
         params: dict[str, str] | None = None,
         timeout: float = REQUEST_TIMEOUT,
+        headers: dict[str, str] | None = None,
     ) -> ET.Element:
-        body = await self._get(path, params, timeout)
+        body = await self._get(path, params, timeout, headers)
         try:
             root = ET.fromstring(body)  # noqa: S314
         except ET.ParseError as err:
@@ -404,6 +479,21 @@ class BluOSClient:
             for item in root.iter("item")
             if item.get("actionURL")
         ]
+
+    async def async_get_home(self, language: str = "en") -> list[HomeRow]:
+        """Return the recently played, recent stations and most used rows of the player."""
+        root = await self._get_xml(
+            "/ui/Home",
+            headers={**UI_HEADERS, "Accept-Language": language},
+        )
+        rows = []
+        for row in root.iter("row"):
+            if row.get("id") not in HOME_ROWS:
+                continue
+            items = [item for child in row if (item := _home_item(child))]
+            if items:
+                rows.append(HomeRow(row.get("id", ""), row.get("title", ""), items))
+        return rows
 
     async def async_get_recent_albums(self) -> list[Album]:
         """Return the most recently added albums of the library."""

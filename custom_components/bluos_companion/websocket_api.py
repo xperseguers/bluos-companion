@@ -21,8 +21,8 @@ from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import async_artwork_url
 from .media_source import (
-    PLAY_PATH_PREFIXES,
     async_get_titles,
+    is_play_path,
     menu_label,
     node_can_expand,
 )
@@ -159,7 +159,7 @@ def _items(
     """Return the entries the panel can open or play."""
     items = []
     for node in nodes:
-        can_play = bool(node.play_path and node.play_path.startswith(PLAY_PATH_PREFIXES))
+        can_play = bool(node.play_path and is_play_path(node.play_path))
         can_expand = node_can_expand(node)
         if not (can_play or can_expand):
             continue
@@ -358,7 +358,7 @@ async def ws_actions(
             "actions": [
                 {"type": action.type, "title": action.title, "path": action.path}
                 for action in actions
-                if action.path.startswith(PLAY_PATH_PREFIXES)
+                if is_play_path(action.path)
             ]
         },
     )
@@ -478,10 +478,11 @@ async def ws_home(
     entry_id = msg["entry_id"]
     coordinator = _coordinator(hass, entry_id)
     client = coordinator.client
-    page, presets, albums = await asyncio.gather(
+    page, presets, albums, recents = await asyncio.gather(
         client.async_browse_page(None),
         client.async_get_presets(),
         client.async_get_recent_albums(),
+        client.async_get_home(hass.config.language),
         return_exceptions=True,
     )
     if isinstance(page, BluOSError):
@@ -508,6 +509,30 @@ async def ws_home(
                 ],
             }
         )
+    if not isinstance(recents, BluOSError):
+        # Titled by the player, in the language of Home Assistant.
+        rows = {row.id: row for row in recents}
+        for row_id in ("recent", "recent-stations", "mostUsed"):
+            if row := rows.get(row_id):
+                groups.append(
+                    {
+                        "title": row.title,
+                        "items": [
+                            {
+                                "type": item.kind,
+                                "title": item.title,
+                                "subtitle": item.subtitle,
+                                "image": item.image
+                                and async_artwork_url(hass, entry_id, item.image),
+                                "browse_key": item.browse_key,
+                                "play_path": item.play_path,
+                                "context_key": item.context_key,
+                            }
+                            for item in row.items
+                            if is_play_path(item.play_path)
+                        ],
+                    }
+                )
     if not isinstance(albums, BluOSError) and albums:
         groups.append(
             {
@@ -737,7 +762,7 @@ async def ws_play(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Play an item of the browse tree."""
-    if not msg["path"].startswith(PLAY_PATH_PREFIXES):
+    if not is_play_path(msg["path"]):
         raise HomeAssistantError("This item cannot be played")
     client = _coordinator(hass, msg["entry_id"]).client
     await _async_call(client.async_command(msg["path"]))

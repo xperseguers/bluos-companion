@@ -84,6 +84,34 @@ SONGS_SECTION = """<browse type="tracks">
 </browse>"""
 
 
+HOME = """<screen>
+  <row id="presets" title="Presets"><largeThumbnail title="Ignored"/></row>
+  <row id="recent-stations" title="Recent Stations">
+    <largeThumbnail image="http://cdn.example/s6814.jpg" title="Radio Swiss Jazz">
+      <action type="player-link" URI="/ui/prf?u=%2FPlay%3Furl%3DTuneIn%253As6814%26title1%3DRadio%2BSwiss%2BJazz"></action>
+      <playAction type="player-link" URI="/ui/prf?u=%2FPlay%3Furl%3DTuneIn%253As6814%26title1%3DRadio%2BSwiss%2BJazz"></playAction>
+    </largeThumbnail>
+    <largeThumbnail image="x" title="A web address">
+      <action type="player-link" URI="/ui/prf?u=%2FPlay%3Furl%3Dhttp%253A%252F%252Fexample.com"></action>
+    </largeThumbnail>
+  </row>
+  <row id="recent" title="Recently Played">
+    <item image="/Artwork?service=LocalMusic&amp;album=Io+Canto+2&amp;artist=Laura+Pausini" objectType="album" title="Io Canto 2" subTitle="Laura Pausini">
+      <action type="browse" URI="/ui/browseContext?service=LocalMusic&amp;title=Io+Canto+2&amp;type=Album&amp;url=%2FAlbums%3Fservice%3DLocalMusic%26album%3DIo%2BCanto%2B2%26artist%3DLaura%2BPausini" resultType="screen"></action>
+      <action type="player-link" URI="/ui/prf?u=%2FAdd%3Fplaynow%3D1"></action>
+    </item>
+    <item image="/Artwork?service=LocalMusic&amp;album=En+Public&amp;artist=Goldman" objectType="song" title="Je te donne" subTitle="Goldman &#8226; En Public">
+      <action type="player-link" URI="/ui/prf?u=%2FAdd%3Fplaynow%3D1%26file%3D%252Fa.m4a" haptic="true"></action>
+      <contextMenu type="browse" URI="/ui/ContextMenu?album=En+Public&amp;artist=Goldman&amp;context=Song&amp;filename=%2Fa.m4a&amp;service=LocalMusic&amp;title=Je+te+donne" resultType="contextMenu"></contextMenu>
+    </item>
+    <item objectType="album" title="Deezer album" subTitle="x">
+      <action type="browse" URI="/ui/browseContext?service=Deezer&amp;url=%2FAlbums%3Fservice%3DDeezer%26album%3Dx%26artist%3Dy"></action>
+    </item>
+  </row>
+  <row id="mostUsed" title="Most Used"></row>
+</screen>"""
+
+
 def status_xml(state: str = "play", **overrides: str) -> str:
     """Return a /Status response."""
     values = {
@@ -150,6 +178,7 @@ def player_api(aioclient_mock: AiohttpClientMocker) -> AiohttpClientMocker:
     """Mock the HTTP API of a player."""
     aioclient_mock.get(f"{BASE}/SyncStatus", text=SYNC_STATUS)
     aioclient_mock.get(f"{BASE}/Status", text=status_xml())
+    aioclient_mock.get(f"{BASE}/ui/Home", text=HOME)
     aioclient_mock.get(f"{BASE}/Presets", text=PRESETS)
     aioclient_mock.get(f"{BASE}/Albums", text=RECENT)
     aioclient_mock.get(f"{BASE}/RadioBrowse", text=SOURCES)
