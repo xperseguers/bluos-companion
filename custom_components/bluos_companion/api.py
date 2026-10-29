@@ -569,15 +569,16 @@ class BluOSClient:
     async def async_set_sleep(self, minutes: int) -> None:
         """Set the sleep timer to one of SLEEP_OPTIONS, 0 to turn it off.
 
-        The player only offers a command that moves to the next value, so it is
-        pressed until the status reports the wanted one.
+        The player only offers a command that moves to the next value and answers
+        with the new one (/Status lags behind), so it is pressed until it says so.
         """
-        for _ in range(len(SLEEP_OPTIONS)):
-            if sleep_bucket((await self.async_get_status()).sleep) == minutes:
+        current = sleep_bucket((await self.async_get_status()).sleep)
+        for _ in range(len(SLEEP_OPTIONS) + 1):
+            if current == minutes:
                 return
-            await self.async_command("/Sleep")
-        if sleep_bucket((await self.async_get_status()).sleep) != minutes:
-            raise BluOSError("Could not set the sleep timer")
+            root = await self._get_xml("/Sleep")
+            current = sleep_bucket(_int(root.text) or None)
+        raise BluOSError("Could not set the sleep timer")
 
 
 def sleep_bucket(remaining: int | None) -> int:
