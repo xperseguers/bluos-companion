@@ -16,24 +16,27 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
 from .api import BluOSClient, BluOSError, Node
-from .const import CONF_HIDDEN_SERVICES, DOMAIN
+from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import async_artwork_url
 from .media_source import PLAY_PATH_PREFIXES, async_get_titles, menu_label
 
-CONTROLS: dict[str, Callable[[BluOSClient, Any], Awaitable[None]]] = {
-    "play": lambda client, _: client.async_play(),
-    "pause": lambda client, _: client.async_pause(),
-    "stop": lambda client, _: client.async_stop(),
-    "next": lambda client, _: client.async_skip(),
-    "previous": lambda client, _: client.async_back(),
-    "seek": lambda client, value: client.async_seek(int(value)),
-    "volume": lambda client, value: client.async_set_volume(
+CONTROLS: dict[str, Callable[[BluOSClient, Any, bool], Awaitable[None]]] = {
+    "play": lambda client, _, __: client.async_play(),
+    "pause": lambda client, _, __: client.async_pause(),
+    "stop": lambda client, _, __: client.async_stop(),
+    "next": lambda client, _, __: client.async_skip(),
+    "previous": lambda client, _, __: client.async_back(),
+    "seek": lambda client, value, _: client.async_seek(int(value)),
+    "volume": lambda client, value, _: client.async_set_volume(
         min(max(int(value), 0), 100)
     ),
-    "mute": lambda client, value: client.async_set_mute(bool(value)),
-    "shuffle": lambda client, value: client.async_set_shuffle(bool(value)),
-    "repeat": lambda client, value: client.async_set_repeat(int(value)),
+    "volume_step": lambda client, value, group: client.async_step_volume(
+        min(max(int(value), -10), 10), group
+    ),
+    "mute": lambda client, value, group: client.async_set_mute(bool(value), group),
+    "shuffle": lambda client, value, _: client.async_set_shuffle(bool(value)),
+    "repeat": lambda client, value, _: client.async_set_repeat(int(value)),
 }
 
 
@@ -45,6 +48,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_browse)
     websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_actions)
+    websocket_api.async_register_command(hass, ws_group)
     websocket_api.async_register_command(hass, ws_locate)
     websocket_api.async_register_command(hass, ws_presets)
     websocket_api.async_register_command(hass, ws_queue)
@@ -205,6 +209,7 @@ def ws_subscribe(
         vol.Required("entry_id"): str,
         vol.Required("action"): vol.In([*CONTROLS, "source"]),
         vol.Optional("value"): vol.Any(bool, int, str),
+        vol.Optional("group"): bool,
     }
 )
 @websocket_api.async_response
@@ -217,7 +222,9 @@ async def ws_control(
         await _async_call(coordinator.async_select_source(str(msg.get("value", ""))))
     else:
         await _async_call(
-            CONTROLS[msg["action"]](coordinator.client, msg.get("value", 0))
+            CONTROLS[msg["action"]](
+                coordinator.client, msg.get("value", 0), msg.get("group", False)
+            )
         )
     connection.send_result(msg["id"])
 
@@ -369,6 +376,73 @@ async def ws_presets(
             ]
         },
     )
+
+
+def _coordinator_of_host(hass: HomeAssistant, host: str) -> BluOSCoordinator | None:
+    for entry in hass.config_entries.async_loaded_entries(DOMAIN):
+        if entry.data[CONF_HOST] == host:
+            return entry.runtime_data
+    return None
+
+
+def _address(coordinator: BluOSCoordinator) -> tuple[str, int]:
+    data = coordinator.config_entry.data
+    return data[CONF_HOST], data[CONF_PORT]
+
+
+def _primary(hass: HomeAssistant, coordinator: BluOSCoordinator) -> BluOSCoordinator:
+    """Return the player that leads the group of a player (itself if it leads or is alone)."""
+    sync = coordinator.sync
+    if sync is None or sync.master is None:
+        return coordinator
+    if (primary := _coordinator_of_host(hass, sync.master.host)) is None:
+        raise HomeAssistantError("The primary player of the group is not configured")
+    return primary
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/group",
+        vol.Required("entry_id"): str,
+        vol.Required("action"): vol.In(["join", "leave"]),
+        vol.Optional("target"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_group(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Add a player to the group of another one, or take it out of its group.
+
+    Only the primary player of a group can add or remove players. A primary player
+    that leaves dissolves its group.
+    """
+    coordinator = _coordinator(hass, msg["entry_id"])
+    host, port = _address(coordinator)
+    sync = coordinator.sync
+    if msg["action"] == "leave":
+        if sync is not None and sync.master is not None:
+            primary = _primary(hass, coordinator)
+            await _async_call(primary.client.async_remove_slave(host, port))
+        elif sync is not None:
+            for member in sync.slaves:
+                await _async_call(
+                    coordinator.client.async_remove_slave(member.host, member.port)
+                )
+    else:
+        if "target" not in msg:
+            raise HomeAssistantError("Missing target")
+        primary = _primary(hass, _coordinator(hass, msg["target"]))
+        if primary is not coordinator:
+            if sync is not None and sync.slaves:
+                raise HomeAssistantError("This player leads a group, ungroup it first")
+            if sync is not None and sync.master is not None:
+                if (old := _primary(hass, coordinator)) is primary:
+                    connection.send_result(msg["id"])
+                    return
+                await _async_call(old.client.async_remove_slave(host, port))
+            await _async_call(primary.client.async_add_slave(host, port))
+    connection.send_result(msg["id"])
 
 
 QUEUE_ACTIONS: dict[str, Callable[[BluOSClient, dict[str, Any]], Awaitable[None]]] = {

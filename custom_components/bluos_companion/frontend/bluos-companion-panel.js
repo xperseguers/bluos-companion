@@ -57,6 +57,11 @@ const STYLE = `
     border-color: var(--primary-color);
     background: var(--secondary-background-color);
   }
+  dialog .group-row { display: flex; flex-direction: column; gap: 4px; }
+  dialog .group-row .line { display: flex; align-items: center; gap: 8px; }
+  dialog .group-row input[type="range"] { flex: 1; min-width: 0; }
+  dialog .group-volume { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  dialog .group-volume .label { flex: 1; }
   dialog .player-row .cover { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; --mdc-icon-size: 28px; }
   dialog .player-row .text { flex: 1; min-width: 0; }
   dialog .player-row .text div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -473,14 +478,15 @@ class BluOSCompanionPanel extends HTMLElement {
     this._dialog.showModal();
   }
 
-  _control(action, value) {
-    const player = this._player;
-    if (!player) return;
+  _control(action, value, entryId, extra = {}) {
+    const id = entryId || (this._player && this._player.entry_id);
+    if (!id) return;
     return this._call({
       type: "bluos_companion/control",
-      entry_id: player.entry_id,
+      entry_id: id,
       action,
       ...(value === undefined ? {} : { value }),
+      ...extra,
     });
   }
 
@@ -813,6 +819,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._playerName.textContent = player ? player.name : "";
     this._playerButton.hidden = !player;
     if (this._dialogMode === "players") this._renderPlayerList();
+    if (this._dialogMode === "group") this._renderGroup();
   }
 
   _select(entryId) {
@@ -836,6 +843,83 @@ class BluOSCompanionPanel extends HTMLElement {
     this._dialogMode = "players";
     this._renderPlayerList();
     if (!this._dialog.open) this._dialog.showModal();
+  }
+
+  _primaryOf(player) {
+    if (player.group.master) return this._players.find((other) => other.entry_id === player.group.master);
+    return player.group.slaves.length ? player : null;
+  }
+
+  _showGroup() {
+    this._dialogMode = "group";
+    this._renderGroup();
+    if (!this._dialog.open) this._dialog.showModal();
+  }
+
+  _renderGroup() {
+    // Do not rebuild the dialog while a slider is being dragged.
+    const active = this.shadowRoot.activeElement;
+    if (active && active.tagName === "INPUT" && this._dialog.contains(active)) return;
+    const current = this._player;
+    const primary = current ? this._primaryOf(current) : null;
+    const members = primary
+      ? [primary, ...primary.group.slaves.map((id) => this._players.find((other) => other.entry_id === id)).filter(Boolean)]
+      : current
+        ? [current]
+        : [];
+    const inGroup = (player) => members.some((member) => member.entry_id === player.entry_id);
+    const toggle = (player) =>
+      this._call(
+        inGroup(player)
+          ? { type: "bluos_companion/group", entry_id: player.entry_id, action: "leave" }
+          : { type: "bluos_companion/group", entry_id: player.entry_id, action: "join", target: current.entry_id },
+      );
+    const row = (player) => {
+      const member = inGroup(player);
+      const line = el(
+        "div",
+        { class: "line" },
+        el(
+          "button",
+          { class: "action", style: "flex: 1", onclick: () => toggle(player) },
+          icon(member ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"),
+          player.name,
+        ),
+      );
+      if (!member) return el("div", { class: "group-row" }, line);
+      const slider = el("input", {
+        type: "range",
+        min: 0,
+        max: 100,
+        value: Math.max(player.volume, 0),
+        onchange: (event) => this._control("volume", Number(event.target.value), player.entry_id),
+      });
+      slider.disabled = player.volume < 0;
+      return el("div", { class: "group-row" }, line, el("div", { class: "line" }, icon("mdi:volume-medium"), slider));
+    };
+    const rows = [el("h2", {}, "Group players"), el("p", {}, "Players that play the same music together.")];
+    rows.push(el("div", { class: "list" }, ...this._players.map(row)));
+    if (members.length > 1 && primary) {
+      const step = (delta) => this._control("volume_step", delta, primary.entry_id, { group: true });
+      rows.push(
+        el(
+          "div",
+          { class: "group-volume" },
+          el("span", { class: "label" }, "Group volume"),
+          el("button", { onclick: () => this._control("mute", !primary.muted, primary.entry_id, { group: true }) }, icon("mdi:volume-off")),
+          el("button", { onclick: () => step(-2) }, icon("mdi:minus")),
+          el("button", { onclick: () => step(2) }, icon("mdi:plus")),
+        ),
+      );
+    }
+    rows.push(
+      el(
+        "div",
+        { class: "list", style: "margin-top: 12px" },
+        el("button", { class: "action", onclick: () => this._showPlayers() }, icon("mdi:arrow-left"), "Back"),
+      ),
+    );
+    this._dialog.replaceChildren(...rows);
   }
 
   _renderPlayerList() {
@@ -872,6 +956,13 @@ class BluOSCompanionPanel extends HTMLElement {
           );
         }),
       ),
+      this._players.length > 1
+        ? el(
+            "div",
+            { class: "list", style: "margin-top: 12px" },
+            el("button", { class: "action", onclick: () => this._showGroup() }, icon("mdi:speaker-multiple"), "Group players"),
+          )
+        : null,
     );
   }
 

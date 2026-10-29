@@ -22,13 +22,20 @@ from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 from pytest_homeassistant_custom_component.test_util.aiohttp import (
     AiohttpClientMockResponse,
     AiohttpClientMocker,
 )
 from yarl import URL
 
-from custom_components.bluos_companion.api import BluOSClient, BluOSError, sleep_bucket
+from custom_components.bluos_companion.api import (
+    BluOSClient,
+    BluOSError,
+    Member,
+    SyncStatus,
+    sleep_bucket,
+)
 from custom_components.bluos_companion.const import CONF_PORT, DOMAIN
 
 from .conftest import BASE, GROUPED_SYNC_STATUS, HOST, calls, respond, status_xml
@@ -448,3 +455,166 @@ async def test_select_external_source(
         blocking=True,
     )
     assert calls(player_api) == [("/ExternalSource", {"id": "5"})]
+
+
+def _group(primary: MockConfigEntry, secondary: MockConfigEntry) -> None:
+    """Make the first player lead a group with the second one."""
+    members = (Member(OTHER_HOST, 11000, "Pulse"),)
+    primary.runtime_data.sync = SyncStatus("G", None, members, None)
+    secondary.runtime_data.sync = SyncStatus("G", Member(HOST, 11000, "Séjour"), (), None)
+
+
+async def _ws_group(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    entry: MockConfigEntry,
+    action: str,
+    target: MockConfigEntry | None = None,
+) -> dict:
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/group",
+            "entry_id": entry.entry_id,
+            "action": action,
+            **({"target": target.entry_id} if target else {}),
+        }
+    )
+    return await client.receive_json()
+
+
+async def test_panel_joins_a_player_through_the_primary(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The primary player of the target adds the player to its group."""
+    player_api.mock_calls.clear()
+    response = await _ws_group(hass, hass_ws_client, pulse, "join", init_integration)
+    assert response["success"]
+    assert calls(player_api) == [("/AddSlave", {"slave": OTHER_HOST, "port": "11000"})]
+
+
+async def test_panel_join_of_a_member_does_nothing(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Joining the group a player is already in changes nothing."""
+    _group(init_integration, pulse)
+    player_api.mock_calls.clear()
+    assert (await _ws_group(hass, hass_ws_client, pulse, "join", pulse))["success"]
+    assert (await _ws_group(hass, hass_ws_client, init_integration, "join", pulse))["success"]
+    assert calls(player_api) == []
+
+
+async def test_panel_leaves_a_group(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A secondary is removed by its primary, a primary dissolves its group."""
+    _group(init_integration, pulse)
+    player_api.mock_calls.clear()
+    assert (await _ws_group(hass, hass_ws_client, pulse, "leave"))["success"]
+    assert calls(player_api) == [("/RemoveSlave", {"slave": OTHER_HOST, "port": "11000"})]
+
+    player_api.mock_calls.clear()
+    assert (await _ws_group(hass, hass_ws_client, init_integration, "leave"))["success"]
+    assert calls(player_api) == [("/RemoveSlave", {"slave": OTHER_HOST, "port": "11000"})]
+
+
+@pytest.fixture
+async def third(
+    hass: HomeAssistant, pulse: MockConfigEntry, player_api: AiohttpClientMocker
+) -> MockConfigEntry:
+    """Add a third player, alone."""
+    base = "http://192.168.1.102:11000"
+    respond(
+        player_api,
+        f"{base}/SyncStatus",
+        text='<SyncStatus id="x" mac="11:22:33:44:55:77" name="Kitchen" model="P125" '
+        'modelName="P125" brand="Bluesound" syncStat="1"/>',
+    )
+    respond(player_api, f"{base}/Status", text=status_xml())
+    respond(player_api, f"{base}/RadioBrowse", text="<radiotime/>")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="11:22:33:44:55:77",
+        title="Kitchen",
+        data={"host": "192.168.1.102", CONF_PORT: 11000},
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+async def test_panel_join_refuses_a_primary_with_secondaries(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    third: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A player that leads a group must dissolve it before joining another one."""
+    _group(init_integration, pulse)
+    player_api.mock_calls.clear()
+    response = await _ws_group(hass, hass_ws_client, init_integration, "join", third)
+    assert response["success"] is False
+    assert "ungroup it first" in response["error"]["message"]
+    assert calls(player_api) == []
+
+
+async def test_panel_moves_a_member_to_another_group(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    third: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A secondary joining another group first leaves its own one."""
+    _group(init_integration, pulse)
+    respond(player_api, "http://192.168.1.102:11000/AddSlave", text="<ok/>")
+    player_api.mock_calls.clear()
+    assert (await _ws_group(hass, hass_ws_client, pulse, "join", third))["success"]
+    assert [(str(call[1]), call[1].query_string) for call in player_api.mock_calls] == [
+        (f"{BASE}/RemoveSlave?slave={OTHER_HOST}&port=11000", f"slave={OTHER_HOST}&port=11000"),
+        (
+            f"http://192.168.1.102:11000/AddSlave?slave={OTHER_HOST}&port=11000",
+            f"slave={OTHER_HOST}&port=11000",
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("message", "query"),
+    [
+        ({"action": "volume_step", "value": 2, "group": True}, {"db": "2", "tell_slaves": "1"}),
+        ({"action": "volume_step", "value": -50}, {"db": "-10", "tell_slaves": "0"}),
+        ({"action": "mute", "value": True, "group": True}, {"mute": "1", "tell_slaves": "1"}),
+    ],
+)
+async def test_panel_group_volume(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    message: dict,
+    query: dict[str, str],
+) -> None:
+    """Volume steps are relative (in dB, limited) and can apply to the whole group."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/control", "entry_id": init_integration.entry_id, **message}
+    )
+    assert (await client.receive_json())["success"]
+    assert calls(player_api) == [("/Volume", query)]
