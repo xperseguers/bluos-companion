@@ -101,6 +101,8 @@ def _snapshot(
         "queue_id": status.queue_id,
         "queue_position": status.queue_position,
         "presets_id": status.presets_id,
+        "stream_url": status.stream_url,
+        "preset_name": status.preset_name,
         "sources": coordinator.source_names,
         "source": coordinator.active_source,
         "group": {
@@ -359,6 +361,7 @@ async def ws_presets(
                 {
                     "id": preset.id,
                     "name": preset.name,
+                    "url": preset.url,
                     "image": preset.image
                     and async_artwork_url(hass, msg["entry_id"], preset.image),
                 }

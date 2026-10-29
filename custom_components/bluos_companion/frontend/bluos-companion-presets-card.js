@@ -18,6 +18,7 @@ const CARD_STYLE = `
     font: inherit;
   }
   .preset:hover { border-color: var(--primary-color); }
+  .preset.playing { border-color: var(--primary-color); box-shadow: 0 0 0 2px var(--primary-color); }
   .preset img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .preset span {
     display: flex;
@@ -236,11 +237,21 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     this._toggle.firstChild.setAttribute("icon", ACTIVE_STATES.includes(player.state) ? "mdi:pause" : "mdi:play");
   }
 
+  // The stream URL of a station is the URL of its preset (or its start); the name is the
+  // fallback for services whose URLs differ.
+  _isPlaying(preset) {
+    const player = this._player;
+    if (!player || player.state === "stop") return false;
+    const stream = player.stream_url;
+    if (stream && preset.url && (preset.url === stream || preset.url.startsWith(`${stream}/`))) return true;
+    return Boolean(player.preset_name) && preset.name === player.preset_name;
+  }
+
   _tile(preset) {
     return el(
       "button",
       {
-        class: "preset",
+        class: this._isPlaying(preset) ? "preset playing" : "preset",
         title: preset.name,
         "aria-label": preset.name,
         onclick: () =>
