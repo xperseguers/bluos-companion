@@ -16,7 +16,12 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.bluos_companion.media_search import match_score, normalize
+from custom_components.bluos_companion.media_search import (
+    _probes,
+    fuzzy_score,
+    match_score,
+    normalize,
+)
 from custom_components.bluos_companion.media_source import play_path_from_media_id
 
 from .conftest import BASE, browse_url, calls, respond
@@ -162,10 +167,11 @@ async def test_search_retries_on_the_longest_word(
     library.mock_calls.clear()
     results = await _search(hass, "Recommence-moi")
     assert results == []
-    assert [q.get("q") for path, q in calls(library) if path == "/Browse"] == [
-        "Recommence-moi",
-        "Recommence",
-    ]
+    searched = [q.get("q") for path, q in calls(library) if path == "/Browse"]
+    # The exact search first (the whole text, then its longest word), then the
+    # typo tolerant one tries fragments, as nothing was found.
+    assert searched[:2] == ["Recommence-moi", "Recommence"]
+    assert searched[2:] == ["reco", "ence", "moi"]
 
 
 async def test_play_media_accepts_a_search_result(
@@ -214,3 +220,62 @@ async def test_a_preset_that_loads_a_playlist_is_not_a_second_result(
     old = await _search(hass, "old mix")
     assert [(r.title, r.media_class) for r in old] == [("Old Mix", MediaClass.PLAYLIST)]
     assert [r.media_class for r in await _search(hass, "tuning", ["album"])] == []
+
+
+@pytest.mark.parametrize(
+    ("title", "query", "found"),
+    [
+        ("Adele", "adelle", True),
+        ("Coldplay", "cold play", True),
+        ("Coldplay", "Coldpley", True),
+        ("Led Zeppelin", "led zepelin", True),
+        ("Led Zeppelin", "zepelin", True),
+        ("Eddy Mitchell", "edy mitchel", True),
+        ("Adele", "abba", False),
+        ("Adele", "ade", False),
+        ("Hello", "", False),
+        ("Santana", "santa claus", False),
+        ("Chicago Symphony Orchestra", "xylophone orchestra", False),
+        ("Radio Swiss Jazz", "radio swis jazz", True),
+    ],
+)
+def test_fuzzy_score(title: str, query: str, found: bool) -> None:
+    """Typos and different spacing are tolerated, other names are not, and an exact match always wins."""
+    score = fuzzy_score(title, query)
+    assert bool(score) is found
+    assert score < match_score(title, "", title)
+
+
+def test_probes_are_the_start_and_the_end_of_the_longest_words() -> None:
+    """The typo is unlikely to be both at the start and at the end of a word."""
+    assert _probes("Led Zepelin") == ["zepe", "elin", "led"]
+    assert _probes("abba") == ["abba"]
+    assert _probes("Coldpley live") == ["cold", "pley", "live"]
+    assert _probes("a b") == []
+
+
+async def test_a_misspelled_artist_is_still_found(
+    hass: HomeAssistant, init_integration: MockConfigEntry, library: AiohttpClientMocker
+) -> None:
+    """When nothing matches exactly, close names are offered, the best first."""
+    results = await _search(hass, "adelle", ["artist"])
+    assert [(r.title, r.media_class) for r in results] == [("Adele", MediaClass.ARTIST)]
+
+    playlists = await _search(hass, "tunning", ["playlist"])
+    assert [r.title for r in playlists] == ["Tuning"]
+
+
+async def test_exact_matches_do_not_trigger_the_typo_tolerant_search(
+    hass: HomeAssistant, init_integration: MockConfigEntry, library: AiohttpClientMocker
+) -> None:
+    """The extra requests are only made when nothing was found."""
+    await _search(hass, "adele", ["artist"])
+    searched = [q.get("q") for path, q in calls(library) if path == "/Browse" and "q" in q]
+    assert searched == ["adele"]
+
+
+async def test_nonsense_finds_nothing(
+    hass: HomeAssistant, init_integration: MockConfigEntry, library: AiohttpClientMocker
+) -> None:
+    """A name that resembles nothing gives no result and no wrong guess."""
+    assert await _search(hass, "xylophone orchestra") == []
