@@ -63,6 +63,24 @@
     "backup_playlists": {
       "name": "Enregistrer les listes de lecture en fichiers texte maintenant",
       "description": "Écrit les listes de lecture enregistrées sur les lecteurs en fichiers texte (.m3u8) dans le dossier bluos_companion/playlists de la configuration de Home Assistant. Cela se fait aussi avant chaque sauvegarde de Home Assistant, qui les contient alors."
+    },
+    "restore_playlists": {
+      "name": "Restaurer les listes de lecture depuis les fichiers texte",
+      "description": "Reconstruit sur un lecteur les listes de lecture sauvegardées. La file d'attente de ce lecteur est vidée puis remplie pour chaque liste (le lecteur ne sait enregistrer sa file d'attente qu'en liste de lecture), il vaut donc mieux choisir un lecteur qui ne joue pas. Une liste qui existe déjà est laissée telle quelle sauf si vous demandez de la remplacer.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur sur lequel reconstruire les listes de lecture."
+        },
+        "playlists": {
+          "name": "Listes de lecture",
+          "description": "Les noms des listes à restaurer. Tous les fichiers si vide."
+        },
+        "replace": {
+          "name": "Remplacer les listes existantes",
+          "description": "Remplace une liste portant le même nom. Désactivé par défaut."
+        }
+      }
     }
   }
 }

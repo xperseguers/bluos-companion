@@ -63,6 +63,24 @@
     "backup_playlists": {
       "name": "Save the playlists as text files now",
       "description": "Writes the playlists saved on the players as text files (.m3u8) in the bluos_companion/playlists folder of the Home Assistant configuration. This also happens before every Home Assistant backup, which then contains them."
+    },
+    "restore_playlists": {
+      "name": "Restore playlists from the text files",
+      "description": "Rebuilds playlists saved by the backup on a player. The queue of that player is emptied and refilled for each playlist (the player can only save its queue as a playlist), so use a player that is not playing. A playlist that exists already is left alone unless you ask to replace it.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player to rebuild the playlists on."
+        },
+        "playlists": {
+          "name": "Playlists",
+          "description": "The names of the playlists to restore. All the files if empty."
+        },
+        "replace": {
+          "name": "Replace existing playlists",
+          "description": "Replace a playlist that has the same name. Off by default."
+        }
+      }
     }
   }
 }

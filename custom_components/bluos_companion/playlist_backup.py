@@ -14,7 +14,9 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
 from .api import BluOSError, PlaylistTrack
@@ -131,3 +133,63 @@ async def async_backup_playlists(hass: HomeAssistant) -> dict[str, int]:
             )
             saved[name] = len(tracks)
     return saved
+
+
+def _read_files(path: Path) -> dict[str, list[PlaylistTrack]]:
+    """Read the playlist files of a folder, by playlist name."""
+    playlists: dict[str, list[PlaylistTrack]] = {}
+    for file in sorted(path.glob(f"*{EXTENSION}")):
+        name, tracks = parse(file.read_text(encoding="utf-8"), file.stem)
+        playlists[name] = tracks
+    return playlists
+
+
+async def async_restore_playlists(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    names: list[str] | None = None,
+    replace: bool = False,
+) -> dict[str, object]:
+    """Rebuild playlists on a player from the text files.
+
+    The player only saves its queue as a playlist, so the queue of the player is
+    emptied and refilled for each playlist. A playlist that exists already is left
+    alone unless `replace` is set: its tracks are then added first, so that the old
+    playlist is only deleted once the new queue is ready.
+    """
+    files = await hass.async_add_executor_job(_read_files, folder(hass))
+    wanted = list(files) if not names else names
+    client = entry.runtime_data.client
+    result: dict[str, object] = {
+        "restored": {},
+        "skipped": [],
+        "not_found": [name for name in wanted if name not in files],
+    }
+    try:
+        existing = set(await client.async_get_playlist_names())
+        for name in (name for name in wanted if name in files):
+            tracks = files[name]
+            if not tracks:
+                result["skipped"].append(name)
+                continue
+            if name in existing and not replace:
+                result["skipped"].append(name)
+                continue
+            await client.async_clear_queue()
+            for track in tracks:
+                await client.async_add_file(track.path)
+            queued = await client.async_get_queue_length()
+            if name in existing:
+                await client.async_delete_playlist(name)
+            await client.async_save_queue(name)
+            result["restored"][name] = queued
+            if queued < len(tracks):
+                _LOGGER.warning(
+                    "Playlist %s: the player found %d of the %d files, check the paths",
+                    name,
+                    queued,
+                    len(tracks),
+                )
+    except BluOSError as err:
+        raise HomeAssistantError(f"BluOS player error: {err}") from err
+    return result
