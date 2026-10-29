@@ -1,0 +1,130 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mit Ihrem BluOS-Player verbinden",
+        "description": "Geben Sie die IP-Adresse Ihres BluOS-Players (Verstärker, Streamer ...) ein.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unter dieser Adresse konnte keine Verbindung zu einem BluOS-Player hergestellt werden."
+    },
+    "abort": {
+      "already_configured": "Dieser Player ist bereits konfiguriert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Im Panel angezeigte Dienste",
+        "description": "Blenden Sie die Dienste aus, die Sie nicht nutzen, zum Beispiel einen Musikdienst, für den Sie kein Konto haben. Sie bleiben in der BluOS-App verfügbar. Die maximale Lautstärke gilt für Home Assistant (Panel, Karten, Dienste), nicht für die BluOS-App oder die Fernbedienung.",
+        "data": {
+          "hidden_services": "Ausgeblendete Dienste",
+          "max_volume": "Maximale Lautstärke",
+          "backup_playlists": "Wiedergabelisten dieses Players sichern"
+        }
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "sleep_timer": {
+        "name": "Sleep-Timer",
+        "state": {
+          "off": "Aus",
+          "15": "15 Minuten",
+          "30": "30 Minuten",
+          "45": "45 Minuten",
+          "60": "60 Minuten",
+          "90": "90 Minuten"
+        }
+      }
+    }
+  },
+  "common": {
+    "recently_added": "Neu",
+    "artists": "Künstler",
+    "albums": "Alben",
+    "songs": "Titel",
+    "genres": "Genres",
+    "playlists": "Wiedergabelisten",
+    "composers": "Komponisten",
+    "presets": "Presets",
+    "queue": "Warteschlange",
+    "favourites": "Favoriten",
+    "folders": "Ordner",
+    "sources": "Musik-Quellen",
+    "panel": {
+      "title": "BluOS Companion",
+      "search": "Suchen",
+      "no_player": "Kein BluOS-Player konfiguriert.",
+      "nothing_here": "Nichts hier.",
+      "show_more": "Mehr anzeigen",
+      "back": "Zurück",
+      "album_label": "Album: {name}",
+      "artist_label": "Künstler: {name}",
+      "album_not_found": "Album nicht in der Bibliothek gefunden",
+      "library_only": "Nur Titel der Bibliothek haben eine Album- und eine Künstlerseite",
+      "no_action": "Keine Aktion verfügbar",
+      "queue": "Warteschlange",
+      "queue_empty": "Die Warteschlange ist leer.",
+      "clear": "Löschen",
+      "clear_queue_title": "Warteschlange löschen?",
+      "clear_queue_text": "Alle Titel werden aus der Warteschlange entfernt.",
+      "save_as_playlist": "Als Wiedergabeliste speichern",
+      "save_queue_title": "Warteschlange als Wiedergabeliste speichern",
+      "playlist_name": "Name der Wiedergabeliste",
+      "save": "Speichern",
+      "saved": "Gespeichert: {name}",
+      "move_up": "Nach oben",
+      "move_down": "Nach unten",
+      "move_playback": "Wiedergabe übertragen",
+      "move_playback_to": "Wiedergabe übertragen auf",
+      "play_on": "Abspielen auf",
+      "group_players": "Player gruppieren",
+      "group_hint": "Player, die gemeinsam dieselbe Musik abspielen.",
+      "group_volume": "Gruppenlautstärke",
+      "ungroup_all": "Gruppierung aufheben",
+      "grouped_with": "Gruppiert mit {name}",
+      "another_player": "einem anderen Player",
+      "group_of": "Gruppe: {names}",
+      "unavailable": "Nicht verfügbar",
+      "sleep_off": "Sleep-Timer: aus",
+      "minutes": "{minutes} Min.",
+      "card_not_found": "Player nicht gefunden. Prüfen Sie die Entität der Karte.",
+      "no_presets": "Dieser Player hat keine Presets.",
+      "editor_player": "Player",
+      "editor_columns": "Spalten",
+      "editor_show_footer": "Lautstärke und Eingang anzeigen",
+      "editor_show_volume": "Lautstärke anzeigen"
+    }
+  },
+  "services": {
+    "backup_playlists": {
+      "name": "Wiedergabelisten jetzt als Textdateien speichern",
+      "description": "Schreibt die auf den Playern gespeicherten Wiedergabelisten als Textdateien (.m3u8) in den Ordner bluos_companion/playlists der Home-Assistant-Konfiguration. Das geschieht auch vor jeder Home-Assistant-Sicherung, die sie dann enthält."
+    },
+    "restore_playlists": {
+      "name": "Wiedergabelisten aus den Textdateien wiederherstellen",
+      "description": "Baut gesicherte Wiedergabelisten auf einem Player neu auf. Die Warteschlange dieses Players wird für jede Wiedergabeliste geleert und neu gefüllt (der Player kann seine Warteschlange nur als Wiedergabeliste speichern), verwenden Sie daher einen Player, der nicht spielt. Eine bereits vorhandene Wiedergabeliste bleibt unverändert, außer Sie verlangen das Ersetzen.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, auf dem die Wiedergabelisten neu aufgebaut werden."
+        },
+        "playlists": {
+          "name": "Wiedergabelisten",
+          "description": "Die Namen der wiederherzustellenden Wiedergabelisten. Alle Dateien, wenn leer."
+        },
+        "replace": {
+          "name": "Vorhandene Wiedergabelisten ersetzen",
+          "description": "Ersetzt eine Wiedergabeliste mit gleichem Namen. Standardmäßig aus."
+        }
+      }
+    }
+  }
+}

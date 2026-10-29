@@ -22,7 +22,7 @@ def _keys(value: dict, prefix: str = "") -> set[str]:
     }
 
 
-@pytest.mark.parametrize("translation", ["strings.json", "translations/fr.json"])
+@pytest.mark.parametrize("translation", ["strings.json", "translations/fr.json", "translations/de.json"])
 def test_same_keys_as_english(translation: str) -> None:
     """Every translation defines exactly the keys of the English one."""
     english = json.loads((COMPONENT / "translations" / "en.json").read_text())

@@ -1029,3 +1029,28 @@ async def test_a_preset_loading_a_playlist_gets_its_cover(
     assert _image_query(presets[0]["image"])["album"] == "Skyfall - Single"
     assert presets[1]["image"] == "https://cdn.example/x.png"
     assert presets[2]["image"] is None
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", "Show more"),
+        ("fr", "Afficher plus"),
+        ("fr-CH", "Afficher plus"),
+        ("de", "Mehr anzeigen"),
+        ("xx", "Show more"),
+    ],
+)
+async def test_panel_texts_come_in_the_language(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    language: str,
+    expected: str,
+) -> None:
+    """The panel and the cards get their texts for the language of the user."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "bluos_companion/translations", "language": language})
+    strings = (await client.receive_json())["result"]["strings"]
+    assert strings["show_more"] == expected
+    assert strings["saved"].endswith("{name}")

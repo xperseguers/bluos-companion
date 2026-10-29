@@ -105,11 +105,35 @@ class BluOSCompanionPresetsCard extends HTMLElement {
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
-    if (first && this.isConnected) this._subscribe();
+    if (first) {
+      this._loadStrings().then(() => {
+        this._render();
+        if (this.isConnected) this._subscribe();
+      });
+    }
+  }
+
+  // The texts come from the integration, in the language of the user (English if unknown).
+  async _loadStrings() {
+    try {
+      const result = await this._hass.connection.sendMessagePromise({
+        type: "bluos_companion/translations",
+        language: this._hass.language,
+      });
+      this._strings = result.strings;
+    } catch (err) {
+      this._strings = {};
+    }
+  }
+
+  _t(key, vars = {}) {
+    let text = (this._strings || {})[key] ?? key;
+    for (const [name, value] of Object.entries(vars)) text = text.replace(`{${name}}`, value);
+    return text;
   }
 
   connectedCallback() {
-    if (this._hass && !this._unsubscribe) this._subscribe();
+    if (this._hass && this._strings && !this._unsubscribe) this._subscribe();
   }
 
   disconnectedCallback() {
@@ -210,9 +234,9 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     );
     this._grid.hidden = !this._grid.childNodes.length;
     this._message.textContent = !player
-      ? "Player not found. Check the entity of the card."
+      ? this._t("card_not_found")
       : this._presets && !this._presets.length
-        ? "This player has no presets."
+        ? this._t("no_presets")
         : "";
     this._message.hidden = !this._message.textContent;
 
@@ -272,8 +296,29 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
   }
 
   set hass(hass) {
+    const first = !this._hass;
     this._hass = hass;
     if (this._form) this._form.hass = hass;
+    if (first) this._loadStrings().then(() => this._render());
+  }
+
+  // The texts come from the integration, in the language of the user (English if unknown).
+  async _loadStrings() {
+    try {
+      const result = await this._hass.connection.sendMessagePromise({
+        type: "bluos_companion/translations",
+        language: this._hass.language,
+      });
+      this._strings = result.strings;
+    } catch (err) {
+      this._strings = {};
+    }
+  }
+
+  _t(key, vars = {}) {
+    let text = (this._strings || {})[key] ?? key;
+    for (const [name, value] of Object.entries(vars)) text = text.replace(`{${name}}`, value);
+    return text;
   }
 
   _render() {
@@ -284,8 +329,6 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
         { name: "columns", selector: { number: { min: 1, max: 8, mode: "box" } } },
         { name: "show_footer", selector: { boolean: {} } },
       ];
-      this._form.computeLabel = (schema) =>
-        ({ entity: "Player", columns: "Columns", show_footer: "Show volume and input" })[schema.name] || schema.name;
       this._form.addEventListener("value-changed", (event) => {
         this.dispatchEvent(
           new CustomEvent("config-changed", { detail: { config: event.detail.value }, bubbles: true, composed: true }),
@@ -293,6 +336,8 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
       });
       this.append(this._form);
     }
+    const labels = { entity: "editor_player", columns: "editor_columns", show_footer: "editor_show_footer" };
+    this._form.computeLabel = (schema) => this._t(labels[schema.name] || schema.name);
     this._form.hass = this._hass;
     this._form.data = { columns: 3, show_footer: true, ...this._config };
   }

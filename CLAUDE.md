@@ -30,7 +30,7 @@ needed to work here.
   `websocket_api.py`: the `bluos_companion/*` commands they use.
 - `playlist_backup.py` + `backup.py`: playlists saved as `.m3u8` text files before every Home Assistant
   backup, and the services `backup_playlists` / `restore_playlists`.
-- `strings.json`, `translations/{en,fr}.json`: config flow, options, services and `common` (browse titles).
+- `strings.json`, `translations/{en,fr,de}.json`: config flow, options, services and `common` (browse titles and, in `common.panel`, the texts of the panel and the cards, served by the `translations` websocket command; the scripts contain no English).
 - `icons/*.svg`: tiles served from `/bluos_companion/icons/`.
 - `TODO.md`: the plan (branch `feature/sidebar-player`).
 
@@ -79,7 +79,7 @@ requests) at the feature level:
   parameters, parametrize instead of branching. Fixtures that create a session must depend on
   `aioclient_mock`. Set `hass.config.language` to test translations.
 - Every translation file must have exactly the keys of `translations/en.json` (tested).
-- French uses the official BluOS app names: Artistes, Albums, Chansons, Genres, Listes de
+- German uses the official names the player returns for `Accept-Language: de` (Künstler, Alben, Titel, Wiedergabelisten, Komponisten, Ordner, Favoriten, Neu, Warteschlange). French uses the official BluOS app names: Artistes, Albums, Chansons, Genres, Listes de
   lecture, Compositeurs, Nouveautés, Préréglages, Favoris, Dossiers (plural only). Unknown
   menu labels are kept untranslated on purpose; the singular "Folder" is intentionally unmapped.
 - Only translate menu links of type `link`, never music called "Songs".
