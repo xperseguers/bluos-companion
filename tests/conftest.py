@@ -79,6 +79,9 @@ GENRES = """<browse type="genres">
 PLAYLISTS = """<browse type="playlists">
   <item browseKey="BluOS:MG/BluOS-Playlist?playlist=Relaxing" playURL="/Load?service=BluOS&amp;name=Relaxing" text="Relaxing" type="playlist"></item>
 </browse>"""
+PLAYLIST_TRACKS = """<browse type="tracks">
+  <item playURL="/Add?playnow=1&amp;file=a" text="Skyfall" text2="ADELE • Skyfall - Single" image="/Artwork?service=BluOS&amp;songid=" type="track"></item>
+</browse>"""
 SONGS_SECTION = """<browse type="tracks">
   <item playURL="/Add?playnow=1&amp;file=%2Fa.m4a" text="À 82 ans" text2="Axelle Red • Toujours moi" image="/Artwork?service=LocalMusic&amp;album=x" type="track"></item>
 </browse>"""
@@ -190,6 +193,9 @@ def player_api(aioclient_mock: AiohttpClientMocker) -> AiohttpClientMocker:
         ("playlists", PLAYLISTS),
     ):
         aioclient_mock.get(browse_url(LIBRARY[category]), text=text)
+    aioclient_mock.get(
+        browse_url("BluOS:MG/BluOS-Playlist?playlist=Relaxing"), text=PLAYLIST_TRACKS
+    )
     aioclient_mock.get(browse_url(SECTION_A_KEY), text=ALBUMS)
     aioclient_mock.get(browse_url(ALBUM_KEY), text=TRACKS)
     for path in ("Play", "Pause", "Stop", "Skip", "Back", "Volume", "Shuffle", "Repeat", "Clear", "Sleep", "AddSlave", "RemoveSlave"):
