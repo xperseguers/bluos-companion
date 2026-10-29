@@ -52,6 +52,7 @@ class Status:
     stream_url: str | None = None
     queue_id: str | None = None
     queue_position: int | None = None
+    presets_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,6 +305,7 @@ class BluOSClient:
             sleep=_int(root.findtext("sleep")) or None,
             stream_url=root.findtext("streamUrl"),
             queue_id=root.findtext("pid"),
+            presets_id=root.findtext("prid"),
             queue_position=(
                 _int(song) if (song := root.findtext("song")) is not None else None
             ),

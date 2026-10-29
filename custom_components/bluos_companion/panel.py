@@ -8,10 +8,11 @@ from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 
-from .const import PANEL_ELEMENT, PANEL_PATH, PANEL_URL
+from .const import CARD_ELEMENT, PANEL_ELEMENT, PANEL_PATH, PANEL_URL
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 MODULE = f"{PANEL_ELEMENT}.js"
+CARD_MODULE = f"{CARD_ELEMENT}.js"
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
@@ -29,6 +30,12 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         sidebar_icon="mdi:speaker-wireless",
         require_admin=False,
     )
+
+
+def async_register_card(hass: HomeAssistant) -> None:
+    """Load the dashboard cards in the frontend, so they show in the card picker."""
+    version = int((FRONTEND_DIR / CARD_MODULE).stat().st_mtime)
+    frontend.add_extra_js_url(hass, f"{PANEL_URL}/{CARD_MODULE}?v={version}")
 
 
 async def async_register_static_path(hass: HomeAssistant) -> None:

@@ -7,10 +7,11 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import BluOSClient, BluOSError, Source, Status, SyncStatus
-from .const import DOMAIN, LONG_POLL_TIMEOUT, MIN_POLL_INTERVAL, RETRY_INTERVAL
+from .const import DOMAIN, EXTERNAL_SOURCE_URL, LONG_POLL_TIMEOUT, MIN_POLL_INTERVAL, RETRY_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +32,35 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         self.sync: SyncStatus | None = None
         self.sources: list[Source] = []
         self._sync_stat: str | None = None
+
+    @property
+    def source_names(self) -> list[str]:
+        """Return the inputs that can be selected."""
+        names = [source.name for source in self.sources]
+        if self.sync:
+            names += [source.name for source in self.sync.external_sources]
+        return names
+
+    @property
+    def active_source(self) -> str | None:
+        """Return the active input, if the player is playing one."""
+        if self.data.stream_url == EXTERNAL_SOURCE_URL and self.sync:
+            return self.sync.external_source
+        return next(
+            (s.name for s in self.sources if s.url == self.data.stream_url), None
+        )
+
+    async def async_select_source(self, name: str) -> None:
+        """Switch to an input of the player or of the amplifier it is built in."""
+        for source in self.sources:
+            if source.name == name:
+                await self.client.async_select_source(source.type_index)
+                return
+        for external in self.sync.external_sources if self.sync else ():
+            if external.name == name:
+                await self.client.async_select_external_source(external.id)
+                return
+        raise HomeAssistantError(f"Unknown source: {name}")
 
     async def _async_update_data(self) -> Status:
         try:

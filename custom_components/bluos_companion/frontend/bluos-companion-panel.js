@@ -1007,4 +1007,4 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 }
 
-customElements.define("bluos-companion-panel", BluOSCompanionPanel);
+if (!customElements.get("bluos-companion-panel")) customElements.define("bluos-companion-panel", BluOSCompanionPanel);

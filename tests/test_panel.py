@@ -35,6 +35,17 @@ async def test_panel_is_registered_for_everyone_and_removed(
     assert PANEL_PATH not in hass.data[frontend.DATA_PANELS]
 
 
+async def test_card_module_is_loaded_by_the_frontend(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """The presets card is available in the card picker without a manual resource."""
+    urls = hass.data[frontend.DATA_EXTRA_MODULE_URL].urls
+    assert any(
+        url.startswith("/bluos_companion/panel/bluos-companion-presets-card.js?v=")
+        for url in urls
+    )
+
+
 async def test_subscribe_pushes_players(
     hass: HomeAssistant,
     hass_ws_client: WebSocketGenerator,
@@ -59,6 +70,9 @@ async def test_subscribe_pushes_players(
         f"/api/bluos_companion/{init_integration.entry_id}/artwork?path="
     )
     assert player["group"] == {"name": None, "master": None, "slaves": []}
+    assert player["entity_id"] == "media_player.sejour"
+    assert player["sources"] == ["Bluetooth"]
+    assert player["source"] is None
 
 
 @pytest.mark.parametrize(
@@ -499,7 +513,7 @@ async def test_snapshot_has_the_queue_position(
     respond(
         player_api,
         f"{BASE}/Status",
-        text=status_xml(song="4", pid="1491"),
+        text=status_xml(song="4", pid="1491", prid="7"),
     )
     await init_integration.runtime_data.async_refresh()
     client = await hass_ws_client(hass)
@@ -507,6 +521,7 @@ async def test_snapshot_has_the_queue_position(
     await client.receive_json()
     [player] = (await client.receive_json())["event"]["players"]
     assert (player["queue_id"], player["queue_position"]) == ("1491", 4)
+    assert player["presets_id"] == "7"
 
 
 async def test_locate_finds_the_album_and_the_artist(
@@ -590,3 +605,47 @@ async def test_locate_without_a_match(
         }
     )
     assert (await client.receive_json())["result"] == {"artist": None, "album": None}
+
+
+async def test_presets_with_signed_images(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+) -> None:
+    """The presets keep their order, with a usable image URL or none."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/presets", "entry_id": init_integration.entry_id}
+    )
+    presets = (await client.receive_json())["result"]["presets"]
+    assert [(preset["id"], preset["name"]) for preset in presets] == [
+        (1, "RTS La Première"),
+        (2, "Rouge FM"),
+        (3, "No image"),
+    ]
+    assert presets[0]["image"].startswith("/api/bluos_companion/")
+    assert presets[1]["image"] == "https://cdn.example/s58290.png"
+    assert presets[2]["image"] is None
+
+
+async def test_control_selects_a_source(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Inputs are selected by name, an unknown one is refused."""
+    player_api.get(f"{BASE}/Play", text="<ok/>")
+    client = await hass_ws_client(hass)
+    request = {
+        "type": "bluos_companion/control",
+        "entry_id": init_integration.entry_id,
+        "action": "source",
+    }
+
+    await client.send_json_auto_id({**request, "value": "Bluetooth"})
+    assert (await client.receive_json())["success"]
+    assert calls(player_api) == [("/Play", {"inputTypeIndex": "bluetooth-1"})]
+
+    await client.send_json_auto_id({**request, "value": "Nope"})
+    assert (await client.receive_json())["error"]["message"] == "Unknown source: Nope"

@@ -13,6 +13,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_HOST
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 
 from .api import BluOSClient, BluOSError, Node
 from .const import CONF_HIDDEN_SERVICES, DOMAIN
@@ -45,6 +46,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_actions)
     websocket_api.async_register_command(hass, ws_locate)
+    websocket_api.async_register_command(hass, ws_presets)
     websocket_api.async_register_command(hass, ws_queue)
     websocket_api.async_register_command(hass, ws_queue_action)
     websocket_api.async_register_command(hass, ws_play)
@@ -69,7 +71,7 @@ async def _async_call(call: Awaitable[Any]) -> Any:
 
 
 def _snapshot(
-    entry: BluOSConfigEntry, entry_ids: dict[str, str]
+    hass: HomeAssistant, entry: BluOSConfigEntry, entry_ids: dict[str, str]
 ) -> dict[str, Any]:
     """Return the state of a player as the panel needs it (image is not signed yet)."""
     coordinator = entry.runtime_data
@@ -77,6 +79,9 @@ def _snapshot(
     sync = coordinator.sync
     return {
         "entry_id": entry.entry_id,
+        "entity_id": er.async_get(hass).async_get_entity_id(
+            "media_player", DOMAIN, entry.unique_id
+        ),
         "name": entry.title,
         "available": coordinator.last_update_success,
         "state": status.state,
@@ -95,6 +100,9 @@ def _snapshot(
         "sleep": status.sleep,
         "queue_id": status.queue_id,
         "queue_position": status.queue_position,
+        "presets_id": status.presets_id,
+        "sources": coordinator.source_names,
+        "source": coordinator.active_source,
         "group": {
             "name": sync.group if sync else None,
             "master": sync and sync.master and entry_ids.get(sync.master.host),
@@ -138,7 +146,7 @@ def _items(
 def _snapshots(hass: HomeAssistant) -> list[dict[str, Any]]:
     entries = hass.config_entries.async_loaded_entries(DOMAIN)
     entry_ids = {entry.data[CONF_HOST]: entry.entry_id for entry in entries}
-    return [_snapshot(entry, entry_ids) for entry in entries]
+    return [_snapshot(hass, entry, entry_ids) for entry in entries]
 
 
 @websocket_api.websocket_command({vol.Required("type"): "bluos_companion/subscribe"})
@@ -193,8 +201,8 @@ def ws_subscribe(
     {
         vol.Required("type"): "bluos_companion/control",
         vol.Required("entry_id"): str,
-        vol.Required("action"): vol.In(CONTROLS),
-        vol.Optional("value"): vol.Any(bool, int),
+        vol.Required("action"): vol.In([*CONTROLS, "source"]),
+        vol.Optional("value"): vol.Any(bool, int, str),
     }
 )
 @websocket_api.async_response
@@ -202,8 +210,13 @@ async def ws_control(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Send a transport, volume or mode command to a player."""
-    client = _coordinator(hass, msg["entry_id"]).client
-    await _async_call(CONTROLS[msg["action"]](client, msg.get("value", 0)))
+    coordinator = _coordinator(hass, msg["entry_id"])
+    if msg["action"] == "source":
+        await _async_call(coordinator.async_select_source(str(msg.get("value", ""))))
+    else:
+        await _async_call(
+            CONTROLS[msg["action"]](coordinator.client, msg.get("value", 0))
+        )
     connection.send_result(msg["id"])
 
 
@@ -327,6 +340,32 @@ async def ws_locate(
             "context_key": node.context_key,
         }
     connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "bluos_companion/presets", vol.Required("entry_id"): str}
+)
+@websocket_api.async_response
+async def ws_presets(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the presets (radio stations...) of a player."""
+    client = _coordinator(hass, msg["entry_id"]).client
+    presets = await _async_call(client.async_get_presets())
+    connection.send_result(
+        msg["id"],
+        {
+            "presets": [
+                {
+                    "id": preset.id,
+                    "name": preset.name,
+                    "image": preset.image
+                    and async_artwork_url(hass, msg["entry_id"], preset.image),
+                }
+                for preset in presets
+            ]
+        },
+    )
 
 
 QUEUE_ACTIONS: dict[str, Callable[[BluOSClient, dict[str, Any]], Awaitable[None]]] = {
