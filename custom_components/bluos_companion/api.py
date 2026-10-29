@@ -505,6 +505,14 @@ class BluOSClient:
         """Set the volume, 0..100."""
         await self.async_command("/Volume", {"level": str(level)})
 
+    async def async_get_volume(self) -> tuple[int, bool]:
+        """Return the own volume of the player (0..100, -1 if fixed) and its mute state.
+
+        In a group, /Status of a secondary player reports the volume of the group.
+        """
+        root = await self._get_xml("/Volume")
+        return _int(root.text, -1), root.get("mute") == "1"
+
     async def async_step_volume(self, delta_db: int, group: bool = False) -> None:
         """Change the volume by a number of dB, of the whole group if asked."""
         await self.async_command(

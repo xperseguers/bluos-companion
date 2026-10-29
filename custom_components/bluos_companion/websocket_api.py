@@ -52,6 +52,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_actions)
     websocket_api.async_register_command(hass, ws_group)
+    websocket_api.async_register_command(hass, ws_group_volumes)
     websocket_api.async_register_command(hass, ws_home)
     websocket_api.async_register_command(hass, ws_locate)
     websocket_api.async_register_command(hass, ws_presets)
@@ -227,8 +228,13 @@ async def ws_control(
     value = msg.get("value", 0)
     if msg["action"] == "volume":
         msg = {**msg, "value": min(int(value), coordinator.max_volume)}
-    elif msg["action"] == "volume_step" and int(value) > 0:
-        if coordinator.data.volume >= coordinator.max_volume:
+    elif (
+        msg["action"] == "volume_step"
+        and int(value) > 0
+        and coordinator.max_volume < 100
+    ):
+        own, _ = await _async_call(coordinator.client.async_get_volume())
+        if own >= coordinator.max_volume:
             connection.send_result(msg["id"])
             return
     if msg["action"] == "source":
@@ -480,6 +486,44 @@ def _primary(hass: HomeAssistant, coordinator: BluOSCoordinator) -> BluOSCoordin
     if (primary := _coordinator_of_host(hass, sync.master.host)) is None:
         raise HomeAssistantError("The primary player of the group is not configured")
     return primary
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "bluos_companion/group_volumes", vol.Required("entry_id"): str}
+)
+@websocket_api.async_response
+async def ws_group_volumes(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the own volume of each player of the group of a player.
+
+    The volume of a secondary player in /Status is the one of the group, so each
+    player is asked for its own.
+    """
+    primary = _primary(hass, _coordinator(hass, msg["entry_id"]))
+    members = [primary]
+    for member in primary.sync.slaves if primary.sync else ():
+        if (coordinator := _coordinator_of_host(hass, member.host)) is not None:
+            members.append(coordinator)
+    results = await asyncio.gather(
+        *(member.client.async_get_volume() for member in members),
+        return_exceptions=True,
+    )
+    connection.send_result(
+        msg["id"],
+        {
+            "volumes": [
+                {
+                    "entry_id": member.config_entry.entry_id,
+                    "volume": result[0],
+                    "muted": result[1],
+                    "max_volume": member.max_volume,
+                }
+                for member, result in zip(members, results, strict=True)
+                if not isinstance(result, BluOSError)
+            ]
+        },
+    )
 
 
 @websocket_api.websocket_command(

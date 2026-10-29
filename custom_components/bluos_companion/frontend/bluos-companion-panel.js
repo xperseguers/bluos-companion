@@ -766,6 +766,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._dialog = el("dialog", {
       onclose: () => {
         this._dialogMode = null;
+        clearInterval(this._groupTimer);
       },
       onclick: (event) => {
         if (event.target === this._dialog) this._dialog.close();
@@ -1041,8 +1042,21 @@ class BluOSCompanionPanel extends HTMLElement {
 
   _showGroup() {
     this._dialogMode = "group";
+    this._groupVolumes = {};
     this._renderGroup();
     if (!this._dialog.open) this._dialog.showModal();
+    this._refreshGroupVolumes();
+    clearInterval(this._groupTimer);
+    this._groupTimer = setInterval(() => this._refreshGroupVolumes(), 3000);
+  }
+
+  // /Status of a secondary player shows the volume of the group, so ask each player.
+  async _refreshGroupVolumes() {
+    if (this._dialogMode !== "group" || !this._player) return;
+    const result = await this._call({ type: "bluos_companion/group_volumes", entry_id: this._player.entry_id });
+    if (this._dialogMode !== "group" || !result) return;
+    this._groupVolumes = Object.fromEntries(result.volumes.map((volume) => [volume.entry_id, volume]));
+    this._renderGroup();
   }
 
   _renderGroup() {
@@ -1076,20 +1090,39 @@ class BluOSCompanionPanel extends HTMLElement {
         ),
       );
       if (!member) return el("div", { class: "group-row" }, line);
+      const own = this._groupVolumes[player.entry_id];
+      const level = own ? own.volume : player.volume;
+      const change = (action, value) =>
+        Promise.resolve(this._control(action, value, player.entry_id)).then(() => this._refreshGroupVolumes());
       const slider = el("input", {
         type: "range",
         min: 0,
-        max: player.max_volume,
-        value: Math.max(player.volume, 0),
-        onchange: (event) => this._control("volume", Number(event.target.value), player.entry_id),
+        max: own ? own.max_volume : player.max_volume,
+        value: Math.max(level, 0),
+        onchange: (event) => change("volume", Number(event.target.value)),
       });
-      slider.disabled = player.volume < 0;
-      return el("div", { class: "group-row" }, line, el("div", { class: "line" }, icon("mdi:volume-medium"), slider));
+      slider.disabled = level < 0;
+      return el(
+        "div",
+        { class: "group-row" },
+        line,
+        el(
+          "div",
+          { class: "line" },
+          icon(own && own.muted ? "mdi:volume-off" : "mdi:volume-medium"),
+          slider,
+          el("button", { onclick: () => change("volume_step", -2) }, icon("mdi:minus")),
+          el("button", { onclick: () => change("volume_step", 2) }, icon("mdi:plus")),
+        ),
+      );
     };
     const rows = [el("h2", {}, "Group players"), el("p", {}, "Players that play the same music together.")];
     rows.push(el("div", { class: "list" }, ...this._players.map(row)));
     if (members.length > 1 && primary) {
-      const step = (delta) => this._control("volume_step", delta, primary.entry_id, { group: true });
+      const step = (delta) =>
+        Promise.resolve(this._control("volume_step", delta, primary.entry_id, { group: true })).then(() =>
+          this._refreshGroupVolumes(),
+        );
       rows.push(
         el(
           "div",
@@ -1101,13 +1134,22 @@ class BluOSCompanionPanel extends HTMLElement {
         ),
       );
     }
-    rows.push(
-      el(
-        "div",
-        { class: "list", style: "margin-top: 12px" },
-        el("button", { class: "action", onclick: () => this._showPlayers() }, icon("mdi:arrow-left"), "Back"),
-      ),
-    );
+    const footer = [];
+    if (members.length > 1 && primary) {
+      footer.push(
+        el(
+          "button",
+          {
+            class: "action",
+            onclick: () => this._call({ type: "bluos_companion/group", entry_id: primary.entry_id, action: "leave" }),
+          },
+          icon("mdi:link-variant-off"),
+          "Ungroup all",
+        ),
+      );
+    }
+    footer.push(el("button", { class: "action", onclick: () => this._showPlayers() }, icon("mdi:arrow-left"), "Back"));
+    rows.push(el("div", { class: "list", style: "margin-top: 12px" }, ...footer));
     this._dialog.replaceChildren(...rows);
   }
 
