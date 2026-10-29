@@ -55,6 +55,7 @@
     "presets": "Presets",
     "queue": "Queue",
     "favourites": "Favourites",
-    "folders": "Folders"
+    "folders": "Folders",
+    "sources": "Sources"
   }
 }

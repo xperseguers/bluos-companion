@@ -35,6 +35,7 @@ LIBRARY = {
     "composers": "LocalMusic:bySection:Composer/%2Flibrary%2Fv1%2FComposers%3Fservice=LocalMusic",
 }
 TITLES = ("recently_added", *LIBRARY, "presets", "queue", "favourites", "folders")
+PANEL_TITLES = (*TITLES, "sources")
 MENU_LABELS = {
     **{category.capitalize(): category for category in LIBRARY},
     "Favourites": "favourites",
@@ -120,7 +121,7 @@ async def async_get_titles(hass: HomeAssistant) -> dict[str, str]:
         key: translations.get(
             f"component.{DOMAIN}.common.{key}", key.replace("_", " ").capitalize()
         )
-        for key in TITLES
+        for key in PANEL_TITLES
     }
 
 

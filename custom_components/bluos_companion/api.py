@@ -158,6 +158,11 @@ class Album:
         return f"LocalMusic:MG/LocalMusic-Album?{self.query}"
 
     @property
+    def context_key(self) -> str:
+        """Key to list the actions (play now, add next...) of the album."""
+        return f"LocalMusic:CM/LocalMusic-Album?{self.query}"
+
+    @property
     def image(self) -> str:
         """Player path of the cover."""
         return f"/Artwork?service=LocalMusic&{self.query}"

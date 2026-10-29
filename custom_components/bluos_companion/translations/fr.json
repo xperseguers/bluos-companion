@@ -55,6 +55,7 @@
     "presets": "Préréglages",
     "queue": "File d'attente",
     "favourites": "Favoris",
-    "folders": "Dossiers"
+    "folders": "Dossiers",
+    "sources": "Sources"
   }
 }
