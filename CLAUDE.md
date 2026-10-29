@@ -42,7 +42,7 @@ docker compose restart      # after code changes (wait ~40 s)
 .venv/bin/pytest -q         # python3.14 venv, requirements_test.txt
 ```
 
-- Dev HA user `dev` / `devpass123`, created by onboarding through the API. Access tokens expire
+- Dev HA user: see `docs/player-notes.md` (local), created by onboarding through the API. Access tokens expire
   after 30 minutes: POST `/auth/login_flow` (`handler: ["homeassistant", null]`), POST the
   username/password to `/auth/login_flow/<flow_id>`, then exchange the returned code at
   `/auth/token` (`grant_type=authorization_code`). On an empty `config/` (only
@@ -56,9 +56,9 @@ docker compose restart      # after code changes (wait ~40 s)
 
 ## The player used for development
 
-NAD C368 named "Séjour" at 10.20.30.41, port 11000 (the master, everything lives there), and a
-Pulse mini 2i named "Pulse" at 10.20.30.167, both configured in the dev HA. Probing with GETs is
-fine. Playback, volume, queue and grouping commands change what the household hears: ask first,
+A NAD C368 with a BluOS module named "Séjour" (the master, everything lives there) and a Pulse mini 2i
+named "Pulse", both configured in the dev HA; their addresses are in `docs/player-notes.md` (local). Probing
+with GETs is fine. Playback, volume, queue and grouping commands change what the household hears: ask first,
 keep volumes modest and put everything back as it was (the owner has agreed to live tests when told).
 
 ## What may be written in committed files
