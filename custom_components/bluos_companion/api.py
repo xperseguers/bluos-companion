@@ -114,6 +114,16 @@ class Node:
     browse_key: str | None
     play_path: str | None
     image: str | None
+    context_key: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Action:
+    """An action of an item's context menu, e.g. add it to the end of the queue."""
+
+    type: str
+    title: str
+    path: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -326,11 +336,21 @@ class BluOSClient:
                     browse_key=item.get("browseKey"),
                     play_path=item.get("autoplayURL") or item.get("playURL"),
                     image=item.get("image"),
+                    context_key=item.get("contextMenuKey"),
                 )
                 nodes.setdefault(node, None)
             if not (next_key := root.get("nextKey")):
                 break
         return BrowsePage(list(nodes), search_key)
+
+    async def async_get_actions(self, context_key: str) -> list[Action]:
+        """Return the actions (play now, shuffle, add next...) of an item."""
+        root = await self._get_xml("/Browse", {"key": context_key})
+        return [
+            Action(item.get("type", ""), item.get("text", ""), item.get("actionURL", ""))
+            for item in root.iter("item")
+            if item.get("actionURL")
+        ]
 
     async def async_get_recent_albums(self) -> list[Album]:
         """Return the most recently added albums of the library."""

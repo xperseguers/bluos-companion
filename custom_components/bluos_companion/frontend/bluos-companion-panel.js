@@ -96,6 +96,31 @@ const STYLE = `
     color: #fff;
     --mdc-icon-size: 24px;
   }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 16px; }
+  .actions button, dialog button.action {
+    border: 1px solid var(--divider-color);
+    border-radius: 20px;
+    padding: 8px 16px;
+    gap: 8px;
+    font: inherit;
+    background: var(--card-background-color);
+  }
+  .tile .more { position: absolute; right: 4px; bottom: 6px; --mdc-icon-size: 22px; padding: 6px; }
+  .tile.has-more .text { padding-right: 32px; }
+  dialog {
+    border: none;
+    border-radius: var(--ha-card-border-radius, 12px);
+    background: var(--card-background-color);
+    color: var(--primary-text-color);
+    padding: 16px;
+    min-width: 260px;
+    max-width: 90vw;
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+  dialog h2 { margin: 0 0 4px; font-size: 18px; font-weight: 500; }
+  dialog p { margin: 0 0 12px; color: var(--secondary-text-color); font-size: 13px; }
+  dialog .list { display: flex; flex-direction: column; gap: 8px; }
+  dialog button.action { justify-content: flex-start; border-radius: 12px; width: 100%; }
   form.search { display: flex; gap: 8px; margin-bottom: 16px; }
   form.search input {
     flex: 1;
@@ -161,6 +186,17 @@ function icon(name) {
   return el("ha-icon", { icon: name });
 }
 
+const ACTION_ICONS = {
+  "add-now": "mdi:play",
+  "add-shuffle": "mdi:shuffle",
+  "addAll-shuffle": "mdi:shuffle",
+  "add-next": "mdi:playlist-play",
+  "addAll-next": "mdi:playlist-play",
+  "add-last": "mdi:playlist-plus",
+  "addAll-last": "mdi:playlist-plus",
+  add: "mdi:playlist-plus",
+};
+
 function formatTime(seconds) {
   const total = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(total / 60);
@@ -175,6 +211,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._playerId = localStorage.getItem(STORAGE_KEY);
     this._stack = []; // [{ title, key }], the root is implicit
     this._groups = null; // [{ title, items }]
+    this._levelActions = [];
     this._searchKey = DEFAULT_SEARCH_KEY;
     this._receivedAt = 0;
     this._browseToken = 0;
@@ -242,15 +279,58 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _call(message) {
-    return this._hass.connection.sendMessagePromise(message).catch((err) => {
-      this.dispatchEvent(
-        new CustomEvent("hass-notification", {
-          detail: { message: err.message || String(err) },
-          bubbles: true,
-          composed: true,
-        }),
-      );
+    return this._hass.connection
+      .sendMessagePromise(message)
+      .catch((err) => this._notify(err.message || String(err)));
+  }
+
+  _notify(message) {
+    this.dispatchEvent(
+      new CustomEvent("hass-notification", { detail: { message }, bubbles: true, composed: true }),
+    );
+  }
+
+  async _actions(contextKey) {
+    const result = await this._call({
+      type: "bluos_companion/actions",
+      entry_id: this._playerId,
+      key: contextKey,
     });
+    return result ? result.actions : [];
+  }
+
+  async _runAction(action, label) {
+    await this._call({ type: "bluos_companion/play", entry_id: this._playerId, path: action.path });
+    this._notify(`${action.title}: ${label}`);
+  }
+
+  _actionButton(action, label, after) {
+    return el(
+      "button",
+      {
+        class: "action",
+        onclick: () => {
+          this._runAction(action, label);
+          if (after) after();
+        },
+      },
+      icon(ACTION_ICONS[action.type] || "mdi:playlist-plus"),
+      action.title,
+    );
+  }
+
+  async _showActions(item) {
+    const actions = await this._actions(item.context_key);
+    if (!actions.length) {
+      this._notify("No action available");
+      return;
+    }
+    this._dialog.replaceChildren(
+      el("h2", {}, item.title),
+      el("p", {}, item.subtitle || "\u00a0"),
+      el("div", { class: "list" }, ...actions.map((action) => this._actionButton(action, item.title, () => this._dialog.close()))),
+    );
+    this._dialog.showModal();
   }
 
   _control(action, value) {
@@ -271,6 +351,14 @@ class BluOSCompanionPanel extends HTMLElement {
     this._groups = null;
     this._renderBrowse();
     const level = this._stack[this._stack.length - 1];
+    this._levelActions = [];
+    if (level && level.contextKey) {
+      this._actions(level.contextKey).then((actions) => {
+        if (token !== this._browseToken) return;
+        this._levelActions = actions;
+        this._renderCrumbs();
+      });
+    }
     let groups;
     if (level && level.search) {
       const result = await this._call({
@@ -306,7 +394,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _open(item) {
-    this._stack.push({ title: item.title, key: item.browse_key });
+    this._stack.push({ title: item.title, key: item.browse_key, contextKey: item.context_key });
     this._browse();
   }
 
@@ -349,9 +437,16 @@ class BluOSCompanionPanel extends HTMLElement {
       this._searchInput,
     );
     this._crumbs = el("div", { class: "crumbs" });
+    this._actionRow = el("div", { class: "actions" });
+    this._actionRow.hidden = true;
+    this._dialog = el("dialog", {
+      onclick: (event) => {
+        if (event.target === this._dialog) this._dialog.close();
+      },
+    });
     this._grid = el("div");
     this._message = el("div", { class: "message" });
-    this._main = el("main", {}, this._searchForm, this._crumbs, this._grid, this._message);
+    this._main = el("main", {}, this._searchForm, this._crumbs, this._actionRow, this._grid, this._message);
 
     this._cover = el("div", { class: "cover" });
     this._track = el("div", { class: "track" });
@@ -409,6 +504,7 @@ class BluOSCompanionPanel extends HTMLElement {
       el("header", {}, this._menuButton, el("h1", {}, "BluOS Companion"), this._select),
       this._main,
       footer,
+      this._dialog,
     );
     this._built = true;
     this._renderPlayers();
@@ -439,14 +535,7 @@ class BluOSCompanionPanel extends HTMLElement {
 
   _renderBrowse() {
     if (!this._built) return;
-    const crumbs = [];
-    if (this._stack.length) {
-      crumbs.push(
-        el("button", { onclick: () => this._up() }, icon("mdi:arrow-left")),
-        el("h2", {}, this._stack[this._stack.length - 1].title),
-      );
-    }
-    this._crumbs.replaceChildren(...crumbs);
+    this._renderCrumbs();
     this._grid.replaceChildren();
     this._message.textContent = "";
     this._searchForm.hidden = !this._player;
@@ -463,6 +552,22 @@ class BluOSCompanionPanel extends HTMLElement {
         this._grid.append(el("div", { class: "grid" }, ...group.items.map((item) => this._tile(item))));
       }
     }
+  }
+
+  _renderCrumbs() {
+    const level = this._stack[this._stack.length - 1];
+    this._crumbs.replaceChildren(
+      ...(level
+        ? [
+            el("button", { onclick: () => this._up() }, icon("mdi:arrow-left")),
+            el("h2", {}, level.title),
+          ]
+        : []),
+    );
+    this._actionRow.replaceChildren(
+      ...this._levelActions.map((action) => this._actionButton(action, level.title)),
+    );
+    this._actionRow.hidden = !this._levelActions.length;
   }
 
   _tile(item) {
@@ -493,6 +598,22 @@ class BluOSCompanionPanel extends HTMLElement {
             },
           },
           icon("mdi:play"),
+        ),
+      );
+    }
+    if (item.context_key) {
+      tile.classList.add("has-more");
+      tile.append(
+        el(
+          "button",
+          {
+            class: "more",
+            onclick: (event) => {
+              event.stopPropagation();
+              this._showActions(item);
+            },
+          },
+          icon("mdi:dots-vertical"),
         ),
       );
     }

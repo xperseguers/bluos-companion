@@ -9,6 +9,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.bluos_companion.api import (
+    Action,
     Album,
     MAX_BROWSE_PAGES,
     BluOSClient,
@@ -185,6 +186,37 @@ async def test_browse_page_search_and_limit(
     assert calls(aioclient_mock) == [
         ("/Browse", {"key": "Deezer:Search", "q": "Michael"})
     ]
+
+
+async def test_actions_of_an_item(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """The context menu of an item gives its play and queue actions."""
+    aioclient_mock.get(
+        browse_url("LocalMusic:CM/Album?album=21"),
+        text="""<browse type="contextMenu">
+  <item actionURL="/AddFavourite?album=21" text="Favourite" type="favourite-add"></item>
+  <item actionURL="/Add?album=21&amp;playnow=-1&amp;where=last" text="Add last" type="addAll-last"></item>
+  <item text="No action" type="x"></item>
+</browse>""",
+    )
+    actions = await client.async_get_actions("LocalMusic:CM/Album?album=21")
+    assert actions == [
+        Action("favourite-add", "Favourite", "/AddFavourite?album=21"),
+        Action("addAll-last", "Add last", "/Add?album=21&playnow=-1&where=last"),
+    ]
+
+
+async def test_browse_keeps_the_context_key(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """Items remember the key of their context menu."""
+    aioclient_mock.get(
+        browse_url("k"),
+        text='<browse><item text="a" type="album" browseKey="b" contextMenuKey="ctx"/></browse>',
+    )
+    [node] = await client.async_browse("k")
+    assert node.context_key == "ctx"
 
 
 @pytest.mark.usefixtures("player_api")
