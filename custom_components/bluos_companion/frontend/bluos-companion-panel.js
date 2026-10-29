@@ -1392,13 +1392,15 @@ class BluOSCompanionPanel extends HTMLElement {
           );
         }),
       ),
-      this._players.length > 1
-        ? el(
-            "div",
-            { class: "list", style: "margin-top: 12px" },
-            el("button", { class: "action", onclick: () => this._showGroup() }, icon("mdi:speaker-multiple"), this._t("group_players")),
-          )
-        : null,
+      ...(this._players.length > 1
+        ? [
+            el(
+              "div",
+              { class: "list", style: "margin-top: 12px" },
+              el("button", { class: "action", onclick: () => this._showGroup() }, icon("mdi:speaker-multiple"), this._t("group_players")),
+            ),
+          ]
+        : []),
     );
   }
 
@@ -1459,7 +1461,7 @@ class BluOSCompanionPanel extends HTMLElement {
               ? el("img", { class: "crumb-cover", src: level.image, alt: "" })
               : null,
             el("h2", {}, level.title),
-          ]
+          ].filter(Boolean)
         : []),
     );
     if (level && level.queue) return;
