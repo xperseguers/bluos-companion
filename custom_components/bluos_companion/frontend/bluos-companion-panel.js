@@ -100,15 +100,18 @@ const STYLE = `
   }
   .tile .text { padding: 12px 8px 0; }
   .tile .title, .tile .subtitle {
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
   }
   .tile .subtitle { font-size: 12px; color: var(--secondary-text-color); }
   .tile .play {
     position: absolute;
-    right: 14px;
-    top: 14px;
+    right: 6px;
+    bottom: 6px;
     background: rgba(0, 0, 0, 0.6);
     color: #fff;
     --mdc-icon-size: 24px;
@@ -122,8 +125,8 @@ const STYLE = `
     font: inherit;
     background: var(--card-background-color);
   }
-  .tile .more { position: absolute; right: 4px; bottom: 6px; --mdc-icon-size: 22px; padding: 6px; }
-  .tile.has-more .text { padding-right: 32px; }
+  .tile .artwrap { position: relative; }
+  .tile .more { position: absolute; right: 6px; top: 6px; background: rgba(0, 0, 0, 0.6); color: #fff; --mdc-icon-size: 22px; padding: 6px; }
   dialog {
     border: none;
     border-radius: var(--ha-card-border-radius, 12px);
@@ -654,7 +657,7 @@ class BluOSCompanionPanel extends HTMLElement {
     const tile = el(
       "div",
       { class: "tile", onclick: () => (item.browse_key ? this._open(item) : this._play(item)) },
-      art,
+      el("div", { class: "artwrap" }, art),
       el(
         "div",
         { class: "text" },
@@ -663,7 +666,7 @@ class BluOSCompanionPanel extends HTMLElement {
       ),
     );
     if (item.browse_key && item.play_path) {
-      tile.append(
+      tile.firstChild.append(
         el(
           "button",
           {
@@ -678,8 +681,7 @@ class BluOSCompanionPanel extends HTMLElement {
       );
     }
     if (item.context_key) {
-      tile.classList.add("has-more");
-      tile.append(
+      tile.firstChild.append(
         el(
           "button",
           {
