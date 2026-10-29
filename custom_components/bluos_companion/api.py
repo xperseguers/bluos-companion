@@ -53,6 +53,7 @@ class Status:
     queue_id: str | None = None
     queue_position: int | None = None
     presets_id: str | None = None
+    preset_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,6 +186,7 @@ class Preset:
     id: int
     name: str
     image: str | None
+    url: str = ""
 
 
 def _int(value: str | None, default: int = 0) -> int:
@@ -306,6 +308,7 @@ class BluOSClient:
             stream_url=root.findtext("streamUrl"),
             queue_id=root.findtext("pid"),
             presets_id=root.findtext("prid"),
+            preset_name=root.findtext("preset_name"),
             queue_position=(
                 _int(song) if (song := root.findtext("song")) is not None else None
             ),
@@ -413,7 +416,12 @@ class BluOSClient:
         """Return the presets of the player."""
         root = await self._get_xml("/Presets")
         return [
-            Preset(_int(item.get("id")), item.get("name", ""), item.get("image"))
+            Preset(
+                _int(item.get("id")),
+                item.get("name", ""),
+                item.get("image"),
+                item.get("url", ""),
+            )
             for item in root.iter("preset")
         ]
 

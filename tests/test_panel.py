@@ -513,7 +513,13 @@ async def test_snapshot_has_the_queue_position(
     respond(
         player_api,
         f"{BASE}/Status",
-        text=status_xml(song="4", pid="1491", prid="7"),
+        text=status_xml(
+            song="4",
+            pid="1491",
+            prid="7",
+            preset_name="NRJ",
+            streamUrl="TuneIn:s170914",
+        ),
     )
     await init_integration.runtime_data.async_refresh()
     client = await hass_ws_client(hass)
@@ -522,6 +528,7 @@ async def test_snapshot_has_the_queue_position(
     [player] = (await client.receive_json())["event"]["players"]
     assert (player["queue_id"], player["queue_position"]) == ("1491", 4)
     assert player["presets_id"] == "7"
+    assert (player["stream_url"], player["preset_name"]) == ("TuneIn:s170914", "NRJ")
 
 
 async def test_locate_finds_the_album_and_the_artist(
@@ -623,6 +630,7 @@ async def test_presets_with_signed_images(
         (2, "Rouge FM"),
         (3, "No image"),
     ]
+    assert [preset["url"] for preset in presets] == ["TuneIn:s6809", "TuneIn:s58290", "TuneIn:s1"]
     assert presets[0]["image"].startswith("/api/bluos_companion/")
     assert presets[1]["image"] == "https://cdn.example/s58290.png"
     assert presets[2]["image"] is None
