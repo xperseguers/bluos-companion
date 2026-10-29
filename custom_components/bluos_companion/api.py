@@ -13,9 +13,7 @@ from aiohttp import ClientError, ClientSession, ClientTimeout
 REQUEST_TIMEOUT = 20
 MAX_BROWSE_PAGES = 8
 MAX_EMPTY_BROWSE_PAGES = 60
-PLAYLIST_BATCH = 10
-PLAYLIST_EMPTY_WINDOWS = 60
-PLAYLIST_LEADING_WINDOWS = 120
+MAX_PLAYLIST_PAGES = 2000
 HOME_ROWS = ("mostUsed", "recent-stations", "recent")
 UI_HEADERS = {"x-sovi-schema-version": "35", "x-sovi-ui-schema-version": "7"}
 MAX_QUEUE_LENGTH = 500
@@ -500,43 +498,38 @@ class BluOSClient:
         root = await self._get_xml("/Playlists", {"service": "BluOS"})
         return [name.text for name in root.iter("name") if name.text]
 
-    async def _async_playlist_window(self, name: str, end: int) -> list[PlaylistTrack]:
-        """Return the (at most 10) tracks of a playlist ending at an offset."""
-        root = await self._get_xml("/Songs", {"playlist": name, "offset": str(end)})
-        return [
-            PlaylistTrack(
-                title=song.findtext("title", ""),
-                artist=song.findtext("art", ""),
-                album=song.findtext("alb", ""),
-                duration=_int(song.findtext("time")) or None,
-                path=song.findtext("fn", ""),
-            )
-            for song in root.iter("song")
-            if song.findtext("fn")
-        ]
-
     async def async_get_playlist_tracks(self, name: str) -> list[PlaylistTrack]:
         """Return all the tracks of a playlist saved on the player, in order.
 
-        The player answers the window of 10 entries ending at an offset. The entries
-        it cannot find any more (moved files) give empty windows, also at the start,
-        so windows are read until a long run of them is empty.
+        The player gives a page of tracks and the link to the next page. Depending on
+        the playlist the first page is empty, and so are the pages of the entries the
+        player cannot find any more (moved files), so the links are followed until
+        there is none left.
         """
         tracks: list[PlaylistTrack] = []
-        empty = 0
-        end = PLAYLIST_BATCH
-        while True:
-            ends = range(end, end + PLAYLIST_BATCH * PLAYLIST_BATCH, PLAYLIST_BATCH)
-            for window in await asyncio.gather(
-                *(self._async_playlist_window(name, e) for e in ends)
-            ):
-                tracks.extend(window)
-                empty = 0 if window else empty + 1
-            end = ends[-1] + PLAYLIST_BATCH
-            if empty >= PLAYLIST_EMPTY_WINDOWS or (
-                not tracks and end // PLAYLIST_BATCH > PLAYLIST_LEADING_WINDOWS
-            ):
-                return tracks
+        path, params = "/Songs", {"playlist": name}
+        seen: set[str] = set()
+        for _ in range(MAX_PLAYLIST_PAGES):
+            root = await self._get_xml(path, params)
+            tracks.extend(
+                PlaylistTrack(
+                    title=song.findtext("title", ""),
+                    artist=song.findtext("art", ""),
+                    album=song.findtext("alb", ""),
+                    duration=_int(song.findtext("time")) or None,
+                    path=song.findtext("fn", ""),
+                )
+                for song in root.iter("song")
+                if song.findtext("fn")
+            )
+            link = root.findtext("nextlink")
+            if not link or link in seen:
+                break
+            seen.add(link)
+            target = urlparse(link)
+            path = target.path
+            params = {key: values[0] for key, values in parse_qs(target.query).items()}
+        return tracks
 
     async def async_get_home(self, language: str = "en") -> list[HomeRow]:
         """Return the recently played, recent stations and most used rows of the player."""
