@@ -103,6 +103,7 @@ const STYLE = `
   dialog .player-row .sub { font-size: 12px; color: var(--secondary-text-color); }
   main { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; }
   .crumbs { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .crumb-cover { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex: none; }
   .crumbs h2 { margin: 0; font-size: 20px; font-weight: 500; }
   .grid {
     display: grid;
@@ -753,7 +754,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _open(item) {
-    this._stack.push({ title: item.title, key: item.browse_key, contextKey: item.context_key });
+    this._stack.push({ title: item.title, key: item.browse_key, contextKey: item.context_key, image: item.image });
     this._browse();
   }
 
@@ -1331,6 +1332,9 @@ class BluOSCompanionPanel extends HTMLElement {
       ...(level
         ? [
             el("button", { onclick: () => this._up() }, icon("mdi:arrow-left")),
+            level.image && !level.image.includes("/bluos_companion/icons/")
+              ? el("img", { class: "crumb-cover", src: level.image, alt: "" })
+              : null,
             el("h2", {}, level.title),
           ]
         : []),

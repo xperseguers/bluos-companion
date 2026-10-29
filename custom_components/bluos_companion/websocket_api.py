@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from urllib.parse import urlencode
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -19,6 +18,7 @@ from homeassistant.helpers import entity_registry as er
 from .api import SLEEP_OPTIONS, BluOSClient, BluOSError, Node, sleep_bucket
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
+from .covers import async_playlist_covers, async_preset_images, image_path
 from .http import async_artwork_url
 from .media_source import (
     async_get_titles,
@@ -137,22 +137,6 @@ def _snapshot(
     }
 
 
-def _image_path(node: Node) -> str | None:
-    """Return the player path of the cover of an entry.
-
-    The tracks of a saved playlist come with an empty song id, so their cover is
-    looked up with the artist and the album written in the subtitle.
-    """
-    if node.image and node.image.endswith("songid="):
-        artist, _, album = node.subtitle.partition(" \u2022 ")
-        if artist and album:
-            return "/Artwork?" + urlencode(
-                {"service": "LocalMusic", "artist": artist, "album": album}
-            )
-        return None
-    return node.image
-
-
 def _items(
     hass: HomeAssistant, entry_id: str, nodes: list[Node], titles: dict[str, str]
 ) -> list[dict[str, Any]]:
@@ -165,7 +149,7 @@ def _items(
             continue
         title, icon = menu_label(node, titles)
         image = icon
-        if image is None and (path := _image_path(node)):
+        if image is None and (path := image_path(node)):
             image = async_artwork_url(hass, entry_id, path)
         items.append(
             {
@@ -404,8 +388,9 @@ async def ws_presets(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Return the presets (radio stations...) of a player."""
-    client = _coordinator(hass, msg["entry_id"]).client
-    presets = await _async_call(client.async_get_presets())
+    coordinator = _coordinator(hass, msg["entry_id"])
+    presets = await _async_call(coordinator.client.async_get_presets())
+    images = await async_preset_images(coordinator, presets)
     connection.send_result(
         msg["id"],
         {
@@ -414,8 +399,8 @@ async def ws_presets(
                     "id": preset.id,
                     "name": preset.name,
                     "url": preset.url,
-                    "image": preset.image
-                    and async_artwork_url(hass, msg["entry_id"], preset.image),
+                    "image": images[preset.id]
+                    and async_artwork_url(hass, msg["entry_id"], images[preset.id]),
                 }
                 for preset in presets
             ]
@@ -424,8 +409,6 @@ async def ws_presets(
 
 
 HOME_ALBUMS = 12
-PLAYLIST_KEY_PREFIX = "BluOS:MG/BluOS-Playlist?"
-PLAYLIST_COVER_TTL = 600
 
 
 @websocket_api.websocket_command(
@@ -445,25 +428,15 @@ async def ws_playlist_covers(
     requests, and the result is kept for a while.
     """
     entry_id = msg["entry_id"]
-    coordinator = _coordinator(hass, entry_id)
-
-    async def cover(key: str) -> tuple[str, str | None]:
-        cached = coordinator.playlist_covers.get(key)
-        if cached and time.monotonic() - cached[0] < PLAYLIST_COVER_TTL:
-            path = cached[1]
-        else:
-            path = None
-            try:
-                page = await coordinator.client.async_browse_page(key, None, 1)
-                path = next((p for node in page.nodes if (p := _image_path(node))), None)
-            except BluOSError:
-                pass
-            coordinator.playlist_covers[key] = (time.monotonic(), path)
-        return key, path and async_artwork_url(hass, entry_id, path)
-
-    keys = [key for key in msg["keys"] if key.startswith(PLAYLIST_KEY_PREFIX)]
+    covers = await async_playlist_covers(_coordinator(hass, entry_id), msg["keys"])
     connection.send_result(
-        msg["id"], {"covers": dict(await asyncio.gather(*(cover(key) for key in keys)))}
+        msg["id"],
+        {
+            "covers": {
+                key: path and async_artwork_url(hass, entry_id, path)
+                for key, path in covers.items()
+            }
+        },
     )
 
 
@@ -478,11 +451,12 @@ async def ws_home(
     entry_id = msg["entry_id"]
     coordinator = _coordinator(hass, entry_id)
     client = coordinator.client
-    page, presets, albums, recents = await asyncio.gather(
+    page, presets, albums, recents, saved = await asyncio.gather(
         client.async_browse_page(None),
         client.async_get_presets(),
         client.async_get_recent_albums(),
         client.async_get_home(hass.config.language),
+        client.async_browse_page("BluOS:", None, 1),
         return_exceptions=True,
     )
     if isinstance(page, BluOSError):
@@ -490,7 +464,9 @@ async def ws_home(
     titles = await async_get_titles(hass)
     hidden = coordinator.config_entry.options.get(CONF_HIDDEN_SERVICES, [])
     groups = []
+    images = {}
     if not isinstance(presets, BluOSError) and presets:
+        images = await async_preset_images(coordinator, presets)
         groups.append(
             {
                 "title": titles["presets"],
@@ -499,14 +475,27 @@ async def ws_home(
                         "type": "preset",
                         "title": preset.name,
                         "subtitle": "",
-                        "image": preset.image
-                        and async_artwork_url(hass, entry_id, preset.image),
+                        "image": images[preset.id]
+                        and async_artwork_url(hass, entry_id, images[preset.id]),
                         "browse_key": None,
                         "play_path": f"/Preset?id={preset.id}",
                         "context_key": None,
                     }
                     for preset in presets
                 ],
+            }
+        )
+    playlists = (
+        []
+        if isinstance(saved, BluOSError) or "BluOS:" in hidden
+        else [node for node in saved.nodes if node.type == "playlist"]
+    )
+    if playlists:
+        # Their covers are asked for after the page is shown, see playlist_covers.
+        groups.append(
+            {
+                "title": titles["playlists"],
+                "items": _items(hass, entry_id, playlists, titles),
             }
         )
     if not isinstance(recents, BluOSError):

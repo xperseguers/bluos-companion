@@ -22,6 +22,7 @@ from homeassistant.helpers.translation import async_get_translations
 from .api import Album, BluOSError, Node
 from .const import DOMAIN, ICONS_URL
 from .coordinator import BluOSConfigEntry
+from .covers import async_playlist_covers
 from .http import async_artwork_url
 
 URI_PREFIX = f"media-source://{DOMAIN}/"
@@ -378,18 +379,30 @@ class BluOSMediaSource(MediaSource):
         titles: dict[str, str],
     ) -> BrowseMediaSource:
         nodes = await entry.runtime_data.client.async_browse(key)
+        covers = await async_playlist_covers(
+            entry.runtime_data,
+            [
+                node.browse_key
+                for node in nodes
+                if node.type == "playlist" and node.browse_key and not node.image
+            ],
+        )
         return _directory(
             identifier,
             title,
             [
                 item
                 for node in nodes
-                if (item := self._node_item(entry, node, titles)) is not None
+                if (item := self._node_item(entry, node, titles, covers)) is not None
             ],
         )
 
     def _node_item(
-        self, entry: BluOSConfigEntry, node: Node, titles: dict[str, str]
+        self,
+        entry: BluOSConfigEntry,
+        node: Node,
+        titles: dict[str, str],
+        covers: dict[str, str | None] | None = None,
     ) -> BrowseMediaSource | None:
         can_expand = node_can_expand(node)
         can_play = node.play_path is not None
@@ -399,8 +412,9 @@ class BluOSMediaSource(MediaSource):
             node.type, (MediaClass.DIRECTORY, "")
         )
         label, thumbnail = menu_label(node, titles)
-        if thumbnail is None and node.image and node.type != "track":
-            thumbnail = async_artwork_url(self.hass, entry.entry_id, node.image)
+        image = node.image or (covers or {}).get(node.browse_key or "")
+        if thumbnail is None and image and node.type != "track":
+            thumbnail = async_artwork_url(self.hass, entry.entry_id, image)
         title = label
         if node.type == "section":
             title = f"{node.title} ({node.subtitle})"

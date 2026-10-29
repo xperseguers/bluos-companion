@@ -515,3 +515,15 @@ async def test_queue(hass: HomeAssistant, init_integration: MockConfigEntry) -> 
     ]
     assert queue.children[0].thumbnail is not None
     assert queue.children[1].thumbnail is None
+
+
+async def test_playlists_have_the_cover_of_their_first_track(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """A saved playlist shows the cover of its first track in the media browser."""
+    item = await async_browse_media(
+        hass, f"{ROOT}/{init_integration.entry_id}/playlists"
+    )
+    assert _image_of(item.children[0].thumbnail) == (
+        "/Artwork?service=LocalMusic&artist=ADELE&album=Skyfall+-+Single"
+    )

@@ -963,3 +963,69 @@ async def test_playlist_covers_use_the_first_track_and_are_cached(
     await client.send_json_auto_id(request)
     assert (await client.receive_json())["result"]["covers"].keys() == covers.keys()
     assert calls(player_api) == []
+
+
+async def test_home_page_lists_the_saved_playlists(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The saved playlists are a row of the home page, expandable, covers come later."""
+    respond(player_api, f"{BASE}/Browse", text=ROOT)
+    respond(
+        player_api,
+        browse_url("BluOS:"),
+        text="""<browse type="playlists">
+  <item browseKey="BluOS:MG/BluOS-Playlist?playlist=Tuning" contextMenuKey="BluOS:CM/BluOS-Playlist?playlist=Tuning"
+        playURL="/Load?service=BluOS&amp;name=Tuning" text="Tuning" type="playlist"></item>
+</browse>""",
+    )
+    client = await hass_ws_client(hass)
+
+    async def home() -> list[dict]:
+        await client.send_json_auto_id(
+            {"type": "bluos_companion/home", "entry_id": init_integration.entry_id}
+        )
+        return (await client.receive_json())["result"]["groups"]
+
+    groups = await home()
+    [row] = [group for group in groups if group["title"] == "Playlists"]
+    [tile] = row["items"]
+    assert (tile["type"], tile["title"], tile["image"]) == ("playlist", "Tuning", None)
+    assert tile["browse_key"] == "BluOS:MG/BluOS-Playlist?playlist=Tuning"
+    assert tile["context_key"].startswith("BluOS:CM/")
+    assert tile["play_path"] == "/Load?service=BluOS&name=Tuning"
+
+    hass.config_entries.async_update_entry(
+        init_integration, options={"hidden_services": ["BluOS:"]}
+    )
+    assert "Playlists" not in [group["title"] for group in await home()]
+
+
+async def test_a_preset_loading_a_playlist_gets_its_cover(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A preset without an image of its own that loads a saved playlist shows its cover."""
+    respond(
+        player_api,
+        f"{BASE}/Presets",
+        text="""<presets prid="0">
+  <preset id="1" name="Relaxing" url="/Load?name=Relaxing"></preset>
+  <preset id="2" name="Own image" url="/Load?name=Relaxing" image="https://cdn.example/x.png"></preset>
+  <preset id="3" name="Nothing" url="TuneIn:s1"></preset>
+</presets>""",
+    )
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/presets", "entry_id": init_integration.entry_id}
+    )
+    presets = (await client.receive_json())["result"]["presets"]
+
+    assert _image_query(presets[0]["image"])["album"] == "Skyfall - Single"
+    assert presets[1]["image"] == "https://cdn.example/x.png"
+    assert presets[2]["image"] is None
