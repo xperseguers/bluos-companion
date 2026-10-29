@@ -24,7 +24,8 @@
         "description": "Masquez les services que vous n'utilisez pas, par exemple un service de musique sans compte. Ils restent disponibles dans l'application BluOS. Le volume maximal s'applique à Home Assistant (panneau, cartes, services), pas à l'application BluOS ni à la télécommande.",
         "data": {
           "hidden_services": "Services masqués",
-          "max_volume": "Volume maximal"
+          "max_volume": "Volume maximal",
+          "backup_playlists": "Sauvegarder les listes de lecture de ce lecteur"
         }
       }
     }
@@ -57,5 +58,11 @@
     "favourites": "Favoris",
     "folders": "Dossiers",
     "sources": "Sources"
+  },
+  "services": {
+    "backup_playlists": {
+      "name": "Enregistrer les listes de lecture en fichiers texte maintenant",
+      "description": "Écrit les listes de lecture enregistrées sur les lecteurs en fichiers texte (.m3u8) dans le dossier bluos_companion/playlists de la configuration de Home Assistant. Cela se fait aussi avant chaque sauvegarde de Home Assistant, qui les contient alors."
+    }
   }
 }

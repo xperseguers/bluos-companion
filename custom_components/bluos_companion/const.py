@@ -5,6 +5,7 @@ DOMAIN = "bluos_companion"
 CONF_PORT = "port"
 CONF_HIDDEN_SERVICES = "hidden_services"
 CONF_MAX_VOLUME = "max_volume"
+CONF_BACKUP_PLAYLISTS = "backup_playlists"
 DEFAULT_PORT = 11000
 
 LONG_POLL_TIMEOUT = 100

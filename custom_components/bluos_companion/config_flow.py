@@ -15,6 +15,7 @@ from homeassistant.const import CONF_HOST
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     SelectOptionDict,
     NumberSelector,
     NumberSelectorConfig,
@@ -24,7 +25,14 @@ from homeassistant.helpers.selector import (
 )
 
 from .api import BluOSClient, BluOSError
-from .const import CONF_HIDDEN_SERVICES, CONF_MAX_VOLUME, CONF_PORT, DEFAULT_PORT, DOMAIN
+from .const import (
+    CONF_BACKUP_PLAYLISTS,
+    CONF_HIDDEN_SERVICES,
+    CONF_MAX_VOLUME,
+    CONF_PORT,
+    DEFAULT_PORT,
+    DOMAIN,
+)
 
 
 class BluOSConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -82,6 +90,7 @@ class BluOSOptionsFlow(OptionsFlow):
                 data={
                     **user_input,
                     CONF_MAX_VOLUME: int(user_input.get(CONF_MAX_VOLUME, 100)),
+                    CONF_BACKUP_PLAYLISTS: user_input.get(CONF_BACKUP_PLAYLISTS, True),
                 }
             )
 
@@ -119,6 +128,10 @@ class BluOSOptionsFlow(OptionsFlow):
                             min=10, max=100, step=1, mode=NumberSelectorMode.SLIDER
                         )
                     ),
+                    vol.Optional(
+                        CONF_BACKUP_PLAYLISTS,
+                        default=options.get(CONF_BACKUP_PLAYLISTS, True),
+                    ): BooleanSelector(),
                 }
             ),
         )
