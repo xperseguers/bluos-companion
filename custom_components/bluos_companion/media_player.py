@@ -37,7 +37,6 @@ STATES = {
     "pause": MediaPlayerState.PAUSED,
     "connecting": MediaPlayerState.BUFFERING,
 }
-EXTERNAL_SOURCE_URL = "Capture:External"
 REPEAT_TO_BLUOS = {RepeatMode.ALL: 0, RepeatMode.ONE: 1, RepeatMode.OFF: 2}
 REPEAT_FROM_BLUOS = {value: key for key, value in REPEAT_TO_BLUOS.items()}
 
@@ -123,21 +122,12 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
     @property
     def source_list(self) -> list[str]:
         """Return the inputs that can be selected."""
-        names = [source.name for source in self.coordinator.sources]
-        if sync := self.coordinator.sync:
-            names += [source.name for source in sync.external_sources]
-        return names
+        return self.coordinator.source_names
 
     @property
     def source(self) -> str | None:
         """Return the active input, if the player is playing one."""
-        status = self.coordinator.data
-        if status.stream_url == EXTERNAL_SOURCE_URL and self.coordinator.sync:
-            return self.coordinator.sync.external_source
-        return next(
-            (s.name for s in self.coordinator.sources if s.url == status.stream_url),
-            None,
-        )
+        return self.coordinator.active_source
 
     @property
     def group_members(self) -> list[str] | None:
@@ -265,20 +255,7 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
 
     async def async_select_source(self, source: str) -> None:
         """Switch to an input."""
-        for candidate in self.coordinator.sources:
-            if candidate.name == source:
-                await self._async_call(
-                    self._client.async_select_source(candidate.type_index)
-                )
-                return
-        if sync := self.coordinator.sync:
-            for external in sync.external_sources:
-                if external.name == source:
-                    await self._async_call(
-                        self._client.async_select_external_source(external.id)
-                    )
-                    return
-        raise HomeAssistantError(f"Unknown source: {source}")
+        await self._async_call(self.coordinator.async_select_source(source))
 
     async def async_clear_playlist(self) -> None:
         """Empty the play queue."""

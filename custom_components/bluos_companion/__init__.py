@@ -15,7 +15,12 @@ from .api import BluOSClient
 from .const import CONF_PORT, DOMAIN, ICONS_URL
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import BluOSArtworkView
-from .panel import async_register_panel, async_register_static_path, async_remove_panel
+from .panel import (
+    async_register_card,
+    async_register_panel,
+    async_register_static_path,
+    async_remove_panel,
+)
 from .websocket_api import async_setup_websocket_api
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SELECT]
@@ -30,6 +35,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     )
     hass.http.register_view(BluOSArtworkView())
     await async_register_static_path(hass)
+    async_register_card(hass)
     async_setup_websocket_api(hass)
     return True
 
