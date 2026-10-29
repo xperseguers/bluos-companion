@@ -54,6 +54,7 @@ class Status:
     queue_position: int | None = None
     presets_id: str | None = None
     preset_name: str | None = None
+    can_move: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -314,6 +315,7 @@ class BluOSClient:
             queue_id=root.findtext("pid"),
             presets_id=root.findtext("prid"),
             preset_name=root.findtext("preset_name"),
+            can_move=root.findtext("canMovePlayback") == "true",
             queue_position=(
                 _int(song) if (song := root.findtext("song")) is not None else None
             ),
@@ -565,6 +567,13 @@ class BluOSClient:
     async def async_select_external_source(self, source_id: str) -> None:
         """Switch to an external input of an amplifier."""
         await self.async_command("/ExternalSource", {"id": source_id})
+
+    async def async_move_playback(self, host: str, port: int) -> None:
+        """Move what this player plays (queue, position, stream) to another player.
+
+        The request goes to the source player, which pauses itself.
+        """
+        await self.async_command("/MovePlayback", {"id": host, "port": str(port)})
 
     async def async_add_slave(self, host: str, port: int) -> None:
         """Group another player with this one, which becomes the primary player."""

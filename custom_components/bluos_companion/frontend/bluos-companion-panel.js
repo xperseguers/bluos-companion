@@ -786,6 +786,7 @@ class BluOSCompanionPanel extends HTMLElement {
       next: el("button", { onclick: () => this._control("next") }, icon("mdi:skip-next")),
       queue: el("button", { onclick: () => this._toggleQueue() }, icon("mdi:playlist-music")),
       expand: el("button", { onclick: () => this._showNow() }, icon("mdi:fullscreen")),
+      move: el("button", { title: "Move playback", onclick: () => this._showMove() }, icon("mdi:transfer-right")),
       repeat: el("button", { onclick: () => this._control("repeat", REPEAT_CYCLE[this._player.repeat]) }, icon("mdi:repeat")),
       mute: el("button", { onclick: () => this._control("mute", !this._player.muted) }, icon("mdi:volume-high")),
     };
@@ -825,6 +826,7 @@ class BluOSCompanionPanel extends HTMLElement {
         this._buttons.repeat,
         this._buttons.queue,
         this._buttons.expand,
+        this._buttons.move,
       ),
       el("div", { class: "volume" }, this._buttons.mute, this._volume),
       this._playerButton,
@@ -951,6 +953,16 @@ class BluOSCompanionPanel extends HTMLElement {
         { class: "top" },
         el("button", { onclick: () => this._nowDialog.close() }, icon("mdi:close")),
         now.player,
+        (now.move = el(
+          "button",
+          {
+            onclick: () => {
+              this._nowDialog.close();
+              this._showMove();
+            },
+          },
+          icon("mdi:transfer-right"),
+        )),
       ),
       now.art,
       now.title,
@@ -975,6 +987,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (!this._nowOpen || !player) return;
     const playing = ACTIVE_STATES.includes(player.state);
     now.player.textContent = this._groupName(player) || player.name;
+    now.move.hidden = !this._canMove(player);
     now.title.textContent = player.title || player.name;
     now.sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
     if (player.image) {
@@ -1038,6 +1051,51 @@ class BluOSCompanionPanel extends HTMLElement {
   _primaryOf(player) {
     if (player.group.master) return this._players.find((other) => other.entry_id === player.group.master);
     return player.group.slaves.length ? player : null;
+  }
+
+  // Moving replaces what the target plays, so only offer it for a player that plays.
+  _canMove(player) {
+    return player.can_move && ACTIVE_STATES.includes(player.state) && this._players.length > 1;
+  }
+
+  _showMove() {
+    const source = this._player;
+    if (!source) return;
+    this._dialogMode = "move";
+    this._dialog.replaceChildren(
+      el("h2", {}, "Move playback to"),
+      el("p", {}, `${source.name}: ${[source.title, source.artist].filter(Boolean).join(" - ")}`),
+      el(
+        "div",
+        { class: "list" },
+        ...this._players
+          .filter((target) => target.entry_id !== source.entry_id)
+          .map((target) =>
+            el(
+              "button",
+              {
+                class: "action player-row",
+                onclick: async () => {
+                  this._dialog.close();
+                  await this._call({ type: "bluos_companion/move", entry_id: source.entry_id, target: target.entry_id });
+                  this._select(target.entry_id);
+                },
+              },
+              target.image
+                ? el("img", { class: "cover", src: target.image, alt: "" })
+                : el("div", { class: "cover" }, icon("mdi:speaker")),
+              el(
+                "div",
+                { class: "text" },
+                el("div", { class: "name" }, target.name),
+                el("div", { class: "sub" }, [target.title, target.artist].filter(Boolean).join(" - ") || "\u00a0"),
+              ),
+              icon("mdi:transfer-right"),
+            ),
+          ),
+      ),
+    );
+    this._dialog.showModal();
   }
 
   _showGroup() {
@@ -1311,6 +1369,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._volume.max = player.max_volume;
     this._volume.value = Math.max(player.volume, 0);
     this._buttons.next.disabled = this._buttons.previous.disabled = !player.available;
+    this._buttons.move.hidden = !this._canMove(player);
     this._progress.hidden = !(player.duration > 0);
     this._seek.disabled = !player.can_seek;
     this._seek.max = player.duration || 0;
