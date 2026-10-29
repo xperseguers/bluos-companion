@@ -57,6 +57,40 @@ const STYLE = `
     border-color: var(--primary-color);
     background: var(--secondary-background-color);
   }
+  @media (pointer: coarse) {
+    button { min-width: 48px; min-height: 48px; }
+    input[type="range"] { height: 32px; }
+  }
+  dialog.now {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    box-sizing: border-box;
+    padding: 12px 24px 24px;
+    background: var(--primary-background-color);
+  }
+  dialog.now[open] { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .now .top { align-self: stretch; display: flex; align-items: center; gap: 8px; }
+  .now .top span { flex: 1; text-align: center; color: var(--secondary-text-color); }
+  .now .art {
+    flex: 1;
+    min-height: 0;
+    max-width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 12px;
+    background: var(--secondary-background-color);
+  }
+  .now .title { font-size: 24px; font-weight: 500; text-align: center; }
+  .now .sub { color: var(--secondary-text-color); text-align: center; }
+  .now .line { align-self: stretch; display: flex; align-items: center; justify-content: center; gap: 8px; max-width: 640px; width: 100%; margin: 0 auto; }
+  .now .line input[type="range"] { flex: 1; min-width: 0; }
+  .now .big { --mdc-icon-size: 40px; }
+  .now select { font: inherit; padding: 8px; border-radius: 8px; max-width: 45%; }
   dialog .group-row { display: flex; flex-direction: column; gap: 4px; }
   dialog .group-row .line { display: flex; align-items: center; gap: 8px; }
   dialog .group-row input[type="range"] { flex: 1; min-width: 0; }
@@ -332,6 +366,7 @@ class BluOSCompanionPanel extends HTMLElement {
     }
     this._renderPlayers();
     this._renderNowPlaying();
+    this._renderNow();
     this._refreshQueue();
   }
 
@@ -726,6 +761,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._crumbs = el("div", { class: "crumbs" });
     this._actionRow = el("div", { class: "actions" });
     this._actionRow.hidden = true;
+    this._buildNow();
     this._dialogMode = null;
     this._dialog = el("dialog", {
       onclose: () => {
@@ -748,6 +784,7 @@ class BluOSCompanionPanel extends HTMLElement {
       toggle: el("button", { onclick: () => this._togglePlayback() }, icon("mdi:play")),
       next: el("button", { onclick: () => this._control("next") }, icon("mdi:skip-next")),
       queue: el("button", { onclick: () => this._toggleQueue() }, icon("mdi:playlist-music")),
+      expand: el("button", { onclick: () => this._showNow() }, icon("mdi:fullscreen")),
       repeat: el("button", { onclick: () => this._control("repeat", REPEAT_CYCLE[this._player.repeat]) }, icon("mdi:repeat")),
       mute: el("button", { onclick: () => this._control("mute", !this._player.muted) }, icon("mdi:volume-high")),
     };
@@ -786,6 +823,7 @@ class BluOSCompanionPanel extends HTMLElement {
         this._buttons.next,
         this._buttons.repeat,
         this._buttons.queue,
+        this._buttons.expand,
       ),
       el("div", { class: "volume" }, this._buttons.mute, this._volume),
       this._playerButton,
@@ -799,6 +837,7 @@ class BluOSCompanionPanel extends HTMLElement {
       this._main,
       footer,
       this._dialog,
+      this._nowDialog,
     );
     this._built = true;
     this._renderPlayers();
@@ -839,6 +878,142 @@ class BluOSCompanionPanel extends HTMLElement {
     if (player.group.master) return `Grouped with ${name(player.group.master) || "another player"}`;
     const slaves = player.group.slaves.map(name).filter(Boolean);
     return slaves.length ? `Group: ${[player.name, ...slaves].join(" + ")}` : "";
+  }
+
+  _buildNow() {
+    const now = {};
+    this._now = now;
+    now.player = el("span");
+    now.art = el("div", { class: "art" });
+    now.title = el("div", { class: "title" });
+    now.sub = el("div", { class: "sub" });
+    now.elapsed = el("span");
+    now.total = el("span");
+    now.seek = el("input", {
+      type: "range",
+      min: 0,
+      max: 0,
+      step: 1,
+      value: 0,
+      onchange: (event) => this._control("seek", Number(event.target.value)),
+      oninput: () => {
+        this._nowSeeking = true;
+      },
+    });
+    now.progress = el("div", { class: "line" }, now.elapsed, now.seek, now.total);
+    const control = (name, iconName, run, big) =>
+      (now[name] = el("button", { class: big ? "big" : "", onclick: run }, icon(iconName)));
+    now.controls = el(
+      "div",
+      { class: "line" },
+      control("shuffle", "mdi:shuffle", () => this._control("shuffle", !this._player.shuffle)),
+      control("previous", "mdi:skip-previous", () => this._control("previous"), true),
+      control("toggle", "mdi:play", () => this._togglePlayback(), true),
+      control("next", "mdi:skip-next", () => this._control("next"), true),
+      control("repeat", "mdi:repeat", () => this._control("repeat", REPEAT_CYCLE[this._player.repeat])),
+    );
+    now.mute = el("button", { onclick: () => this._control("mute", !this._player.muted) }, icon("mdi:volume-high"));
+    now.volume = el("input", {
+      type: "range",
+      min: 0,
+      max: 100,
+      onchange: (event) => this._control("volume", Number(event.target.value)),
+    });
+    now.volumeRow = el("div", { class: "line" }, now.mute, now.volume);
+    now.source = el("select", { onchange: (event) => this._control("source", event.target.value) });
+    now.sleep = el("select", { onchange: (event) => this._control("sleep", Number(event.target.value)) });
+    now.settings = el(
+      "div",
+      { class: "line" },
+      icon("mdi:import"),
+      now.source,
+      icon("mdi:sleep"),
+      now.sleep,
+    );
+    this._nowDialog = el(
+      "dialog",
+      { class: "now", onclose: () => (this._nowOpen = false) },
+      el(
+        "div",
+        { class: "top" },
+        el("button", { onclick: () => this._nowDialog.close() }, icon("mdi:close")),
+        now.player,
+      ),
+      now.art,
+      now.title,
+      now.sub,
+      now.progress,
+      now.controls,
+      now.volumeRow,
+      now.settings,
+    );
+  }
+
+  _showNow() {
+    if (!this._player) return;
+    this._nowOpen = true;
+    this._renderNow();
+    if (!this._nowDialog.open) this._nowDialog.showModal();
+  }
+
+  _renderNow() {
+    const player = this._player;
+    const now = this._now;
+    if (!this._nowOpen || !player) return;
+    const playing = ACTIVE_STATES.includes(player.state);
+    now.player.textContent = player.name;
+    now.title.textContent = player.title || player.name;
+    now.sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
+    if (player.image) {
+      now.art.replaceWith((now.art = el("img", { class: "art", src: player.image, alt: "" })));
+    } else if (now.art.tagName === "IMG") {
+      now.art.replaceWith((now.art = el("div", { class: "art" })));
+    }
+    now.toggle.firstChild.setAttribute("icon", playing ? "mdi:pause" : "mdi:play");
+    now.shuffle.classList.toggle("on", player.shuffle);
+    now.repeat.classList.toggle("on", player.repeat !== 2);
+    now.repeat.firstChild.setAttribute("icon", player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat");
+    now.mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
+    now.volume.disabled = player.volume < 0;
+    now.volume.max = player.max_volume;
+    now.volume.value = Math.max(player.volume, 0);
+    now.progress.hidden = !(player.duration > 0);
+    now.seek.disabled = !player.can_seek;
+    now.seek.max = player.duration || 0;
+    this._nowSeeking = false;
+    if (document.activeElement !== now.source && this.shadowRoot.activeElement !== now.source) {
+      now.source.replaceChildren(
+        el("option", { value: "" }, "\u2026"),
+        ...player.sources.map((name) => {
+          const option = el("option", { value: name }, name);
+          option.selected = name === player.source;
+          return option;
+        }),
+      );
+      now.source.firstChild.disabled = true;
+      now.source.value = player.source || "";
+    }
+    now.source.hidden = !player.sources.length;
+    now.sleep.replaceChildren(
+      ...[0, ...player.sleep_options].map((minutes) => {
+        const option = el("option", { value: minutes }, minutes ? `${minutes} min` : "Sleep: off");
+        option.selected = minutes === player.sleep;
+        return option;
+      }),
+    );
+    this._tickNow();
+  }
+
+  _tickNow() {
+    const player = this._player;
+    const now = this._now;
+    if (!this._nowOpen || !player || !(player.duration > 0) || this._nowSeeking) return;
+    let position = player.position || 0;
+    if (ACTIVE_STATES.includes(player.state)) position += (Date.now() - this._receivedAt) / 1000;
+    position = Math.min(position, player.duration);
+    now.seek.value = position;
+    now.elapsed.textContent = formatTime(position);
+    now.total.textContent = formatTime(player.duration);
   }
 
   _showPlayers() {
@@ -1090,6 +1265,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _tick() {
+    this._tickNow();
     const player = this._player;
     if (!this._built || !player || !(player.duration > 0) || this._seeking) return;
     let position = player.position || 0;

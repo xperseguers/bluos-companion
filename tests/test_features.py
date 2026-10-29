@@ -293,6 +293,30 @@ async def test_set_sleep_timer_failure(
         )
 
 
+@pytest.mark.parametrize(("value", "presses"), [(45, 3), (0, 0), (7, 0)])
+async def test_panel_sets_the_sleep_timer(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    value: int,
+    presses: int,
+) -> None:
+    """The panel picks a delay; a value the player does not offer means off."""
+    _Cycling(player_api, ["", "15", "30", "45", "60", "90"])
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/control",
+            "entry_id": init_integration.entry_id,
+            "action": "sleep",
+            "value": value,
+        }
+    )
+    assert (await client.receive_json())["success"]
+    assert [path for path, _ in calls(player_api) if path == "/Sleep"] == ["/Sleep"] * presses
+
+
 @pytest.fixture
 async def pulse(
     hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
