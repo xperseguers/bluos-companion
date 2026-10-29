@@ -107,6 +107,7 @@ def _snapshot(
         "presets_id": status.presets_id,
         "stream_url": status.stream_url,
         "preset_name": status.preset_name,
+        "max_volume": coordinator.max_volume,
         "sources": coordinator.source_names,
         "source": coordinator.active_source,
         "group": {
@@ -218,6 +219,13 @@ async def ws_control(
 ) -> None:
     """Send a transport, volume or mode command to a player."""
     coordinator = _coordinator(hass, msg["entry_id"])
+    value = msg.get("value", 0)
+    if msg["action"] == "volume":
+        msg = {**msg, "value": min(int(value), coordinator.max_volume)}
+    elif msg["action"] == "volume_step" and int(value) > 0:
+        if coordinator.data.volume >= coordinator.max_volume:
+            connection.send_result(msg["id"])
+            return
     if msg["action"] == "source":
         await _async_call(coordinator.async_select_source(str(msg.get("value", ""))))
     else:

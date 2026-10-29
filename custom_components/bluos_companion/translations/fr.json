@@ -21,9 +21,10 @@
     "step": {
       "init": {
         "title": "Services affichés dans le panneau",
-        "description": "Masquez les services que vous n'utilisez pas, par exemple un service de musique sans compte. Ils restent disponibles dans l'application BluOS.",
+        "description": "Masquez les services que vous n'utilisez pas, par exemple un service de musique sans compte. Ils restent disponibles dans l'application BluOS. Le volume maximal s'applique à Home Assistant (panneau, cartes, services), pas à l'application BluOS ni à la télécommande.",
         "data": {
-          "hidden_services": "Services masqués"
+          "hidden_services": "Services masqués",
+          "max_volume": "Volume maximal"
         }
       }
     }

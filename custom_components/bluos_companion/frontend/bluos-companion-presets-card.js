@@ -233,6 +233,7 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     this._source.value = player.source || "";
     this._mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
     this._volume.disabled = player.volume < 0;
+    this._volume.max = player.max_volume;
     this._volume.value = Math.max(player.volume, 0);
     this._toggle.firstChild.setAttribute("icon", ACTIVE_STATES.includes(player.state) ? "mdi:pause" : "mdi:play");
   }

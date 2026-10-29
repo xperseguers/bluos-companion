@@ -657,3 +657,59 @@ async def test_control_selects_a_source(
 
     await client.send_json_auto_id({**request, "value": "Nope"})
     assert (await client.receive_json())["error"]["message"] == "Unknown source: Nope"
+
+
+@pytest.fixture
+def capped(hass: HomeAssistant, init_integration: MockConfigEntry) -> MockConfigEntry:
+    """Limit the volume of the player to 40."""
+    hass.config_entries.async_update_entry(init_integration, options={"max_volume": 40})
+    return init_integration
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ({"action": "volume", "value": 90}, [("/Volume", {"level": "40"})]),
+        ({"action": "volume", "value": 30}, [("/Volume", {"level": "30"})]),
+        ({"action": "volume_step", "value": -2}, [("/Volume", {"db": "-2", "tell_slaves": "0"})]),
+    ],
+)
+async def test_maximum_volume_is_enforced_by_the_panel(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    capped: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    message: dict[str, Any],
+    expected: list[tuple[str, dict[str, str]]],
+) -> None:
+    """The panel cannot set the volume above the maximum, lowering it is allowed."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/control", "entry_id": capped.entry_id, **message}
+    )
+    assert (await client.receive_json())["success"]
+    assert calls(player_api) == expected
+
+
+async def test_volume_steps_up_stop_at_the_maximum(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    capped: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A player already at its maximum is not turned up (the volume is 25, maximum 20)."""
+    hass.config_entries.async_update_entry(capped, options={"max_volume": 20})
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/control",
+            "entry_id": capped.entry_id,
+            "action": "volume_step",
+            "value": 2,
+        }
+    )
+    assert (await client.receive_json())["success"]
+    assert calls(player_api) == []
+    await client.send_json_auto_id({"type": "bluos_companion/subscribe"})
+    await client.receive_json()
+    assert (await client.receive_json())["event"]["players"][0]["max_volume"] == 20
