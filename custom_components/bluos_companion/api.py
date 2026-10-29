@@ -49,6 +49,8 @@ class Status:
     sync_stat: str | None = None
     sleep: int | None = None
     stream_url: str | None = None
+    queue_id: str | None = None
+    queue_position: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,6 +302,10 @@ class BluOSClient:
             sync_stat=root.findtext("syncStat"),
             sleep=_int(root.findtext("sleep")) or None,
             stream_url=root.findtext("streamUrl"),
+            queue_id=root.findtext("pid"),
+            queue_position=(
+                _int(song) if (song := root.findtext("song")) is not None else None
+            ),
         )
 
     async def async_browse(self, key: str | None) -> list[Node]:
@@ -342,6 +348,27 @@ class BluOSClient:
             if not (next_key := root.get("nextKey")):
                 break
         return BrowsePage(list(nodes), search_key)
+
+    async def async_find_album(self, title: str, artist: str | None) -> Node | None:
+        """Find an album of the library by its title.
+
+        The album key needs the album artist, which differs from the track artist
+        on compilations, so the album is searched and the best match is returned.
+        """
+        menu = await self.async_browse_page("LocalMusic:Search", title, 1)
+        category = next((node for node in menu.nodes if node.title == "Albums"), None)
+        if category is None or category.browse_key is None:
+            return None
+        albums = [
+            node
+            for node in (await self.async_browse_page(category.browse_key, None, 1)).nodes
+            if node.type == "album" and node.browse_key and node.title == title
+        ]
+        for wanted in (artist, "Various Artists"):
+            for node in albums:
+                if node.subtitle == wanted:
+                    return node
+        return albums[0] if albums else None
 
     async def async_get_actions(self, context_key: str) -> list[Action]:
         """Return the actions (play now, shuffle, add next...) of an item."""
@@ -482,6 +509,18 @@ class BluOSClient:
     async def async_clear_queue(self) -> None:
         """Remove all the tracks of the queue."""
         await self.async_command("/Clear")
+
+    async def async_delete_queue_item(self, position: int) -> None:
+        """Remove a track from the queue."""
+        await self.async_command("/Delete", {"id": str(position)})
+
+    async def async_move_queue_item(self, old: int, new: int) -> None:
+        """Move a track of the queue to another position."""
+        await self.async_command("/Move", {"old": str(old), "new": str(new)})
+
+    async def async_save_queue(self, name: str) -> None:
+        """Save the queue as a playlist."""
+        await self.async_command("/Save", {"name": name})
 
     async def async_select_source(self, type_index: str) -> None:
         """Switch to an input."""
