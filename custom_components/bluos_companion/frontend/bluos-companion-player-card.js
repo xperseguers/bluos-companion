@@ -121,11 +121,35 @@ class BluOSCompanionPlayerCard extends HTMLElement {
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
-    if (first && this.isConnected) this._subscribe();
+    if (first) {
+      this._loadStrings().then(() => {
+        this._render();
+        if (this.isConnected) this._subscribe();
+      });
+    }
+  }
+
+  // The texts come from the integration, in the language of the user (English if unknown).
+  async _loadStrings() {
+    try {
+      const result = await this._hass.connection.sendMessagePromise({
+        type: "bluos_companion/translations",
+        language: this._hass.language,
+      });
+      this._strings = result.strings;
+    } catch (err) {
+      this._strings = {};
+    }
+  }
+
+  _t(key, vars = {}) {
+    let text = (this._strings || {})[key] ?? key;
+    for (const [name, value] of Object.entries(vars)) text = text.replace(`{${name}}`, value);
+    return text;
   }
 
   connectedCallback() {
-    if (this._hass && !this._unsubscribe) this._subscribe();
+    if (this._hass && this._strings && !this._unsubscribe) this._subscribe();
     this._ticker = setInterval(() => this._tick(), 1000);
   }
 
@@ -185,7 +209,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
       picon("mdi:play"),
     );
     this._next = pel("button", { class: "icon", onclick: () => this._control("next") }, picon("mdi:skip-next"));
-    this._move = pel("button", { class: "icon", title: "Move playback", onclick: () => this._showMove() }, picon("mdi:transfer-right"));
+    this._move = pel("button", { class: "icon", title: this._t("move_playback"), onclick: () => this._showMove() }, picon("mdi:transfer-right"));
     this._dialog = pel("dialog", {
       onclick: (event) => {
         if (event.target === this._dialog) this._dialog.close();
@@ -220,7 +244,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     this._content.hidden = !player;
     this._message.hidden = Boolean(player);
     if (!player) {
-      this._message.textContent = "Player not found. Check the entity of the card.";
+      this._message.textContent = this._t("card_not_found");
       return;
     }
     this._title.textContent = player.title || player.name;
@@ -234,6 +258,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     }
     this._toggle.firstChild.setAttribute("icon", PLAYER_ACTIVE.includes(player.state) ? "mdi:pause" : "mdi:play");
     this._prev.disabled = this._next.disabled = !player.available;
+    this._move.title = this._t("move_playback");
     this._move.hidden = !(player.can_move && PLAYER_ACTIVE.includes(player.state) && (this._all || []).length > 1);
     this._volumeRow.hidden = this._config.show_volume === false;
     this._volume.disabled = player.volume < 0;
@@ -248,7 +273,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     const source = this._player;
     if (!source) return;
     this._dialog.replaceChildren(
-      pel("h2", {}, "Move playback to"),
+      pel("h2", {}, this._t("move_playback_to")),
       pel("div", { class: "sub", style: "margin: -8px 0 12px" }, `${source.name}: ${[source.title, source.artist].filter(Boolean).join(" - ")}`),
       pel(
         "div",
@@ -307,8 +332,29 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
   }
 
   set hass(hass) {
+    const first = !this._hass;
     this._hass = hass;
     if (this._form) this._form.hass = hass;
+    if (first) this._loadStrings().then(() => this._render());
+  }
+
+  // The texts come from the integration, in the language of the user (English if unknown).
+  async _loadStrings() {
+    try {
+      const result = await this._hass.connection.sendMessagePromise({
+        type: "bluos_companion/translations",
+        language: this._hass.language,
+      });
+      this._strings = result.strings;
+    } catch (err) {
+      this._strings = {};
+    }
+  }
+
+  _t(key, vars = {}) {
+    let text = (this._strings || {})[key] ?? key;
+    for (const [name, value] of Object.entries(vars)) text = text.replace(`{${name}}`, value);
+    return text;
   }
 
   _render() {
@@ -318,7 +364,6 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
         { name: "entity", required: true, selector: { entity: { domain: "media_player", integration: "bluos_companion" } } },
         { name: "show_volume", selector: { boolean: {} } },
       ];
-      this._form.computeLabel = (schema) => ({ entity: "Player", show_volume: "Show the volume" })[schema.name] || schema.name;
       this._form.addEventListener("value-changed", (event) => {
         this.dispatchEvent(
           new CustomEvent("config-changed", { detail: { config: event.detail.value }, bubbles: true, composed: true }),
@@ -326,6 +371,8 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
       });
       this.append(this._form);
     }
+    const labels = { entity: "editor_player", show_volume: "editor_show_volume" };
+    this._form.computeLabel = (schema) => this._t(labels[schema.name] || schema.name);
     this._form.hass = this._hass;
     this._form.data = { show_volume: true, ...this._config };
   }

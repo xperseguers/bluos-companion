@@ -316,9 +316,30 @@ class BluOSCompanionPanel extends HTMLElement {
     const first = !this._hass;
     this._hass = hass;
     if (first) {
-      this._build();
-      this._subscribe();
+      this._loadStrings().then(() => {
+        this._build();
+        this._subscribe();
+      });
     }
+  }
+
+  // The texts come from the integration, in the language of the user (English if unknown).
+  async _loadStrings() {
+    try {
+      const result = await this._hass.connection.sendMessagePromise({
+        type: "bluos_companion/translations",
+        language: this._hass.language,
+      });
+      this._strings = result.strings;
+    } catch (err) {
+      this._strings = {};
+    }
+  }
+
+  _t(key, vars = {}) {
+    let text = (this._strings || {})[key] ?? key;
+    for (const [name, value] of Object.entries(vars)) text = text.replace(`{${name}}`, value);
+    return text;
   }
 
   set narrow(narrow) {
@@ -402,7 +423,7 @@ class BluOSCompanionPanel extends HTMLElement {
     const player = this._player;
     if (!player || !player.title) return;
     if (player.service !== "LocalMusic") {
-      this._notify("Only tracks of the library have an album and an artist page");
+      this._notify(this._t("library_only"));
       return;
     }
     this._showGoTo(player.title, [player.artist, player.album].filter(Boolean).join(" - "), {
@@ -423,7 +444,7 @@ class BluOSCompanionPanel extends HTMLElement {
     const stack = found.artist ? [level(found.artist)] : [];
     if (kind === "album") {
       if (!found.album) {
-        this._notify("Album not found in the library");
+        this._notify(this._t("album_not_found"));
         return;
       }
       stack.push(level(found.album));
@@ -435,7 +456,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _gotoButtons(names) {
-    const button = (kind, iconName, label, name) =>
+    const button = (kind, iconName, label) =>
       el(
         "button",
         {
@@ -446,11 +467,11 @@ class BluOSCompanionPanel extends HTMLElement {
           },
         },
         icon(iconName),
-        `${label}: ${name}`,
+        label,
       );
     return [
-      names.album ? button("album", "mdi:album", "Album", names.album) : null,
-      names.artist ? button("artist", "mdi:account-music", "Artist", names.artist) : null,
+      names.album ? button("album", "mdi:album", this._t("album_label", { name: names.album })) : null,
+      names.artist ? button("artist", "mdi:account-music", this._t("artist_label", { name: names.artist })) : null,
     ].filter(Boolean);
   }
 
@@ -499,7 +520,7 @@ class BluOSCompanionPanel extends HTMLElement {
     const [artist, album] = item.type === "track" ? (item.subtitle || "").split(" \u2022 ") : [];
     const names = artist && album ? { artist, album } : {};
     if (!actions.length && !names.album) {
-      this._notify("No action available");
+      this._notify(this._t("no_action"));
       return;
     }
     this._dialog.replaceChildren(
@@ -626,7 +647,7 @@ class BluOSCompanionPanel extends HTMLElement {
       this._up();
       return;
     }
-    this._stack.push({ title: "Queue", queue: true });
+    this._stack.push({ title: this._t("queue"), queue: true });
     this._browse();
   }
 
@@ -656,8 +677,8 @@ class BluOSCompanionPanel extends HTMLElement {
 
   _confirmClear() {
     this._dialog.replaceChildren(
-      el("h2", {}, "Clear the queue?"),
-      el("p", {}, "All the tracks are removed from the queue."),
+      el("h2", {}, this._t("clear_queue_title")),
+      el("p", {}, this._t("clear_queue_text")),
       el(
         "div",
         { class: "list" },
@@ -671,7 +692,7 @@ class BluOSCompanionPanel extends HTMLElement {
             },
           },
           icon("mdi:delete-sweep"),
-          "Clear",
+          this._t("clear"),
         ),
       ),
     );
@@ -679,21 +700,21 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _askSaveName() {
-    const input = el("input", { type: "text", placeholder: "Playlist name", maxlength: 100 });
+    const input = el("input", { type: "text", placeholder: this._t("playlist_name"), maxlength: 100 });
     const save = async () => {
       const name = input.value.trim();
       if (!name) return;
       this._dialog.close();
       await this._call({ type: "bluos_companion/queue_action", entry_id: this._playerId, action: "save", name });
-      this._notify(`Saved: ${name}`);
+      this._notify(this._t("saved", { name }));
     };
     input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") save();
     });
     this._dialog.replaceChildren(
-      el("h2", {}, "Save the queue as a playlist"),
+      el("h2", {}, this._t("save_queue_title")),
       input,
-      el("div", { class: "list" }, el("button", { class: "action", onclick: save }, icon("mdi:content-save"), "Save")),
+      el("div", { class: "list" }, el("button", { class: "action", onclick: save }, icon("mdi:content-save"), this._t("save"))),
     );
     this._dialog.showModal();
     input.focus();
@@ -706,8 +727,8 @@ class BluOSCompanionPanel extends HTMLElement {
     };
     const move = (to) => this._queueAction("move", { position: item.position, to });
     const moves = [
-      item.position > 0 ? this._menuButton("mdi:chevron-up", "Move up", () => move(item.position - 1)) : null,
-      index < count - 1 ? this._menuButton("mdi:chevron-down", "Move down", () => move(item.position + 1)) : null,
+      item.position > 0 ? this._menuButton("mdi:chevron-up", this._t("move_up"), () => move(item.position - 1)) : null,
+      index < count - 1 ? this._menuButton("mdi:chevron-down", this._t("move_down"), () => move(item.position + 1)) : null,
     ].filter(Boolean);
     const more = el(
       "button",
@@ -745,10 +766,10 @@ class BluOSCompanionPanel extends HTMLElement {
     this._grid.replaceChildren(
       ...(this._queue || []).map((item, index) => this._queueRow(item, index, this._queue.length, current)),
     );
-    this._message.textContent = this._queue && !this._queue.length ? "The queue is empty." : "";
+    this._message.textContent = this._queue && !this._queue.length ? this._t("queue_empty") : "";
     this._actionRow.replaceChildren(
-      el("button", { class: "action", onclick: () => this._confirmClear() }, icon("mdi:delete-sweep"), "Clear"),
-      el("button", { class: "action", onclick: () => this._askSaveName() }, icon("mdi:content-save"), "Save as playlist"),
+      el("button", { class: "action", onclick: () => this._confirmClear() }, icon("mdi:delete-sweep"), this._t("clear")),
+      el("button", { class: "action", onclick: () => this._askSaveName() }, icon("mdi:content-save"), this._t("save_as_playlist")),
     );
     this._actionRow.hidden = !(this._queue && this._queue.length);
   }
@@ -781,7 +802,7 @@ class BluOSCompanionPanel extends HTMLElement {
       icon("mdi:speaker-multiple"),
       this._playerName,
     );
-    this._searchInput = el("input", { type: "search", placeholder: "Search", enterkeyhint: "search" });
+    this._searchInput = el("input", { type: "search", placeholder: this._t("search"), enterkeyhint: "search" });
     this._searchForm = el(
       "form",
       {
@@ -822,7 +843,7 @@ class BluOSCompanionPanel extends HTMLElement {
       next: el("button", { onclick: () => this._control("next") }, icon("mdi:skip-next")),
       queue: el("button", { onclick: () => this._toggleQueue() }, icon("mdi:playlist-music")),
       expand: el("button", { onclick: () => this._showNow() }, icon("mdi:fullscreen")),
-      move: el("button", { title: "Move playback", onclick: () => this._showMove() }, icon("mdi:transfer-right")),
+      move: el("button", { title: this._t("move_playback"), onclick: () => this._showMove() }, icon("mdi:transfer-right")),
       repeat: el("button", { onclick: () => this._control("repeat", REPEAT_CYCLE[this._player.repeat]) }, icon("mdi:repeat")),
       mute: el("button", { onclick: () => this._control("mute", !this._player.muted) }, icon("mdi:volume-high")),
     };
@@ -872,7 +893,7 @@ class BluOSCompanionPanel extends HTMLElement {
 
     this.shadowRoot.append(
       el("style", {}, STYLE),
-      el("header", {}, this._menuButton, el("h1", {}, "BluOS Companion")),
+      el("header", {}, this._menuButton, el("h1", {}, this._t("title"))),
       this._main,
       footer,
       this._dialog,
@@ -926,9 +947,9 @@ class BluOSCompanionPanel extends HTMLElement {
 
   _groupLabel(player) {
     const name = (id) => (this._players.find((other) => other.entry_id === id) || {}).name;
-    if (player.group.master) return `Grouped with ${name(player.group.master) || "another player"}`;
+    if (player.group.master) return this._t("grouped_with", { name: name(player.group.master) || this._t("another_player") });
     const slaves = player.group.slaves.map(name).filter(Boolean);
-    return slaves.length ? `Group: ${[player.name, ...slaves].join(" + ")}` : "";
+    return slaves.length ? this._t("group_of", { names: [player.name, ...slaves].join(" + ") }) : "";
   }
 
   _buildNow() {
@@ -1058,7 +1079,7 @@ class BluOSCompanionPanel extends HTMLElement {
     now.source.hidden = !player.sources.length;
     now.sleep.replaceChildren(
       ...[0, ...player.sleep_options].map((minutes) => {
-        const option = el("option", { value: minutes }, minutes ? `${minutes} min` : "Sleep: off");
+        const option = el("option", { value: minutes }, minutes ? this._t("minutes", { minutes }) : this._t("sleep_off"));
         option.selected = minutes === player.sleep;
         return option;
       }),
@@ -1099,7 +1120,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (!source) return;
     this._dialogMode = "move";
     this._dialog.replaceChildren(
-      el("h2", {}, "Move playback to"),
+      el("h2", {}, this._t("move_playback_to")),
       el("p", {}, `${source.name}: ${[source.title, source.artist].filter(Boolean).join(" - ")}`),
       el(
         "div",
@@ -1210,7 +1231,7 @@ class BluOSCompanionPanel extends HTMLElement {
         ),
       );
     };
-    const rows = [el("h2", {}, "Group players"), el("p", {}, "Players that play the same music together.")];
+    const rows = [el("h2", {}, this._t("group_players")), el("p", {}, this._t("group_hint"))];
     rows.push(el("div", { class: "list" }, ...this._players.map(row)));
     if (members.length > 1 && primary) {
       const step = (delta) =>
@@ -1221,7 +1242,7 @@ class BluOSCompanionPanel extends HTMLElement {
         el(
           "div",
           { class: "group-volume" },
-          el("span", { class: "label" }, "Group volume"),
+          el("span", { class: "label" }, this._t("group_volume")),
           el("button", { onclick: () => this._control("mute", !primary.muted, primary.entry_id, { group: true }) }, icon("mdi:volume-off")),
           el("button", { onclick: () => step(-2) }, icon("mdi:minus")),
           el("button", { onclick: () => step(2) }, icon("mdi:plus")),
@@ -1238,18 +1259,18 @@ class BluOSCompanionPanel extends HTMLElement {
             onclick: () => this._call({ type: "bluos_companion/group", entry_id: primary.entry_id, action: "leave" }),
           },
           icon("mdi:link-variant-off"),
-          "Ungroup all",
+          this._t("ungroup_all"),
         ),
       );
     }
-    footer.push(el("button", { class: "action", onclick: () => this._showPlayers() }, icon("mdi:arrow-left"), "Back"));
+    footer.push(el("button", { class: "action", onclick: () => this._showPlayers() }, icon("mdi:arrow-left"), this._t("back")));
     rows.push(el("div", { class: "list", style: "margin-top: 12px" }, ...footer));
     this._dialog.replaceChildren(...rows);
   }
 
   _renderPlayerList() {
     this._dialog.replaceChildren(
-      el("h2", {}, "Play on"),
+      el("h2", {}, this._t("play_on")),
       el(
         "div",
         { class: "list" },
@@ -1257,7 +1278,7 @@ class BluOSCompanionPanel extends HTMLElement {
           const playing = ACTIVE_STATES.includes(player.state);
           const what = player.available
             ? [player.title, player.artist].filter(Boolean).join(" - ")
-            : "Unavailable";
+            : this._t("unavailable");
           return el(
             "button",
             {
@@ -1285,7 +1306,7 @@ class BluOSCompanionPanel extends HTMLElement {
         ? el(
             "div",
             { class: "list", style: "margin-top: 12px" },
-            el("button", { class: "action", onclick: () => this._showGroup() }, icon("mdi:speaker-multiple"), "Group players"),
+            el("button", { class: "action", onclick: () => this._showGroup() }, icon("mdi:speaker-multiple"), this._t("group_players")),
           )
         : null,
     );
@@ -1303,11 +1324,11 @@ class BluOSCompanionPanel extends HTMLElement {
       return;
     }
     if (!this._player) {
-      this._message.textContent = "No BluOS player configured.";
+      this._message.textContent = this._t("no_player");
     } else if (this._groups === null) {
       this._message.textContent = "\u2026";
     } else if (!this._groups.some((group) => group.items.length)) {
-      this._message.textContent = "Nothing here.";
+      this._message.textContent = this._t("nothing_here");
     } else {
       for (const group of this._groups) {
         if (!group.items.length) continue;
@@ -1319,7 +1340,7 @@ class BluOSCompanionPanel extends HTMLElement {
           el(
             "div",
             { class: "actions", style: "justify-content: center; margin: 16px 0" },
-            el("button", { class: "action", onclick: () => this._loadMore() }, icon("mdi:chevron-down"), "Show more"),
+            el("button", { class: "action", onclick: () => this._loadMore() }, icon("mdi:chevron-down"), this._t("show_more")),
           ),
         );
       }

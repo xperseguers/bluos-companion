@@ -54,7 +54,7 @@ for free from the player's own browse tree), panel not restricted to admins.
 
 ## P3 Polish and playlists
 - [ ] Playlists: rename, delete and edit as far as the player allows (delete needs a decision on who may do it); optionally a read-only mode for non-admins
-- [ ] en / fr translations of the panel (strings.json `common` plus a panel section), key-parity test
+- [x] en / fr / de translations of the panel and the cards (served from `common.panel` of the translation files, the scripts contain no English), key-parity test; German and French menu names are the official ones returned by the player
 - [ ] Responsive layout, dark / light, accessibility
 - [ ] README and `CLAUDE.md` documentation
 - [ ] Last: make the README appealing for first-time users (what it does in a few lines, 4-6 good screenshots of the panel, the media browser and a dashboard card, install through HACS, short feature list). Screenshots to be taken at the end by the owner (or from the dev HA), without private data (IPs, names) and without third-party logos beyond what the player shows; keep the "not affiliated" notice

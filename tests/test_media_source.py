@@ -360,9 +360,26 @@ async def test_unsupported_language_falls_back_to_english(
     hass: HomeAssistant, init_integration: MockConfigEntry
 ) -> None:
     """Other languages get the English titles."""
-    hass.config.language = "de"
+    hass.config.language = "nl"
     menu = await async_browse_media(hass, f"{ROOT}/{init_integration.entry_id}")
     assert menu.children[0].title == "Recently added"
+
+
+async def test_titles_in_german(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """The titles of the menus use the names of the BluOS app in German."""
+    hass.config.language = "de"
+    menu = await async_browse_media(hass, f"{ROOT}/{init_integration.entry_id}")
+    assert [child.title for child in menu.children][:7] == [
+        "Neu",
+        "Künstler",
+        "Alben",
+        "Titel",
+        "Genres",
+        "Wiedergabelisten",
+        "Komponisten",
+    ]
 
 
 @pytest.mark.parametrize(

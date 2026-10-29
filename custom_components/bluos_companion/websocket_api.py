@@ -14,6 +14,7 @@ from homeassistant.const import CONF_HOST
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.translation import async_get_translations
 
 from .api import SLEEP_OPTIONS, BluOSClient, BluOSError, Node, sleep_bucket
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
@@ -58,6 +59,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_actions)
     websocket_api.async_register_command(hass, ws_group)
+    websocket_api.async_register_command(hass, ws_translations)
     websocket_api.async_register_command(hass, ws_playlist_covers)
     websocket_api.async_register_command(hass, ws_move)
     websocket_api.async_register_command(hass, ws_group_volumes)
@@ -409,6 +411,29 @@ async def ws_presets(
 
 
 HOME_ALBUMS = 12
+PANEL_PREFIX = f"component.{DOMAIN}.common.panel."
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "bluos_companion/translations", vol.Optional("language"): str}
+)
+@websocket_api.async_response
+async def ws_translations(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the texts of the panel and the cards in a language (English if unknown)."""
+    language = (msg.get("language") or hass.config.language).split("-")[0]
+    translations = await async_get_translations(hass, language, "common", [DOMAIN])
+    connection.send_result(
+        msg["id"],
+        {
+            "strings": {
+                key.removeprefix(PANEL_PREFIX): text
+                for key, text in translations.items()
+                if key.startswith(PANEL_PREFIX)
+            }
+        },
+    )
 
 
 @websocket_api.websocket_command(
