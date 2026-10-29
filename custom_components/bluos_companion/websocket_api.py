@@ -476,12 +476,13 @@ async def ws_home(
     entry_id = msg["entry_id"]
     coordinator = _coordinator(hass, entry_id)
     client = coordinator.client
-    page, presets, albums, recents, saved = await asyncio.gather(
+    page, presets, albums, recents, saved, library = await asyncio.gather(
         client.async_browse_page(None),
         client.async_get_presets(),
         client.async_get_recent_albums(),
         client.async_get_home(hass.config.language),
         client.async_browse_page("BluOS:", None, 1),
+        client.async_browse_page("LocalMusic:", None, 1),
         return_exceptions=True,
     )
     if isinstance(page, BluOSError):
@@ -522,6 +523,17 @@ async def ws_home(
                 "title": titles["playlists"],
                 "items": _items(hass, entry_id, playlists, titles),
             }
+        )
+    # The entries of the library (artists, albums...) one tap from the start page; the
+    # saved playlists have their own row.
+    entries = (
+        []
+        if isinstance(library, BluOSError) or "LocalMusic:" in hidden
+        else [node for node in library.nodes if node.type == "link" and node.title != "Playlists"]
+    )
+    if entries:
+        groups.append(
+            {"title": titles["library"], "items": _items(hass, entry_id, entries, titles)}
         )
     if not isinstance(recents, BluOSError):
         # Titled by the player, in the language of Home Assistant.

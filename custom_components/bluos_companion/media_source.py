@@ -41,7 +41,7 @@ LIBRARY = {
     "composers": "LocalMusic:bySection:Composer/%2Flibrary%2Fv1%2FComposers%3Fservice=LocalMusic",
 }
 TITLES = ("recently_added", *LIBRARY, "presets", "queue", "favourites", "folders")
-PANEL_TITLES = (*TITLES, "sources")
+PANEL_TITLES = (*TITLES, "sources", "library")
 MENU_LABELS = {
     **{category.capitalize(): category for category in LIBRARY},
     "Favourites": "favourites",
