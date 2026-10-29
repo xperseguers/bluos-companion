@@ -28,7 +28,7 @@ from .conftest import BASE, calls, respond
 
 SONG = (
     "<song service='LocalMusic'><art>{artist}</art><alb>{album}</alb><title>{title}</title>"
-    "<time>{time}</time><fn>/var/mnt/10.20.30.45-BluOS/Music/{title}.m4a</fn></song>"
+    "<time>{time}</time><fn>/var/mnt/192.168.1.20-Music/Music/{title}.m4a</fn></song>"
 )
 TRACKS = [
     PlaylistTrack("I Got a Name", "Samuel Hui", "Sam Hui 30th", 193, "/var/mnt/nas/Music/a.m4a"),
@@ -155,7 +155,7 @@ async def test_backup_writes_one_file_per_playlist(
     assert saved == {"Tuning": 2, "AC/DC": 1}
     text = (config_dir / "Tuning.m3u8").read_text(encoding="utf-8")
     assert "#PLAYLIST:Tuning" in text
-    assert text.count("/var/mnt/10.20.30.45-BluOS/Music/") == 2
+    assert text.count("/var/mnt/192.168.1.20-Music/Music/") == 2
     assert (config_dir / "AC_DC.m3u8").exists()
     assert not (config_dir / "Empty.m3u8").exists()
 
