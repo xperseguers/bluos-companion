@@ -33,10 +33,18 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         self.sources: list[Source] = []
         self._sync_stat: str | None = None
 
+    def _input_name(self, source: Source) -> str:
+        """Return the name of a player input, told apart from an amplifier input."""
+        if self.sync and any(
+            external.name == source.name for external in self.sync.external_sources
+        ):
+            return f"{source.name} (BluOS)"
+        return source.name
+
     @property
     def source_names(self) -> list[str]:
         """Return the inputs that can be selected."""
-        names = [source.name for source in self.sources]
+        names = [self._input_name(source) for source in self.sources]
         if self.sync:
             names += [source.name for source in self.sync.external_sources]
         return names
@@ -47,13 +55,18 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         if self.data.stream_url == EXTERNAL_SOURCE_URL and self.sync:
             return self.sync.external_source
         return next(
-            (s.name for s in self.sources if s.url == self.data.stream_url), None
+            (
+                self._input_name(source)
+                for source in self.sources
+                if source.url == self.data.stream_url
+            ),
+            None,
         )
 
     async def async_select_source(self, name: str) -> None:
         """Switch to an input of the player or of the amplifier it is built in."""
         for source in self.sources:
-            if source.name == name:
+            if self._input_name(source) == name:
                 await self.client.async_select_source(source.type_index)
                 return
         for external in self.sync.external_sources if self.sync else ():
