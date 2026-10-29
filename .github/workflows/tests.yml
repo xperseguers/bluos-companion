@@ -7,16 +7,26 @@ on:
 
 jobs:
   pytest:
-    name: Tests
+    name: Tests (${{ matrix.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Home Assistant 2025.6, the oldest supported
+            python: "3.13"
+            requirements: requirements_test_oldest.txt
+          - name: latest Home Assistant
+            python: "3.14"
+            requirements: requirements_test.txt
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: ${{ matrix.python }}
           cache: pip
-          cache-dependency-path: requirements_test.txt
+          cache-dependency-path: ${{ matrix.requirements }}
       - name: Install the test requirements
-        run: pip install -r requirements_test.txt
+        run: pip install -r ${{ matrix.requirements }}
       - name: Run the tests
         run: pytest -q

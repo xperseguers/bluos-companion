@@ -1,0 +1,3 @@
+pytest-homeassistant-custom-component==0.13.254
+home-assistant-frontend
+pycares<5

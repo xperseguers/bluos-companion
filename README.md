@@ -33,7 +33,7 @@ backup carries along.
 
 ## Requirements
 
-- A recent Home Assistant (developed and tested with 2026.10)
+- Home Assistant 2025.6 or newer (tested with 2025.6 and 2026.10)
 - A BluOS player reachable from Home Assistant on your network (TCP port 11000), ideally with a fixed
   IP address or a DHCP reservation
 

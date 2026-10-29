@@ -18,6 +18,9 @@ python3.14 -m venv .venv
 .venv/bin/pytest -q
 ```
 
+`requirements_test_oldest.txt` installs the oldest supported Home Assistant (2025.6, Python 3.13), which CI also
+runs.
+
 Tests use `pytest-homeassistant-custom-component` and a mocked player (`aioclient_mock`). Parametrize instead of
 branching, annotate parameters, and set `hass.config.language` to test a translation. Every translation file must
 have exactly the keys of `translations/en.json` (it is tested).
