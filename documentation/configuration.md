@@ -43,6 +43,9 @@ player. The group is shown in the `group_members` attribute (the primary player 
 player of a group can add or remove players: the integration takes care of that. The volume of each
 player of a group and the volume of the group are available in the sidebar player.
 
+Starting music on any player of a group (the sidebar player, `media_player.play_media`, voice or AI) plays it for
+the **whole group**, whether you name the leader or a member. To play on one player alone, ungroup it first.
+
 ### Cover art
 
 Covers are loaded through Home Assistant (the players speak plain HTTP), so they also work when you use
