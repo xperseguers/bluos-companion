@@ -190,6 +190,34 @@ async def test_browse_skips_the_empty_pages_of_an_old_playlist(
     assert len(calls(aioclient_mock)) == 4
 
 
+@pytest.mark.usefixtures("player_api")
+async def test_home_rows(client: BluOSClient, aioclient_mock: AiohttpClientMocker) -> None:
+    """The recent stations, albums and songs of the home screen are understood, in the asked language."""
+    rows = await client.async_get_home("fr")
+
+    assert [(row.id, row.title) for row in rows] == [
+        ("recent-stations", "Recent Stations"),
+        ("recent", "Recently Played"),
+    ]
+    stations, recent = (row.items for row in rows)
+    assert [(i.kind, i.title, i.play_path) for i in stations] == [
+        ("station", "Radio Swiss Jazz", "/Play?url=TuneIn%3As6814&title1=Radio+Swiss+Jazz"),
+        ("station", "A web address", "/Play?url=http%3A%2F%2Fexample.com"),
+    ]
+    album, song = recent
+    assert (album.kind, album.title, album.subtitle) == ("album", "Io Canto 2", "Laura Pausini")
+    assert album.browse_key.startswith("LocalMusic:MG/LocalMusic-Album?")
+    assert album.context_key.startswith("LocalMusic:CM/LocalMusic-Album?")
+    assert album.play_path.startswith("/Add?playnow=1&service=LocalMusic")
+    assert (song.kind, song.play_path) == ("song", "/Add?playnow=1&file=%2Fa.m4a")
+    assert song.context_key == (
+        "LocalMusic:CM/LocalMusic-Song?album=En+Public&artist=Goldman&filename=%2Fa.m4a&title=Je+te+donne"
+    )
+    request = aioclient_mock.mock_calls[-1]
+    assert request[3]["Accept-Language"] == "fr"
+    assert request[3]["x-sovi-schema-version"] == "35"
+
+
 async def test_browse_page_search_and_limit(
     client: BluOSClient, aioclient_mock: AiohttpClientMocker
 ) -> None:

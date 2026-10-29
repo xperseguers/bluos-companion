@@ -164,12 +164,18 @@ async def test_browse_root_and_menu(
     items = (await client.receive_json())["result"]["items"]
 
     assert calls(player_api) == [("/Browse", {})]
-    assert [item["title"] for item in items] == ["Playlists", "Library", "Albums"]
+    assert [item["title"] for item in items] == [
+        "Playlists",
+        "Bluetooth",
+        "Library",
+        "Albums",
+    ]
     assert items[0]["browse_key"] == "BluOS:"
     assert items[0]["play_path"] is None
-    assert items[1]["image"] == "/bluos_companion/icons/library.svg"
-    assert items[2]["play_path"].startswith("/Add?")
-    assert items[2]["browse_key"] == "LocalMusic:Albums"
+    assert items[1]["play_path"].startswith("/Play?url=Capture")
+    assert items[2]["image"] == "/bluos_companion/icons/library.svg"
+    assert items[3]["play_path"].startswith("/Add?")
+    assert items[3]["browse_key"] == "LocalMusic:Albums"
 
 
 async def test_browse_translates_library_menu(
@@ -206,6 +212,11 @@ async def test_browse_translates_library_menu(
         ("/Load?service=BluOS&name=a", True),
         ("/Reboot", False),
         ("/Play?url=http%3A%2F%2Fevil", False),
+        ("/Play?url=HTTPS%3A%2F%2Fevil", False),
+        ("/Play?url=http://evil", False),
+        ("/Play?url=TuneIn%3As6814&title1=x", True),
+        ("/Play?url=TuneIn:s6814", True),
+        ("/Play?url=Capture%3Abluez%3Abluetooth", True),
     ],
 )
 async def test_play_only_allowed_paths(
@@ -377,8 +388,13 @@ async def test_browse_root_hides_services(
     )
     deeper = (await client.receive_json())["result"]["items"]
 
-    assert [item["title"] for item in root] == ["Library", "Albums"]
-    assert [item["title"] for item in deeper] == ["Playlists", "Library", "Albums"]
+    assert [item["title"] for item in root] == ["Bluetooth", "Library", "Albums"]
+    assert [item["title"] for item in deeper] == [
+        "Playlists",
+        "Bluetooth",
+        "Library",
+        "Albums",
+    ]
 
 
 async def test_actions_only_allow_play_urls(
@@ -741,8 +757,21 @@ async def test_home_page_groups(
     )
     groups = (await client.receive_json())["result"]["groups"]
 
-    assert [group["title"] for group in groups] == ["Presets", "Recently added", "Sources"]
-    presets, albums, sources = (group["items"] for group in groups)
+    assert [group["title"] for group in groups] == [
+        "Presets",
+        "Recently Played",
+        "Recent Stations",
+        "Recently added",
+        "Sources",
+    ]
+    presets, recent, stations, albums, sources = (group["items"] for group in groups)
+    assert [(item["type"], item["title"]) for item in recent] == [
+        ("album", "Io Canto 2"),
+        ("song", "Je te donne"),
+    ]
+    assert recent[1]["context_key"].startswith("LocalMusic:CM/LocalMusic-Song?")
+    assert [item["title"] for item in stations] == ["Radio Swiss Jazz"]
+    assert stations[0]["play_path"] == "/Play?url=TuneIn%3As6814&title1=Radio+Swiss+Jazz"
     assert [item["play_path"] for item in presets] == [
         "/Preset?id=1",
         "/Preset?id=2",
@@ -752,7 +781,7 @@ async def test_home_page_groups(
     assert albums[0]["subtitle"] == "Oasis"
     assert albums[0]["browse_key"].startswith("LocalMusic:MG/LocalMusic-Album?")
     assert albums[0]["context_key"].startswith("LocalMusic:CM/LocalMusic-Album?")
-    assert [item["title"] for item in sources] == ["Library", "Albums"]
+    assert [item["title"] for item in sources] == ["Bluetooth", "Library", "Albums"]
 
 
 async def test_home_page_survives_failing_parts(
@@ -765,6 +794,7 @@ async def test_home_page_survives_failing_parts(
     respond(player_api, f"{BASE}/Browse", text=ROOT)
     respond(player_api, f"{BASE}/Presets", status=500)
     respond(player_api, f"{BASE}/Albums", status=500)
+    respond(player_api, f"{BASE}/ui/Home", status=500)
     client = await hass_ws_client(hass)
     await client.send_json_auto_id(
         {"type": "bluos_companion/home", "entry_id": init_integration.entry_id}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from urllib.parse import parse_qs
 
 from homeassistant.components.media_player import BrowseError, MediaClass, MediaType
@@ -25,6 +26,10 @@ from .http import async_artwork_url
 
 URI_PREFIX = f"media-source://{DOMAIN}/"
 PLAY_PATH_PREFIXES = ("/Add?", "/Preset?", "/Load?", "/Play?id=")
+STATION_PATH = re.compile(
+    r"^/Play\?url=(?!(https?|ftps?|file|rtsp|rtmp|mms)(:|%3A))[A-Za-z][A-Za-z0-9]*(:|%3A)",
+    re.IGNORECASE,
+)
 
 LIBRARY = {
     "artists": "LocalMusic:bySection:Artist/%2Flibrary%2Fv1%2FArtists%3Fservice=LocalMusic",
@@ -51,6 +56,14 @@ NODE_CLASSES = {
     "genre": (MediaClass.GENRE, MediaType.GENRE),
     "composer": (MediaClass.COMPOSER, MediaType.COMPOSER),
 }
+
+
+def is_play_path(path: str) -> bool:
+    """Return whether a player path only starts something to play.
+
+    A station of a service (`/Play?url=TuneIn:s6814`) is allowed, an address is not.
+    """
+    return path.startswith(PLAY_PATH_PREFIXES) or bool(STATION_PATH.match(path))
 
 
 async def async_get_media_source(hass: HomeAssistant) -> BluOSMediaSource:
@@ -103,7 +116,7 @@ def play_path_from_media_id(media_id: str) -> tuple[str, str]:
             path = _decode_node(payload).get("p") or ""
         case _:
             raise BrowseError("This item cannot be played")
-    if not path.startswith(PLAY_PATH_PREFIXES):
+    if not is_play_path(path):
         raise BrowseError("This item cannot be played")
     return entry_id, path
 
