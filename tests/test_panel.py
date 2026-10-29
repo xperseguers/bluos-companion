@@ -357,3 +357,55 @@ async def test_browse_root_hides_services(
 
     assert [item["title"] for item in root] == ["Library", "Albums"]
     assert [item["title"] for item in deeper] == ["Playlists", "Library", "Albums"]
+
+
+async def test_actions_only_allow_play_urls(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Play and queue actions are returned, favourites and others are not."""
+    respond(
+        player_api,
+        browse_url("ctx"),
+        text="""<browse type="contextMenu">
+  <item actionURL="/AddFavourite?album=21" text="Favourite" type="favourite-add"></item>
+  <item actionURL="/Add?album=21&amp;playnow=1" text="Play now" type="add-now"></item>
+  <item actionURL="/Reboot" text="Reboot" type="add-last"></item>
+  <item actionURL="/Add?album=21&amp;playnow=-1&amp;where=last" text="Add last" type="addAll-last"></item>
+</browse>""",
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/actions",
+            "entry_id": init_integration.entry_id,
+            "key": "ctx",
+        }
+    )
+    actions = (await client.receive_json())["result"]["actions"]
+    assert [(action["type"], action["title"]) for action in actions] == [
+        ("add-now", "Play now"),
+        ("addAll-last", "Add last"),
+    ]
+
+
+async def test_browse_items_carry_the_context_key(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The panel can open the actions of an item."""
+    respond(
+        player_api,
+        f"{BASE}/Browse",
+        text='<browse><item browseKey="b" contextMenuKey="ctx" text="21" type="album"/></browse>',
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/browse", "entry_id": init_integration.entry_id, "key": "x"}
+    )
+    [item] = (await client.receive_json())["result"]["items"]
+    assert item["context_key"] == "ctx"

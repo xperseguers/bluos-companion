@@ -42,6 +42,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_control)
     websocket_api.async_register_command(hass, ws_browse)
     websocket_api.async_register_command(hass, ws_search)
+    websocket_api.async_register_command(hass, ws_actions)
     websocket_api.async_register_command(hass, ws_play)
 
 
@@ -122,6 +123,7 @@ def _items(
                 "image": image,
                 "browse_key": node.browse_key if can_expand else None,
                 "play_path": node.play_path if can_play else None,
+                "context_key": node.context_key,
             }
         )
     return items
@@ -261,6 +263,32 @@ async def ws_search(
                 {"title": menu_label(node, titles)[0], "type": node.title, "items": items}
             )
     connection.send_result(msg["id"], {"groups": groups})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/actions",
+        vol.Required("entry_id"): str,
+        vol.Required("key"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_actions(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """List what can be done with an item: play now, shuffle, add next / last."""
+    client = _coordinator(hass, msg["entry_id"]).client
+    actions = await _async_call(client.async_get_actions(msg["key"]))
+    connection.send_result(
+        msg["id"],
+        {
+            "actions": [
+                {"type": action.type, "title": action.title, "path": action.path}
+                for action in actions
+                if action.path.startswith(PLAY_PATH_PREFIXES)
+            ]
+        },
+    )
 
 
 @websocket_api.websocket_command(
