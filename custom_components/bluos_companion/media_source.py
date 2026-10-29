@@ -41,6 +41,7 @@ MENU_LABELS = {
     "Favorites": "favourites",
     "Folders": "folders",
 }
+SOURCE_ICONS = {"LocalMusic:": "library", "Airable:": "radio"}
 NODE_CLASSES = {
     "artist": (MediaClass.ARTIST, MediaType.ARTIST),
     "album": (MediaClass.ALBUM, MediaType.ALBUM),
@@ -125,6 +126,8 @@ async def async_get_titles(hass: HomeAssistant) -> dict[str, str]:
 
 def menu_label(node: Node, titles: dict[str, str]) -> tuple[str, str | None]:
     """Return the translated label of a menu link and its icon, if it has one."""
+    if node.browse_key in SOURCE_ICONS:
+        return node.title, _icon(SOURCE_ICONS[node.browse_key])
     if node.type == "link" and node.title in MENU_LABELS:
         category = MENU_LABELS[node.title]
         return titles[category], _icon(category)

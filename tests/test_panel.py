@@ -145,7 +145,7 @@ async def test_browse_root_and_menu(
     assert [item["title"] for item in items] == ["Playlists", "Library", "Albums"]
     assert items[0]["browse_key"] == "BluOS:"
     assert items[0]["play_path"] is None
-    assert items[1]["image"].startswith("/api/bluos_companion/")
+    assert items[1]["image"] == "/bluos_companion/icons/library.svg"
     assert items[2]["play_path"].startswith("/Add?")
     assert items[2]["browse_key"] == "LocalMusic:Albums"
 

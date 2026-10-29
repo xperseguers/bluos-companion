@@ -26,7 +26,11 @@ from custom_components.bluos_companion.http import (
     decode_image,
     encode_image,
 )
-from custom_components.bluos_companion.media_source import TITLES, _encode_node
+from custom_components.bluos_companion.media_source import (
+    TITLES,
+    _encode_node,
+    menu_label,
+)
 
 from .conftest import BASE, SONGS_SECTION, browse_url, calls
 
@@ -477,7 +481,17 @@ async def test_player_menu_links_have_icons(
     ]
 
 
-@pytest.mark.parametrize("name", ["player", *TITLES])
+@pytest.mark.parametrize(
+    ("browse_key", "icon"),
+    [("LocalMusic:", "library"), ("Airable:", "radio"), ("Deezer:", None)],
+)
+def test_source_icons(browse_key: str, icon: str | None) -> None:
+    """The player's white glyphs are replaced by our tiles, service logos are kept."""
+    node = Node("link", "Library", "", browse_key, None, "/images/x.png")
+    assert menu_label(node, {})[1] == (f"{ICONS_URL}/{icon}.svg" if icon else None)
+
+
+@pytest.mark.parametrize("name", ["player", "library", "radio", *TITLES])
 async def test_icons_are_served(
     hass: HomeAssistant,
     init_integration: MockConfigEntry,
