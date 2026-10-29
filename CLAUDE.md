@@ -30,7 +30,7 @@ needed to work here.
   `websocket_api.py`: the `bluos_companion/*` commands they use.
 - `playlist_backup.py` + `backup.py`: playlists saved as `.m3u8` text files before every Home Assistant
   backup, and the services `backup_playlists` / `restore_playlists`.
-- `strings.json`, `translations/{en,fr,de}.json`: config flow, options, services and `common` (browse titles and, in `common.panel`, the texts of the panel and the cards, served by the `translations` websocket command; the scripts contain no English).
+- `strings.json`, `translations/{en,fr,de}.json`: config flow, options, services and `common` (browse titles and, as `common.panel_*`, the texts of the panel and the cards, served by the `translations` websocket command; the scripts contain no English).
 - `icons/*.svg`: tiles served from `/bluos_companion/icons/`.
 - `TODO.md`: the plan, a local file that is not committed (gitignored).
 

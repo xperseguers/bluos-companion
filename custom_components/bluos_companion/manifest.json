@@ -1,9 +1,20 @@
 {
   "domain": "bluos_companion",
   "name": "BluOS Companion",
-  "codeowners": ["@xperseguers"],
+  "categories": [
+    "media_entertainment.speakers_audio"
+  ],
+  "codeowners": [
+    "@xperseguers"
+  ],
   "config_flow": true,
-  "dependencies": ["frontend", "http", "media_source", "panel_custom", "websocket_api"],
+  "dependencies": [
+    "frontend",
+    "http",
+    "media_source",
+    "panel_custom",
+    "websocket_api"
+  ],
   "documentation": "https://github.com/xperseguers/bluos-companion",
   "integration_type": "device",
   "iot_class": "local_push",
