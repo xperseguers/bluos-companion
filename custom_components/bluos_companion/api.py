@@ -500,9 +500,18 @@ class BluOSClient:
         """Set the volume, 0..100."""
         await self.async_command("/Volume", {"level": str(level)})
 
-    async def async_set_mute(self, mute: bool) -> None:
-        """Mute or unmute the player."""
-        await self.async_command("/Volume", {"mute": "1" if mute else "0"})
+    async def async_step_volume(self, delta_db: int, group: bool = False) -> None:
+        """Change the volume by a number of dB, of the whole group if asked."""
+        await self.async_command(
+            "/Volume", {"db": str(delta_db), "tell_slaves": "1" if group else "0"}
+        )
+
+    async def async_set_mute(self, mute: bool, group: bool = False) -> None:
+        """Mute or unmute the player, or all the players of its group."""
+        params = {"mute": "1" if mute else "0"}
+        if group:
+            params["tell_slaves"] = "1"
+        await self.async_command("/Volume", params)
 
     async def async_set_shuffle(self, shuffle: bool) -> None:
         """Enable or disable shuffle."""
