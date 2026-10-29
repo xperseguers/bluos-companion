@@ -63,6 +63,7 @@ for free from the player's own browse tree), panel not restricted to admins.
 - [ ] Try a standalone streamer (no built-in amplifier, possibly fixed volume, other firmware), read-only: no input select, fixed volume (sliders, steps and the maximum volume must cope), features the player lacks must simply not show. Results go to the local notes only
 
 ## Documentation plan
+- [x] Page `documentation/voice-and-ai.md` written (setup, what is found, typos, sentences in English, French and German, quirks, volume, AI agents, trying the search). To link from the README
 - [ ] "How it was tested" page (in the development documentation, summarised with a "Tested with" table in the README):
   - Automated: the pytest suite (about 260 tests with `pytest-homeassistant-custom-component`, the player is mocked), what it covers (client, config and options flow, entity, media browser, websocket API of the panel and cards, backup and restore, translations parity) and how to run it
   - Live, on real players: NAD C368 with the MDC2 BluOS-D module (everything), Bluesound Pulse Mini 2i (everything: grouping, move playback, queue, playlists, backup and restore with a temporary playlist), Bluesound NODE (playback with version 1.2.0 by the owner; the panel, cards and playlist work only through read-only checks: inputs, presets, playlists, home screen). Same firmware family 4.18 on all three
