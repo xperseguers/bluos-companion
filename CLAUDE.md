@@ -32,7 +32,7 @@ needed to work here.
   backup, and the services `backup_playlists` / `restore_playlists`.
 - `strings.json`, `translations/{en,fr,de}.json`: config flow, options, services and `common` (browse titles and, in `common.panel`, the texts of the panel and the cards, served by the `translations` websocket command; the scripts contain no English).
 - `icons/*.svg`: tiles served from `/bluos_companion/icons/`.
-- `TODO.md`: the plan (branch `feature/sidebar-player`).
+- `TODO.md`: the plan, a local file that is not committed (gitignored).
 
 ## Commands
 
@@ -63,7 +63,7 @@ keep volumes modest and put everything back as it was (the owner has agreed to l
 
 ## What may be written in committed files
 
-Keep committed files (this file, `TODO.md`, documentation, code comments, docstrings, commit messages, pull
+Keep committed files (this file, documentation, code comments, docstrings, commit messages, pull
 requests) at the feature level:
 
 - describe what the integration does for users ("the player moves its queue to another player") and say "the
@@ -89,7 +89,7 @@ requests) at the feature level:
 
 ## Roadmap
 
-See `TODO.md`. Done: panel, search, queue, playlists, home page, grouping, move playback, cards, playlist
+See the local `TODO.md`. Done: panel, search, queue, playlists, home page, grouping, move playback, cards, playlist
 backup and restore. Next: voice and AI search, panel translations, A-Z bar, documentation, HACS submission.
 Later: a "Clear queue" `button` entity (only `media_player.clear_playlist` exists, no UI button),
 let library items play on any player (today items are tied to the player browsed from, by design).
