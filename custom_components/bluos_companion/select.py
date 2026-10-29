@@ -40,7 +40,7 @@ class BluOSSleepTimer(CoordinatorEntity[BluOSCoordinator], SelectEntity):
         entry = coordinator.config_entry
         identifier = entry.unique_id or entry.entry_id
         self._attr_unique_id = f"{identifier}_sleep_timer"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, identifier)})
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, identifier)}, name=entry.title)
 
     @property
     def current_option(self) -> str:
