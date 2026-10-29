@@ -707,6 +707,7 @@ async def test_volume_steps_up_stop_at_the_maximum(
 ) -> None:
     """A player already at its maximum is not turned up (the volume is 25, maximum 20)."""
     hass.config_entries.async_update_entry(capped, options={"max_volume": 20})
+    respond(player_api, f"{BASE}/Volume", text='<volume mute="0">25</volume>')
     client = await hass_ws_client(hass)
     await client.send_json_auto_id(
         {
@@ -717,7 +718,7 @@ async def test_volume_steps_up_stop_at_the_maximum(
         }
     )
     assert (await client.receive_json())["success"]
-    assert calls(player_api) == []
+    assert calls(player_api) == [("/Volume", {})]
     await client.send_json_auto_id({"type": "bluos_companion/subscribe"})
     await client.receive_json()
     assert (await client.receive_json())["event"]["players"][0]["max_volume"] == 20

@@ -665,3 +665,27 @@ async def test_panel_group_volume(
     )
     assert (await client.receive_json())["success"]
     assert calls(player_api) == [("/Volume", query)]
+
+
+async def test_group_volumes_are_the_own_volume_of_each_player(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Each member of the group is asked for its own volume (/Status shows the group's)."""
+    _group(init_integration, pulse)
+    respond(player_api, f"{BASE}/Volume", text='<volume db="-36" mute="0">49</volume>')
+    respond(player_api, f"{OTHER_BASE}/Volume", text='<volume db="-39" mute="1">20</volume>')
+    client = await hass_ws_client(hass)
+
+    for entry in (pulse, init_integration):
+        await client.send_json_auto_id(
+            {"type": "bluos_companion/group_volumes", "entry_id": entry.entry_id}
+        )
+        volumes = (await client.receive_json())["result"]["volumes"]
+        assert [(v["entry_id"], v["volume"], v["muted"]) for v in volumes] == [
+            (init_integration.entry_id, 49, False),
+            (pulse.entry_id, 20, True),
+        ]
