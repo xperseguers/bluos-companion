@@ -5,7 +5,9 @@ const STYLE = `
   :host {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
     background: var(--primary-background-color);
     color: var(--primary-text-color);
     font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
@@ -43,7 +45,7 @@ const STYLE = `
     border-radius: 8px;
     max-width: 50vw;
   }
-  main { flex: 1; overflow-y: auto; padding: 16px; }
+  main { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; }
   .crumbs { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
   .crumbs h2 { margin: 0; font-size: 20px; font-weight: 500; }
   .grid {
@@ -96,6 +98,7 @@ const STYLE = `
   }
   .message { color: var(--secondary-text-color); text-align: center; margin-top: 48px; }
   footer {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 16px;
