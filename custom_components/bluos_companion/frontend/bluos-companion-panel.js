@@ -518,15 +518,17 @@ class BluOSCompanionPanel extends HTMLElement {
         query: level.search.query,
       });
       groups = result ? result.groups : [];
+    } else if (!level) {
+      const result = await this._call({ type: "bluos_companion/home", entry_id: player.entry_id });
+      this._searchKey = (result && result.search_key) || DEFAULT_SEARCH_KEY;
+      groups = result ? result.groups : [];
     } else {
       const result = await this._call({
         type: "bluos_companion/browse",
         entry_id: player.entry_id,
-        ...(level && level.key ? { key: level.key } : {}),
+        ...(level.key ? { key: level.key } : {}),
       });
-      if (result && (result.search_key || !level)) {
-        this._searchKey = result.search_key || DEFAULT_SEARCH_KEY;
-      }
+      if (result && result.search_key) this._searchKey = result.search_key;
       groups = [{ title: null, items: result ? result.items : [] }];
     }
     if (token !== this._browseToken) return;

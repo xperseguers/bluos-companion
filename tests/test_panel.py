@@ -713,3 +713,58 @@ async def test_volume_steps_up_stop_at_the_maximum(
     await client.send_json_auto_id({"type": "bluos_companion/subscribe"})
     await client.receive_json()
     assert (await client.receive_json())["event"]["players"][0]["max_volume"] == 20
+
+
+async def test_home_page_groups(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The start page has the presets, the recent albums and the (visible) sources."""
+    respond(player_api, f"{BASE}/Browse", text=ROOT)
+    hass.config_entries.async_update_entry(
+        init_integration, options={"hidden_services": ["BluOS:"]}
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/home", "entry_id": init_integration.entry_id}
+    )
+    groups = (await client.receive_json())["result"]["groups"]
+
+    assert [group["title"] for group in groups] == ["Presets", "Recently added", "Sources"]
+    presets, albums, sources = (group["items"] for group in groups)
+    assert [item["play_path"] for item in presets] == [
+        "/Preset?id=1",
+        "/Preset?id=2",
+        "/Preset?id=3",
+    ]
+    assert albums[0]["title"] == "Definitely Maybe"
+    assert albums[0]["subtitle"] == "Oasis"
+    assert albums[0]["browse_key"].startswith("LocalMusic:MG/LocalMusic-Album?")
+    assert albums[0]["context_key"].startswith("LocalMusic:CM/LocalMusic-Album?")
+    assert [item["title"] for item in sources] == ["Library", "Albums"]
+
+
+async def test_home_page_survives_failing_parts(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A player without presets or recent albums still shows its sources."""
+    respond(player_api, f"{BASE}/Browse", text=ROOT)
+    respond(player_api, f"{BASE}/Presets", status=500)
+    respond(player_api, f"{BASE}/Albums", status=500)
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/home", "entry_id": init_integration.entry_id}
+    )
+    groups = (await client.receive_json())["result"]["groups"]
+    assert [group["title"] for group in groups] == ["Sources"]
+
+    respond(player_api, f"{BASE}/Browse", status=500)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/home", "entry_id": init_integration.entry_id}
+    )
+    assert (await client.receive_json())["success"] is False

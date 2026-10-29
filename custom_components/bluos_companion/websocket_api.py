@@ -49,6 +49,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_actions)
     websocket_api.async_register_command(hass, ws_group)
+    websocket_api.async_register_command(hass, ws_home)
     websocket_api.async_register_command(hass, ws_locate)
     websocket_api.async_register_command(hass, ws_presets)
     websocket_api.async_register_command(hass, ws_queue)
@@ -384,6 +385,75 @@ async def ws_presets(
             ]
         },
     )
+
+
+HOME_ALBUMS = 12
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "bluos_companion/home", vol.Required("entry_id"): str}
+)
+@websocket_api.async_response
+async def ws_home(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the start page: the presets, the recent albums and the sources."""
+    entry_id = msg["entry_id"]
+    coordinator = _coordinator(hass, entry_id)
+    client = coordinator.client
+    page, presets, albums = await asyncio.gather(
+        client.async_browse_page(None),
+        client.async_get_presets(),
+        client.async_get_recent_albums(),
+        return_exceptions=True,
+    )
+    if isinstance(page, BluOSError):
+        raise HomeAssistantError(f"BluOS player error: {page}")
+    titles = await async_get_titles(hass)
+    hidden = coordinator.config_entry.options.get(CONF_HIDDEN_SERVICES, [])
+    groups = []
+    if not isinstance(presets, BluOSError) and presets:
+        groups.append(
+            {
+                "title": titles["presets"],
+                "items": [
+                    {
+                        "type": "preset",
+                        "title": preset.name,
+                        "subtitle": "",
+                        "image": preset.image
+                        and async_artwork_url(hass, entry_id, preset.image),
+                        "browse_key": None,
+                        "play_path": f"/Preset?id={preset.id}",
+                        "context_key": None,
+                    }
+                    for preset in presets
+                ],
+            }
+        )
+    if not isinstance(albums, BluOSError) and albums:
+        groups.append(
+            {
+                "title": titles["recently_added"],
+                "items": [
+                    {
+                        "type": "album",
+                        "title": album.title,
+                        "subtitle": album.artist,
+                        "image": async_artwork_url(hass, entry_id, album.image),
+                        "browse_key": album.browse_key,
+                        "play_path": album.play_path,
+                        "context_key": album.context_key,
+                    }
+                    for album in albums[:HOME_ALBUMS]
+                ],
+            }
+        )
+    nodes = [node for node in page.nodes if node.browse_key not in hidden]
+    groups.append(
+        {"title": titles["sources"], "items": _items(hass, entry_id, nodes, titles)}
+    )
+    connection.send_result(msg["id"], {"groups": groups, "search_key": page.search_key})
 
 
 def _coordinator_of_host(hass: HomeAssistant, host: str) -> BluOSCoordinator | None:
