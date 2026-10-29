@@ -170,6 +170,26 @@ async def test_browse_stops_after_page_limit(
     assert len(calls(aioclient_mock)) == MAX_BROWSE_PAGES
 
 
+async def test_browse_skips_the_empty_pages_of_an_old_playlist(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """Pages for entries the player cannot find any more are skipped, not shown as empty."""
+    for key, text in (
+        ("start", '<browse nextKey="w10"/>'),
+        ("w10", '<browse nextKey="w20"/>'),
+        ("w20", '<browse nextKey="w30"/>'),
+        ("w30", '<browse nextKey="w40"><item text="a" type="track" playURL="/Add?a"/></browse>'),
+        ("w40", '<browse><item text="b" type="track" playURL="/Add?b"/></browse>'),
+    ):
+        aioclient_mock.get(browse_url(key), text=text)
+
+    page = await client.async_browse_page("start", None, 1)
+
+    assert [node.title for node in page.nodes] == ["a"]
+    assert page.next_key == "w40"
+    assert len(calls(aioclient_mock)) == 4
+
+
 async def test_browse_page_search_and_limit(
     client: BluOSClient, aioclient_mock: AiohttpClientMocker
 ) -> None:

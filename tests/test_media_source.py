@@ -122,7 +122,7 @@ async def test_albums_by_section(
     [
         pytest.param("artists", "A (67)", "directory", False, True, id="artists"),
         pytest.param("genres", "Pop", "genre", False, True, id="genres"),
-        pytest.param("playlists", "Relaxing", "playlist", True, False, id="playlists"),
+        pytest.param("playlists", "Relaxing", "playlist", True, True, id="playlists"),
     ],
 )
 async def test_library_categories(

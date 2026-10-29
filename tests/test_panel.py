@@ -799,3 +799,137 @@ async def test_group_changes_are_pushed_to_the_open_panel(
 
     event = await client.receive_json()
     assert event["event"]["players"][0]["group"]["name"] == "Séjour+Pulse"
+
+
+async def test_saved_playlist_lists_its_tracks(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A playlist saved on the player expands: empty first page, then the tracks."""
+    respond(
+        player_api,
+        browse_url("BluOS:MG/BluOS-Playlist?playlist=Tuning"),
+        text='<browse type="tracks" nextKey="tracks-10"/>',
+    )
+    respond(
+        player_api,
+        browse_url("tracks-10"),
+        text="""<browse type="tracks">
+  <item playURL="/Add?playnow=1&amp;file=a" autoplayURL="/Add?service=BluOS&amp;listindex=0&amp;playlist=Tuning&amp;playnow=1"
+        text="Skyfall" text2="ADELE \u2022 Skyfall - Single" duration="286" image="/Artwork?service=BluOS&amp;songid=" type="track"/>
+  <item playURL="/Add?playnow=1&amp;file=b" text="No album" text2="Someone" image="/Artwork?service=BluOS&amp;songid=" type="track"/>
+</browse>""",
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/browse",
+            "entry_id": init_integration.entry_id,
+            "key": "BluOS:MG/BluOS-Playlist?playlist=Tuning",
+        }
+    )
+    result = (await client.receive_json())["result"]
+    first, second = result["items"]
+
+    assert result["next_key"] is None
+    assert first["play_path"].startswith("/Add?service=BluOS&listindex=0")
+    assert _image_query(first["image"]) == {
+        "service": "LocalMusic",
+        "artist": "ADELE",
+        "album": "Skyfall - Single",
+    }
+    assert second["image"] is None
+
+
+def _image_query(url: str) -> dict[str, str]:
+    """Return the player query of a proxied image URL."""
+    from urllib.parse import parse_qs, urlparse
+
+    from custom_components.bluos_companion.http import decode_image
+
+    token = parse_qs(urlparse(url).query)["path"][0]
+    return {key: values[0] for key, values in parse_qs(urlparse(decode_image(token)).query).items()}
+
+
+async def test_long_lists_report_where_to_continue(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A list longer than the pages fetched at once gives the key of the next page."""
+    respond(
+        player_api,
+        f"{BASE}/Browse",
+        text='<browse nextKey="more"><item text="a" type="artist" browseKey="k"/></browse>',
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/browse", "entry_id": init_integration.entry_id, "key": "x"}
+    )
+    assert (await client.receive_json())["result"]["next_key"] == "more"
+
+
+async def test_playlist_actions_come_from_the_player(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Play, shuffle and queue actions are offered, deleting is not."""
+    respond(
+        player_api,
+        browse_url("BluOS:CM/BluOS-Playlist?playlist=Tuning"),
+        text="""<browse type="contextMenu">
+  <item actionURL="/Add?clear=0&amp;playlist=Tuning&amp;playnow=1&amp;service=BluOS&amp;shuffle=0" text="Play now" type="add-now"/>
+  <item actionURL="/Add?playlist=Tuning&amp;playnow=-1&amp;service=BluOS&amp;where=last" text="Add last" type="add-last"/>
+  <item actionURL="/Delete?name=Tuning&amp;service=BluOS" text="Delete" type="delete"/>
+</browse>""",
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/actions",
+            "entry_id": init_integration.entry_id,
+            "key": "BluOS:CM/BluOS-Playlist?playlist=Tuning",
+        }
+    )
+    actions = (await client.receive_json())["result"]["actions"]
+    assert [action["title"] for action in actions] == ["Play now", "Add last"]
+
+
+async def test_playlist_covers_use_the_first_track_and_are_cached(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The cover of a playlist is the one of its first track, read once."""
+    key = "BluOS:MG/BluOS-Playlist?playlist=Tuning"
+    respond(player_api, browse_url(key), text='<browse nextKey="tracks"/>')
+    respond(
+        player_api,
+        browse_url("tracks"),
+        text='''<browse><item playURL="/Add?a" text="Skyfall" text2="ADELE \u2022 Skyfall - Single"
+        image="/Artwork?service=BluOS&amp;songid=" type="track"/></browse>''',
+    )
+    client = await hass_ws_client(hass)
+    request = {
+        "type": "bluos_companion/playlist_covers",
+        "entry_id": init_integration.entry_id,
+        "keys": [key, "LocalMusic:other", "BluOS:MG/BluOS-Playlist?playlist=Empty"],
+    }
+    respond(player_api, browse_url("BluOS:MG/BluOS-Playlist?playlist=Empty"), text="<browse/>")
+
+    await client.send_json_auto_id(request)
+    covers = (await client.receive_json())["result"]["covers"]
+    assert set(covers) == {key, "BluOS:MG/BluOS-Playlist?playlist=Empty"}
+    assert _image_query(covers[key])["album"] == "Skyfall - Single"
+    assert covers["BluOS:MG/BluOS-Playlist?playlist=Empty"] is None
+
+    player_api.mock_calls.clear()
+    await client.send_json_auto_id(request)
+    assert (await client.receive_json())["result"]["covers"].keys() == covers.keys()
+    assert calls(player_api) == []

@@ -299,6 +299,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._playerId = localStorage.getItem(STORAGE_KEY);
     this._stack = []; // [{ title, key }], the root is implicit
     this._groups = null; // [{ title, items }]
+    this._nextKey = null; // where a list cut after a few pages continues
     this._levelActions = [];
     this._queue = null; // [{ position, title, artist, image }]
     this._queueKey = null;
@@ -530,6 +531,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (!player) return;
     const token = ++this._browseToken;
     this._groups = null;
+    this._nextKey = null;
     this._renderBrowse();
     const level = this._stack[this._stack.length - 1];
     this._levelActions = [];
@@ -564,12 +566,45 @@ class BluOSCompanionPanel extends HTMLElement {
         ...(level.key ? { key: level.key } : {}),
       });
       if (result && result.search_key) this._searchKey = result.search_key;
+      this._nextKey = result ? result.next_key : null;
       groups = [{ title: null, items: result ? result.items : [] }];
     }
     if (token !== this._browseToken) return;
     this._groups = groups;
     this._renderBrowse();
     this._main.scrollTop = 0;
+    this._loadPlaylistCovers();
+  }
+
+  // Saved playlists have no cover of their own: use the one of their first track, which
+  // can take a few requests on the player, so it is fetched after the list is shown.
+  async _loadPlaylistCovers() {
+    const token = this._browseToken;
+    const items = (this._groups || [])
+      .flatMap((group) => group.items)
+      .filter((item) => item.type === "playlist" && !item.image && (item.browse_key || "").startsWith("BluOS:"));
+    if (!items.length || !this._player) return;
+    const result = await this._call({
+      type: "bluos_companion/playlist_covers",
+      entry_id: this._player.entry_id,
+      keys: items.map((item) => item.browse_key),
+    });
+    if (token !== this._browseToken || !result) return;
+    for (const item of items) item.image = result.covers[item.browse_key] || null;
+    this._renderBrowse();
+  }
+
+  async _loadMore() {
+    const key = this._nextKey;
+    const token = this._browseToken;
+    if (!key || !this._player) return;
+    this._nextKey = null;
+    this._renderBrowse();
+    const result = await this._call({ type: "bluos_companion/browse", entry_id: this._player.entry_id, key });
+    if (token !== this._browseToken || !result) return;
+    this._groups[0].items.push(...result.items);
+    this._nextKey = result.next_key;
+    this._renderBrowse();
   }
 
   _search(query) {
@@ -1277,6 +1312,15 @@ class BluOSCompanionPanel extends HTMLElement {
         if (!group.items.length) continue;
         if (group.title) this._grid.append(el("h3", {}, group.title));
         this._grid.append(el("div", { class: "grid" }, ...group.items.map((item) => this._tile(item))));
+      }
+      if (this._nextKey) {
+        this._grid.append(
+          el(
+            "div",
+            { class: "actions", style: "justify-content: center; margin: 16px 0" },
+            el("button", { class: "action", onclick: () => this._loadMore() }, icon("mdi:chevron-down"), "Show more"),
+          ),
+        );
       }
     }
   }
