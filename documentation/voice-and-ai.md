@@ -86,6 +86,17 @@ These come from Home Assistant, not from the integration:
 - French: *mets le volume à 20 pour cent* is understood as a search for music. Use *règle le volume*.
 - German and French: say the kind of item without an article (*Album 21*, *l'album 21*).
 
+## Grouped players
+
+Grouped players play the same music together. A request for **any** player of a group, the leader or another
+member, plays it **for the whole group**. Asking for "Kitchen" when Kitchen and Living room are grouped starts the
+music on both.
+
+To play something on one player alone, ungroup it first: the group screen of the sidebar player, or the
+`media_player.unjoin` action.
+
+Volume commands are different: they apply to the player you name, each player of a group keeps its own volume.
+
 ## Volume
 
 The volume commands go through the normal Home Assistant volume of the player, so the
