@@ -12,18 +12,27 @@ needed to work here.
 - Never use Lenbrook/Bluesound/BluOS logos or brand images. Icons are our own tiles
   (`brand/` for HA, `icons/` for the media browser).
 - The API manual (`docs/BluOS-Custom-Integration-API_v1.7.pdf`) is confidential: it is
-  gitignored, never commit or paste it. Extract text with `pdftotext -layout`.
+  gitignored, never commit or paste it. Extract text with `pdftotext -layout`. The same goes for
+  `docs/player-notes.md`.
 
 ## Layout
 
-- `api.py`: HTTP client (`BluOSClient`) and dataclasses. `/Browse` is generic (`async_browse`).
-- `coordinator.py`: status via long polling (`/Status?timeout&etag`), background task.
-- `media_player.py`: entity. `media_source.py`: browse tree shared by the Media panel and the
-  entity, plus `play_path_from_media_id`. `http.py`: signed artwork proxy (the player is HTTP only).
-- `select.py`: sleep timer. `coordinator.py` also keeps `/SyncStatus` (group, external input) and
-  the `/RadioBrowse?service=Capture` inputs, reloaded only when `syncStat` of `/Status` changes.
-- `strings.json`, `translations/{en,fr}.json`: config flow and `common` (browse titles).
+- `api.py`: HTTP client (`BluOSClient`) and dataclasses.
+- `coordinator.py`: playback status of a player through long polling, plus its group, inputs and the
+  shared input logic.
+- `media_player.py`: the entity. `media_source.py`: browse tree shared by the Media panel and the
+  entity, `play_path_from_media_id` and `is_play_path` (the only paths allowed to start playback).
+  `http.py`: signed artwork proxy (the player is HTTP only).
+- `select.py`: sleep timer.
+- `panel.py` + `frontend/bluos-companion-panel.js`: sidebar panel (plain JS custom element, no build
+  step, for every user, aimed at a kiosk tablet). `frontend/bluos-companion-presets-card.js` and
+  `frontend/bluos-companion-player-card.js`: dashboard cards, loaded by the integration itself.
+  `websocket_api.py`: the `bluos_companion/*` commands they use.
+- `playlist_backup.py` + `backup.py`: playlists saved as `.m3u8` text files before every Home Assistant
+  backup, and the services `backup_playlists` / `restore_playlists`.
+- `strings.json`, `translations/{en,fr}.json`: config flow, options, services and `common` (browse titles).
 - `icons/*.svg`: tiles served from `/bluos_companion/icons/`.
+- `TODO.md`: the plan (branch `feature/sidebar-player`).
 
 ## Commands
 
@@ -47,35 +56,22 @@ docker compose restart      # after code changes (wait ~40 s)
 
 ## The player used for development
 
-NAD C368 named "Séjour" at 10.20.30.41, port 11000, always on the TV input. Probing with GETs
-is fine. Do NOT send playback, volume or preset commands live without asking first (volume is
-84): playback code is covered by mocked tests only.
+NAD C368 named "Séjour" at 10.20.30.41, port 11000 (the master, everything lives there), and a
+Pulse mini 2i named "Pulse" at 10.20.30.167, both configured in the dev HA. Probing with GETs is
+fine. Playback, volume, queue and grouping commands change what the household hears: ask first,
+keep volumes modest and put everything back as it was (the owner has agreed to live tests when told).
 
-## Findings about the player API (verified on that player)
+## What may be written in committed files
 
-- `/Browse` library root: `LocalMusic:` (Artists, Albums, Songs, Genres, Playlists, Composers,
-  Favourites). Keys must be URL-encoded; browse keys returned by the player are used as is.
-- Artists, Albums, Songs, Composers return `sections` (letters) first, then the entries.
-- Long lists have `nextKey`. The library repeats earlier entries in later pages (cumulative),
-  so entries are merged in order (`MAX_BROWSE_PAGES`).
-- Artist/Composer/Genre entries have no play URL; they lead to a menu (Albums, Songs, ...).
-- Saved playlists live at `BluOS:` and play with `/Load?service=BluOS&name=...`; browsing their
-  tracks returns nothing here, so playlists are playable but not expandable.
-- Undocumented: `/Albums?service=LocalMusic&recent=1` returns the 50 latest albums (album and
-  artist names only; keys, covers and play URLs are rebuilt from them).
-- Library requests redirect from port 11000 to 11004; images under `/Artwork` may redirect too
-  (aiohttp follows).
-- Allowed play paths are restricted to `/Add?`, `/Preset?`, `/Load?`, `/Play?id=` (`PLAY_PATH_PREFIXES`).
-- Grouping: the NAD is the primary of "Séjour+Pulse mini 2i" (Pulse at 10.20.30.167). The primary's
-  `/SyncStatus` lists `<slave id=ip port name>`, the secondary has `<master port>ip</master>`.
-  `/RemoveSlave` must go to the primary. Both report the same `/Status` (and `groupName`).
-- The NAD's own inputs (TV, Phono, CD...) are in `/SyncStatus` `<externalSource>` (the active one
-  is the element, the choices are its `<item id name>`; the `isBluos` item "BluOS" is the one the owner uses to play music from the BluOS module, keep it). Verified
-  live: `/ExternalSource?id=<id>` selects one (`/Play?inputTypeIndex=phono-1` does nothing here).
-  `/RadioBrowse?service=Capture` lists only Bluetooth. While one is active, `/Status` has
-  `streamUrl` `Capture:External` and the name in `title2`.
-- Queue: `/Playlist?start=0&end=N`, `/Play?id=<position>`, `/Clear`. Sleep: `/Sleep` only cycles to
-  the next value (15, 30, 45, 60, 90, off, verified live), the code presses until `/Status` `<sleep>` matches.
+Keep committed files (this file, `TODO.md`, documentation, code comments, docstrings, commit messages, pull
+requests) at the feature level:
+
+- describe what the integration does for users ("the player moves its queue to another player") and say "the
+  player";
+- do not catalogue endpoints or describe how the players work inside: the code uses what it needs, with short
+  factual docstrings;
+- technical notes about the players, and anything private about the owner, go to `docs/player-notes.md`, which is
+  gitignored (local only, read it before changing `api.py`).
 
 ## Conventions that matter
 
@@ -93,6 +89,7 @@ is fine. Do NOT send playback, volume or preset commands live without asking fir
 
 ## Roadmap
 
-Sidebar panel (the owner uses a `panel_custom` redirect to the recent albums for now), selecting
-the external inputs (TV, Phono...), search, playlist contents, "Favourites" and "Folders" menus.
-Done: queue, sleep timer, input selection, grouping.
+See `TODO.md`. Done: panel, search, queue, playlists, home page, grouping, move playback, cards, playlist
+backup and restore. Next: voice and AI search, panel translations, A-Z bar, documentation, HACS submission.
+Later: a "Clear queue" `button` entity (only `media_player.clear_playlist` exists, no UI button),
+let library items play on any player (today items are tied to the player browsed from, by design).
