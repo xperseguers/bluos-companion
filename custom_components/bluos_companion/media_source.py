@@ -114,6 +114,8 @@ def play_path_from_media_id(media_id: str) -> tuple[str, str]:
             path = f"/Play?id={item_id}"
         case [entry_id, "node", payload]:
             path = _decode_node(payload).get("p") or ""
+        case [entry_id, "path", encoded_path]:
+            path = _decode(encoded_path)
         case _:
             raise BrowseError("This item cannot be played")
     if not is_play_path(path):

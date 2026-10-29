@@ -14,6 +14,8 @@ from homeassistant.components.media_player import (
     MediaPlayerState,
     MediaType,
     RepeatMode,
+    SearchMedia,
+    SearchMediaQuery,
     async_process_play_media_url,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -29,6 +31,7 @@ from homeassistant.util import dt as dt_util
 from .api import BluOSError
 from .const import CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
+from .media_search import async_search
 from .media_source import URI_PREFIX, play_path_from_media_id
 
 STATES = {
@@ -73,6 +76,7 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
         | MediaPlayerEntityFeature.SELECT_SOURCE
         | MediaPlayerEntityFeature.GROUPING
         | MediaPlayerEntityFeature.CLEAR_PLAYLIST
+        | MediaPlayerEntityFeature.SEARCH_MEDIA
     )
 
     def __init__(self, coordinator: BluOSCoordinator) -> None:
@@ -305,6 +309,10 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
         if entry is None or entry.domain != DOMAIN:
             raise HomeAssistantError(f"{entity_id} is not a BluOS Companion player")
         return entry
+
+    async def async_search_media(self, query: SearchMediaQuery) -> SearchMedia:
+        """Search the library, the saved playlists and the presets (Assist, AI agents)."""
+        return await async_search(self._client, self.coordinator.config_entry.entry_id, query)
 
     async def async_browse_media(
         self, media_content_type: str | None = None, media_content_id: str | None = None

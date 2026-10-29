@@ -131,6 +131,7 @@ async def test_browse(client: BluOSClient) -> None:
         browse_key="LocalMusic:MG/LocalMusic-Album?album=%C3%80+c%C3%B4t%C3%A9+du+soleil&artist=Cristina+Marocco",
         play_path="/Add?playnow=1&service=LocalMusic&album=x",
         image="/Artwork?service=LocalMusic&album=x",
+        play_url="/Add?playnow=1&service=LocalMusic&album=x",
     )
     assert nodes[1].type == "link"
     assert nodes[1].browse_key is None

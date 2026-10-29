@@ -126,6 +126,8 @@ class Node:
     play_path: str | None
     image: str | None
     context_key: str | None = None
+    # What plays the entry alone (a track found by a search plays the rest of the results otherwise).
+    play_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -453,6 +455,7 @@ class BluOSClient:
                     play_path=item.get("autoplayURL") or item.get("playURL"),
                     image=item.get("image"),
                     context_key=item.get("contextMenuKey"),
+                    play_url=item.get("playURL"),
                 )
                 nodes.setdefault(node, None)
             useful_pages += found
