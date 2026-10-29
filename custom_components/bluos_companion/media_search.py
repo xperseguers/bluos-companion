@@ -89,7 +89,11 @@ def fuzzy_score(title: str, query: str) -> int:
     }
     by_spaces = max((similarity(joined, run) for run in runs), default=0)
     best = max(by_words, by_spaces)
-    return int(best * 40) if best >= FUZZY_THRESHOLD else 0
+    if best < FUZZY_THRESHOLD:
+        return 0
+    # Among names with close words, the closest as a whole wins (the artist before the
+    # collaborations he is part of).
+    return int(30 * best + 10 * similarity(wanted, name))
 
 
 def _probes(query: str) -> list[str]:

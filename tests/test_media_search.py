@@ -279,3 +279,13 @@ async def test_nonsense_finds_nothing(
 ) -> None:
     """A name that resembles nothing gives no result and no wrong guess."""
     assert await _search(hass, "xylophone orchestra") == []
+
+
+def test_the_closest_whole_name_wins_among_close_words() -> None:
+    """A misspelled artist ranks before the collaborations that contain his name."""
+    query = "jean-jaque goldman"
+    alone = fuzzy_score("Jean-Jacques Goldman", query)
+    duo = fuzzy_score("Céline Dion; Jean-Jacques Goldman", query)
+    many = fuzzy_score("Catherine Deneuve; Alain Souchon; Laurent Voulzy; Jean-Jacques Goldman", query)
+    assert alone > duo > many > 0
+    assert alone < match_score("Jean-Jacques Goldman", "", "Jean-Jacques Goldman")
