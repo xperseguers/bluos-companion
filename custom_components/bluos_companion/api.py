@@ -117,6 +117,14 @@ class Node:
 
 
 @dataclass(frozen=True, slots=True)
+class BrowsePage:
+    """The entries of a browse level and the key to search within its source."""
+
+    nodes: list[Node]
+    search_key: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class Album:
     """An album of the local library, identified by its URL-encoded query."""
 
@@ -285,17 +293,31 @@ class BluOSClient:
         )
 
     async def async_browse(self, key: str | None) -> list[Node]:
-        """Return all entries below a browse key (the root of all sources if None).
+        """Return all entries below a browse key (the root of all sources if None)."""
+        return (await self.async_browse_page(key)).nodes
+
+    async def async_browse_page(
+        self,
+        key: str | None,
+        query: str | None = None,
+        max_pages: int = MAX_BROWSE_PAGES,
+    ) -> BrowsePage:
+        """Return the entries below a browse key, or the results of a search.
 
         Long listings are split in pages. The player may repeat earlier entries
         in later pages, so entries are merged in order of first appearance.
+        With a query, the key is the searchKey of a source.
         """
         nodes: dict[Node, None] = {}
+        search_key: str | None = None
         next_key: str | None = key
-        for _ in range(MAX_BROWSE_PAGES):
-            root = await self._get_xml(
-                "/Browse", {"key": next_key} if next_key else None
-            )
+        for page in range(max_pages):
+            params = {"key": next_key} if next_key else {}
+            if query is not None and page == 0:
+                params["q"] = query
+            root = await self._get_xml("/Browse", params or None)
+            if page == 0:
+                search_key = root.get("searchKey")
             for item in root.iter("item"):
                 node = Node(
                     type=item.get("type", ""),
@@ -308,7 +330,7 @@ class BluOSClient:
                 nodes.setdefault(node, None)
             if not (next_key := root.get("nextKey")):
                 break
-        return list(nodes)
+        return BrowsePage(list(nodes), search_key)
 
     async def async_get_recent_albums(self) -> list[Album]:
         """Return the most recently added albums of the library."""

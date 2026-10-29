@@ -13,7 +13,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.bluos_companion.const import PANEL_PATH
 
-from .conftest import BASE, calls, respond
+from .conftest import BASE, browse_url, calls, respond
 
 ROOT = """<browse type="menu">
   <item browseKey="BluOS:" text="Playlists" image="/images/ci_myplaylists.png" type="link"></item>
@@ -206,3 +206,124 @@ async def test_play_only_allowed_paths(
     response = await client.receive_json()
     assert response["success"] is allowed
     assert len(calls(player_api)) == allowed
+
+
+async def test_browse_reports_the_search_key(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The panel learns which key searches the source it is browsing."""
+    respond(
+        player_api,
+        f"{BASE}/Browse",
+        text='<browse searchKey="LocalMusic:Search" type="menu"><item browseKey="x" text="Albums" type="link"/></browse>',
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/browse", "entry_id": init_integration.entry_id}
+    )
+    assert (await client.receive_json())["result"]["search_key"] == "LocalMusic:Search"
+
+
+async def test_search_groups_results_by_category(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A search returns the first results of each category, without empty ones."""
+    respond(
+        player_api,
+        browse_url("LocalMusic:Search"),
+        text="""<browse type="menu">
+  <item browseKey="artists-key" text="Artists" type="link"/>
+  <item browseKey="songs-key" text="Songs" type="link"/>
+  <item browseKey="composers-key" text="Composers" type="link"/>
+</browse>""",
+    )
+    respond(
+        player_api,
+        browse_url("artists-key"),
+        text='<browse><item browseKey="a" text="Adele" type="artist"/></browse>',
+    )
+    respond(
+        player_api,
+        browse_url("songs-key"),
+        text='<browse><item playURL="/Add?playnow=1&amp;file=x" text="Hello" text2="Adele" type="track"/></browse>',
+    )
+    respond(player_api, browse_url("composers-key"), text="<browse/>")
+    hass.config.language = "fr"
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/search",
+            "entry_id": init_integration.entry_id,
+            "key": "LocalMusic:Search",
+            "query": "adele",
+        }
+    )
+    groups = (await client.receive_json())["result"]["groups"]
+
+    assert [group["title"] for group in groups] == ["Artistes", "Chansons"]
+    assert groups[0]["items"][0]["title"] == "Adele"
+    assert groups[1]["items"][0]["play_path"].startswith("/Add?")
+    assert calls(player_api)[0] == (
+        "/Browse",
+        {"key": "LocalMusic:Search", "q": "adele"},
+    )
+
+
+async def test_search_rejects_an_empty_query(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+) -> None:
+    """An empty search is refused before reaching the player."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/search",
+            "entry_id": init_integration.entry_id,
+            "key": "LocalMusic:Search",
+            "query": "",
+        }
+    )
+    assert (await client.receive_json())["success"] is False
+
+
+async def test_search_skips_failing_categories(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A category the player cannot list does not hide the others, unless all fail."""
+    respond(
+        player_api,
+        browse_url("Svc:Search"),
+        text='<browse><item browseKey="ok" text="Albums" type="link"/><item browseKey="bad" text="Artists" type="link"/></browse>',
+    )
+    respond(
+        player_api,
+        browse_url("ok"),
+        text='<browse><item browseKey="a" text="21" type="album"/></browse>',
+    )
+    respond(player_api, browse_url("bad"), status=500)
+    client = await hass_ws_client(hass)
+    request = {
+        "type": "bluos_companion/search",
+        "entry_id": init_integration.entry_id,
+        "key": "Svc:Search",
+        "query": "x",
+    }
+
+    await client.send_json_auto_id(request)
+    groups = (await client.receive_json())["result"]["groups"]
+    assert [group["title"] for group in groups] == ["Albums"]
+
+    respond(player_api, browse_url("ok"), status=500)
+    await client.send_json_auto_id(request)
+    assert (await client.receive_json())["success"] is False

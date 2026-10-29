@@ -96,6 +96,18 @@ const STYLE = `
     color: #fff;
     --mdc-icon-size: 24px;
   }
+  form.search { display: flex; gap: 8px; margin-bottom: 16px; }
+  form.search input {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    padding: 10px 14px;
+    border: 1px solid var(--divider-color);
+    border-radius: 24px;
+    background: var(--card-background-color);
+    color: var(--primary-text-color);
+  }
+  h3 { margin: 24px 0 12px; font-size: 16px; font-weight: 500; }
   .message { color: var(--secondary-text-color); text-align: center; margin-top: 48px; }
   footer {
     flex: none;
@@ -132,6 +144,7 @@ const STYLE = `
 const REPEAT_CYCLE = { 2: 0, 0: 1, 1: 2 }; // off -> queue -> track -> off
 const ACTIVE_STATES = ["play", "stream"];
 const STORAGE_KEY = "bluos_companion_player";
+const DEFAULT_SEARCH_KEY = "LocalMusic:Search"; // the library, used at the root
 
 function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -161,7 +174,8 @@ class BluOSCompanionPanel extends HTMLElement {
     this._players = [];
     this._playerId = localStorage.getItem(STORAGE_KEY);
     this._stack = []; // [{ title, key }], the root is implicit
-    this._items = null;
+    this._groups = null; // [{ title, items }]
+    this._searchKey = DEFAULT_SEARCH_KEY;
     this._receivedAt = 0;
     this._browseToken = 0;
     this._unsubscribe = null;
@@ -220,7 +234,7 @@ class BluOSCompanionPanel extends HTMLElement {
       localStorage.setItem(STORAGE_KEY, this._playerId);
       this._stack = [];
       this._browse();
-    } else if (this._items === null) {
+    } else if (this._groups === null) {
       this._browse();
     }
     this._renderPlayers();
@@ -254,18 +268,41 @@ class BluOSCompanionPanel extends HTMLElement {
     const player = this._player;
     if (!player) return;
     const token = ++this._browseToken;
-    this._items = null;
+    this._groups = null;
     this._renderBrowse();
-    const key = this._stack.length ? this._stack[this._stack.length - 1].key : undefined;
-    const result = await this._call({
-      type: "bluos_companion/browse",
-      entry_id: player.entry_id,
-      ...(key ? { key } : {}),
-    });
+    const level = this._stack[this._stack.length - 1];
+    let groups;
+    if (level && level.search) {
+      const result = await this._call({
+        type: "bluos_companion/search",
+        entry_id: player.entry_id,
+        key: level.search.key,
+        query: level.search.query,
+      });
+      groups = result ? result.groups : [];
+    } else {
+      const result = await this._call({
+        type: "bluos_companion/browse",
+        entry_id: player.entry_id,
+        ...(level && level.key ? { key: level.key } : {}),
+      });
+      if (result && (result.search_key || !level)) {
+        this._searchKey = result.search_key || DEFAULT_SEARCH_KEY;
+      }
+      groups = [{ title: null, items: result ? result.items : [] }];
+    }
     if (token !== this._browseToken) return;
-    this._items = result ? result.items : [];
+    this._groups = groups;
     this._renderBrowse();
     this._main.scrollTop = 0;
+  }
+
+  _search(query) {
+    query = query.trim();
+    if (!query) return;
+    if (this._stack.length && this._stack[this._stack.length - 1].search) this._stack.pop();
+    this._stack.push({ title: `\u201c${query}\u201d`, search: { key: this._searchKey, query } });
+    this._browse();
   }
 
   _open(item) {
@@ -298,10 +335,23 @@ class BluOSCompanionPanel extends HTMLElement {
         this._renderNowPlaying();
       },
     });
+    this._searchInput = el("input", { type: "search", placeholder: "Search", enterkeyhint: "search" });
+    this._searchForm = el(
+      "form",
+      {
+        class: "search",
+        onsubmit: (event) => {
+          event.preventDefault();
+          this._search(this._searchInput.value);
+          this._searchInput.blur();
+        },
+      },
+      this._searchInput,
+    );
     this._crumbs = el("div", { class: "crumbs" });
-    this._grid = el("div", { class: "grid" });
+    this._grid = el("div");
     this._message = el("div", { class: "message" });
-    this._main = el("main", {}, this._crumbs, this._grid, this._message);
+    this._main = el("main", {}, this._searchForm, this._crumbs, this._grid, this._message);
 
     this._cover = el("div", { class: "cover" });
     this._track = el("div", { class: "track" });
@@ -399,14 +449,19 @@ class BluOSCompanionPanel extends HTMLElement {
     this._crumbs.replaceChildren(...crumbs);
     this._grid.replaceChildren();
     this._message.textContent = "";
+    this._searchForm.hidden = !this._player;
     if (!this._player) {
       this._message.textContent = "No BluOS player configured.";
-    } else if (this._items === null) {
-      this._message.textContent = "…";
-    } else if (!this._items.length) {
+    } else if (this._groups === null) {
+      this._message.textContent = "\u2026";
+    } else if (!this._groups.some((group) => group.items.length)) {
       this._message.textContent = "Nothing here.";
     } else {
-      this._grid.append(...this._items.map((item) => this._tile(item)));
+      for (const group of this._groups) {
+        if (!group.items.length) continue;
+        if (group.title) this._grid.append(el("h3", {}, group.title));
+        this._grid.append(el("div", { class: "grid" }, ...group.items.map((item) => this._tile(item))));
+      }
     }
   }
 
