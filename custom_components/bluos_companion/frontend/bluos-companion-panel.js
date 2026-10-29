@@ -1156,7 +1156,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._nowSeeking = false;
     if (document.activeElement !== now.source && this.shadowRoot.activeElement !== now.source) {
       now.source.replaceChildren(
-        el("option", { value: "" }, "\u2026"),
+        el("option", { value: "" }, this._t("input")),
         ...player.sources.map((name) => {
           const option = el("option", { value: name }, name);
           option.selected = name === player.source;

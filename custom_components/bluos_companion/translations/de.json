@@ -101,7 +101,8 @@
       "editor_player": "Player",
       "editor_columns": "Spalten",
       "editor_show_footer": "Lautstärke und Eingang anzeigen",
-      "editor_show_volume": "Lautstärke anzeigen"
+      "editor_show_volume": "Lautstärke anzeigen",
+      "input": "Eingang"
     }
   },
   "services": {

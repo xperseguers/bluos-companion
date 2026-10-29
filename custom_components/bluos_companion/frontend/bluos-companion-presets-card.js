@@ -245,7 +245,7 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     this._name.textContent = player.name;
     this._source.hidden = !player.sources.length;
     this._source.replaceChildren(
-      el("option", { value: "" }, "…"),
+      el("option", { value: "" }, this._t("input")),
       ...player.sources.map((name) => {
         const option = el("option", { value: name }, name);
         option.selected = name === player.source;
