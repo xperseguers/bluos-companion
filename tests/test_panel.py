@@ -22,6 +22,13 @@ from .conftest import (
     status_xml,
 )
 
+LIBRARY_MENU = """<browse type="menu">
+  <item browseKey="LocalMusic:Artist/x" text="Artists" type="link"></item>
+  <item browseKey="LocalMusic:Album/x" text="Albums" type="link"></item>
+  <item browseKey="LocalMusic:Playlist/x" text="Playlists" type="link"></item>
+  <item browseKey="LocalMusic:MG/LocalMusic-Favourites" text="Favourites" type="link"></item>
+  <item playURL="/Add?playnow=1" text="Not a menu" type="track"></item>
+</browse>"""
 ROOT = """<browse type="menu">
   <item browseKey="BluOS:" text="Playlists" image="/images/ci_myplaylists.png" type="link"></item>
   <item playURL="/Play?url=Capture%3Abluez%3Abluetooth" text="Bluetooth" type="audio"></item>
@@ -748,6 +755,7 @@ async def test_home_page_groups(
 ) -> None:
     """The start page has the presets, the recent albums and the (visible) sources."""
     respond(player_api, f"{BASE}/Browse", text=ROOT)
+    respond(player_api, browse_url("LocalMusic:"), text=LIBRARY_MENU)
     hass.config_entries.async_update_entry(
         init_integration, options={"hidden_services": ["BluOS:"]}
     )
@@ -759,12 +767,19 @@ async def test_home_page_groups(
 
     assert [group["title"] for group in groups] == [
         "Presets",
+        "Library",
         "Recently Played",
         "Recent Stations",
         "Recently added",
         "Sources",
     ]
-    presets, recent, stations, albums, sources = (group["items"] for group in groups)
+    presets, library, recent, stations, albums, sources = (group["items"] for group in groups)
+    assert [(item["title"], item["image"]) for item in library] == [
+        ("Artists", "/bluos_companion/icons/artists.svg"),
+        ("Albums", "/bluos_companion/icons/albums.svg"),
+        ("Favourites", "/bluos_companion/icons/favourites.svg"),
+    ]
+    assert library[0]["browse_key"] == "LocalMusic:Artist/x"
     assert [(item["type"], item["title"]) for item in recent] == [
         ("album", "Io Canto 2"),
         ("song", "Je te donne"),
@@ -795,6 +810,7 @@ async def test_home_page_survives_failing_parts(
     respond(player_api, f"{BASE}/Presets", status=500)
     respond(player_api, f"{BASE}/Albums", status=500)
     respond(player_api, f"{BASE}/ui/Home", status=500)
+    respond(player_api, browse_url("LocalMusic:"), status=500)
     client = await hass_ws_client(hass)
     await client.send_json_auto_id(
         {"type": "bluos_companion/home", "entry_id": init_integration.entry_id}
@@ -1054,3 +1070,31 @@ async def test_panel_texts_come_in_the_language(
     strings = (await client.receive_json())["result"]["strings"]
     assert strings["show_more"] == expected
     assert strings["saved"].endswith("{name}")
+
+
+async def test_home_library_row_follows_the_hidden_services_and_the_language(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The library row is titled and named in the language, and hidden with the library."""
+    respond(player_api, f"{BASE}/Browse", text=ROOT)
+    respond(player_api, browse_url("LocalMusic:"), text=LIBRARY_MENU)
+    hass.config.language = "de"
+    client = await hass_ws_client(hass)
+
+    async def row() -> dict | None:
+        await client.send_json_auto_id(
+            {"type": "bluos_companion/home", "entry_id": init_integration.entry_id}
+        )
+        groups = (await client.receive_json())["result"]["groups"]
+        return next((group for group in groups if group["title"] == "Bibliothek"), None)
+
+    library = await row()
+    assert [item["title"] for item in library["items"]] == ["Künstler", "Alben", "Favoriten"]
+
+    hass.config_entries.async_update_entry(
+        init_integration, options={"hidden_services": ["LocalMusic:"]}
+    )
+    assert await row() is None
