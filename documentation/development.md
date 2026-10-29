@@ -22,6 +22,12 @@ Tests use `pytest-homeassistant-custom-component` and a mocked player (`aioclien
 branching, annotate parameters, and set `hass.config.language` to test a translation. Every translation file must
 have exactly the keys of `translations/en.json` (it is tested).
 
+## Continuous integration
+
+GitHub Actions run on every push and pull request (`.github/workflows`): the tests, Home Assistant's own
+validator for integrations (**hassfest**) and the **HACS** validation. The validators also run every day, since
+they change over time.
+
 ## Layout
 
 | Path | What |

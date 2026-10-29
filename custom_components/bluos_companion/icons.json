@@ -1,0 +1,17 @@
+{
+  "entity": {
+    "select": {
+      "sleep_timer": {
+        "default": "mdi:sleep"
+      }
+    }
+  },
+  "services": {
+    "backup_playlists": {
+      "service": "mdi:content-save-all"
+    },
+    "restore_playlists": {
+      "service": "mdi:backup-restore"
+    }
+  }
+}
