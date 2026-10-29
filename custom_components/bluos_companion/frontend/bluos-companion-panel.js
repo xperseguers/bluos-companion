@@ -857,7 +857,9 @@ class BluOSCompanionPanel extends HTMLElement {
   _renderPlayers() {
     if (!this._built) return;
     const player = this._player;
-    this._playerName.textContent = player ? player.name : "";
+    const group = player ? this._groupName(player) : "";
+    this._playerName.textContent = group || (player ? player.name : "");
+    this._playerButton.firstChild.setAttribute("icon", group ? "mdi:link-variant" : "mdi:speaker-multiple");
     this._playerButton.hidden = !player;
     if (this._dialogMode === "players") this._renderPlayerList();
     if (this._dialogMode === "group") this._renderGroup();
@@ -871,6 +873,16 @@ class BluOSCompanionPanel extends HTMLElement {
     this._browse();
     this._renderPlayers();
     this._renderNowPlaying();
+  }
+
+  // Names of the players playing together, the primary first ("" when alone).
+  _groupName(player) {
+    const primary = this._primaryOf(player);
+    if (!primary) return "";
+    const names = [primary, ...primary.group.slaves.map((id) => this._players.find((other) => other.entry_id === id))]
+      .filter(Boolean)
+      .map((member) => member.name);
+    return names.join(" + ");
   }
 
   _groupLabel(player) {
@@ -961,7 +973,7 @@ class BluOSCompanionPanel extends HTMLElement {
     const now = this._now;
     if (!this._nowOpen || !player) return;
     const playing = ACTIVE_STATES.includes(player.state);
-    now.player.textContent = player.name;
+    now.player.textContent = this._groupName(player) || player.name;
     now.title.textContent = player.title || player.name;
     now.sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
     if (player.image) {
