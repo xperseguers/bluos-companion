@@ -13,7 +13,14 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.bluos_companion.const import PANEL_PATH
 
-from .conftest import BASE, browse_url, calls, respond, status_xml
+from .conftest import (
+    BASE,
+    GROUPED_SYNC_STATUS,
+    browse_url,
+    calls,
+    respond,
+    status_xml,
+)
 
 ROOT = """<browse type="menu">
   <item browseKey="BluOS:" text="Playlists" image="/images/ci_myplaylists.png" type="link"></item>
@@ -769,3 +776,25 @@ async def test_home_page_survives_failing_parts(
         {"type": "bluos_companion/home", "entry_id": init_integration.entry_id}
     )
     assert (await client.receive_json())["success"] is False
+
+
+async def test_group_changes_are_pushed_to_the_open_panel(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A group made outside Home Assistant reaches the panel."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "bluos_companion/subscribe"})
+    await client.receive_json()
+    first = (await client.receive_json())["event"]["players"][0]
+    assert first["group"] == {"name": None, "master": None, "slaves": []}
+
+    respond(player_api, f"{BASE}/SyncStatus", text=GROUPED_SYNC_STATUS)
+    respond(player_api, f"{BASE}/Status", text=status_xml(syncStat="2"))
+    await init_integration.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+
+    event = await client.receive_json()
+    assert event["event"]["players"][0]["group"]["name"] == "Séjour+Pulse"
