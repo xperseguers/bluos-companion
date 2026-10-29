@@ -39,12 +39,29 @@ const STYLE = `
   button:hover:not(:disabled) { background: rgba(127, 127, 127, 0.2); }
   button:disabled { opacity: 0.4; cursor: default; }
   button.on { color: var(--accent-color, var(--primary-color)); }
-  select {
+  button.player-pill {
+    border: 1px solid var(--divider-color);
+    border-radius: 20px;
+    padding: 6px 14px 6px 10px;
+    gap: 6px;
     font: inherit;
-    padding: 6px 8px;
-    border-radius: 8px;
-    max-width: 50vw;
+    --mdc-icon-size: 22px;
   }
+  dialog button.player-row {
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  dialog button.player-row.selected {
+    border-color: var(--primary-color);
+    background: var(--secondary-background-color);
+  }
+  dialog .player-row .cover { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; --mdc-icon-size: 28px; }
+  dialog .player-row .text { flex: 1; min-width: 0; }
+  dialog .player-row .text div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  dialog .player-row .name { font-weight: 500; }
+  dialog .player-row .sub { font-size: 12px; color: var(--secondary-text-color); }
   main { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; }
   .crumbs { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
   .crumbs h2 { margin: 0; font-size: 20px; font-weight: 500; }
@@ -414,15 +431,13 @@ class BluOSCompanionPanel extends HTMLElement {
   _build() {
     this._menuButton = el("button", { onclick: () => this._toggleMenu() }, icon("mdi:menu"));
     this._menuButton.hidden = !this._narrow;
-    this._select = el("select", {
-      onchange: (event) => {
-        this._playerId = event.target.value;
-        localStorage.setItem(STORAGE_KEY, this._playerId);
-        this._stack = [];
-        this._browse();
-        this._renderNowPlaying();
-      },
-    });
+    this._playerName = el("span");
+    this._playerButton = el(
+      "button",
+      { class: "player-pill", onclick: () => this._showPlayers() },
+      icon("mdi:speaker-multiple"),
+      this._playerName,
+    );
     this._searchInput = el("input", { type: "search", placeholder: "Search", enterkeyhint: "search" });
     this._searchForm = el(
       "form",
@@ -439,7 +454,11 @@ class BluOSCompanionPanel extends HTMLElement {
     this._crumbs = el("div", { class: "crumbs" });
     this._actionRow = el("div", { class: "actions" });
     this._actionRow.hidden = true;
+    this._dialogMode = null;
     this._dialog = el("dialog", {
+      onclose: () => {
+        this._dialogMode = null;
+      },
       onclick: (event) => {
         if (event.target === this._dialog) this._dialog.close();
       },
@@ -495,13 +514,14 @@ class BluOSCompanionPanel extends HTMLElement {
         this._buttons.repeat,
       ),
       el("div", { class: "volume" }, this._buttons.mute, this._volume),
+      this._playerButton,
       this._progress,
     );
     this._footer = footer;
 
     this.shadowRoot.append(
       el("style", {}, STYLE),
-      el("header", {}, this._menuButton, el("h1", {}, "BluOS Companion"), this._select),
+      el("header", {}, this._menuButton, el("h1", {}, "BluOS Companion")),
       this._main,
       footer,
       this._dialog,
@@ -523,14 +543,70 @@ class BluOSCompanionPanel extends HTMLElement {
 
   _renderPlayers() {
     if (!this._built) return;
-    this._select.replaceChildren(
-      ...this._players.map((player) => {
-        const option = el("option", { value: player.entry_id }, player.name);
-        option.selected = player.entry_id === this._playerId;
-        return option;
-      }),
+    const player = this._player;
+    this._playerName.textContent = player ? player.name : "";
+    this._playerButton.hidden = !player;
+    if (this._dialogMode === "players") this._renderPlayerList();
+  }
+
+  _select(entryId) {
+    if (entryId === this._playerId) return;
+    this._playerId = entryId;
+    localStorage.setItem(STORAGE_KEY, entryId);
+    this._stack = [];
+    this._browse();
+    this._renderPlayers();
+    this._renderNowPlaying();
+  }
+
+  _groupLabel(player) {
+    const name = (id) => (this._players.find((other) => other.entry_id === id) || {}).name;
+    if (player.group.master) return `Grouped with ${name(player.group.master) || "another player"}`;
+    const slaves = player.group.slaves.map(name).filter(Boolean);
+    return slaves.length ? `Group: ${[player.name, ...slaves].join(" + ")}` : "";
+  }
+
+  _showPlayers() {
+    this._dialogMode = "players";
+    this._renderPlayerList();
+    if (!this._dialog.open) this._dialog.showModal();
+  }
+
+  _renderPlayerList() {
+    this._dialog.replaceChildren(
+      el("h2", {}, "Play on"),
+      el(
+        "div",
+        { class: "list" },
+        ...this._players.map((player) => {
+          const playing = ACTIVE_STATES.includes(player.state);
+          const what = player.available
+            ? [player.title, player.artist].filter(Boolean).join(" - ")
+            : "Unavailable";
+          return el(
+            "button",
+            {
+              class: `action player-row${player.entry_id === this._playerId ? " selected" : ""}`,
+              onclick: () => {
+                this._select(player.entry_id);
+                this._dialog.close();
+              },
+            },
+            player.image
+              ? el("img", { class: "cover", src: player.image, alt: "" })
+              : el("div", { class: "cover" }, icon("mdi:speaker")),
+            el(
+              "div",
+              { class: "text" },
+              el("div", { class: "name" }, player.name),
+              el("div", { class: "sub" }, what || "\u00a0"),
+              this._groupLabel(player) ? el("div", { class: "sub" }, this._groupLabel(player)) : null,
+            ),
+            icon(playing ? "mdi:play-circle" : player.state === "pause" ? "mdi:pause-circle" : "mdi:stop-circle-outline"),
+          );
+        }),
+      ),
     );
-    this._select.hidden = this._players.length < 2;
   }
 
   _renderBrowse() {
