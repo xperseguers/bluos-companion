@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Callable
+from difflib import SequenceMatcher
 import unicodedata
 from dataclasses import dataclass
 from urllib.parse import urlencode
@@ -16,7 +18,7 @@ from homeassistant.components.media_player import (
     SearchMediaQuery,
 )
 
-from .api import BluOSClient, BluOSError, Node
+from .api import BluOSClient, BluOSError, Node, Preset
 from .media_source import URI_PREFIX, _encode, is_play_path
 
 MAX_RESULTS = 10
@@ -30,6 +32,10 @@ CATEGORIES = {
 # over an artist, an album and a song.
 PLAYLIST_BONUS = 3
 STATION_BONUS = 3
+# A typo tolerant search only runs when the exact one finds nothing.
+FUZZY_THRESHOLD = 0.8
+FUZZY_MIN_LENGTH = 4
+FUZZY_PROBES = 4
 
 
 def normalize(text: str) -> str:
@@ -53,6 +59,53 @@ def match_score(title: str, subtitle: str, query: str) -> int:
     if all(word in f"{name} {normalize(subtitle)}".split() for word in words):
         return 20
     return 0
+
+
+def fuzzy_score(title: str, query: str) -> int:
+    """Return how close a title is to a query that may have typos, 0 if not close.
+
+    Either every word of the query is close to a word of the title ("led zepelin"
+    is "Led Zeppelin", "zepelin" is a word of it), or the words are split or joined
+    differently ("cold play" is "coldplay"). One word in common is not enough
+    ("xylophone orchestra" is not "Chicago Symphony Orchestra"). The result stays
+    below the scores of the exact matches.
+    """
+    name, wanted = normalize(title), normalize(query)
+    if len(wanted) < FUZZY_MIN_LENGTH or not name:
+        return 0
+
+    def similarity(first: str, second: str) -> float:
+        return SequenceMatcher(None, first, second).ratio()
+
+    words, tokens = wanted.split(), name.split()
+    by_words = min(max(similarity(word, token) for token in tokens) for word in words)
+    # Runs of a different number of words than the query: only the spaces differ.
+    joined = wanted.replace(" ", "")
+    runs = {
+        "".join(tokens[i : i + size])
+        for size in range(1, len(tokens) + 1)
+        if size != len(words)
+        for i in range(len(tokens) - size + 1)
+    }
+    by_spaces = max((similarity(joined, run) for run in runs), default=0)
+    best = max(by_words, by_spaces)
+    return int(best * 40) if best >= FUZZY_THRESHOLD else 0
+
+
+def _probes(query: str) -> list[str]:
+    """Return fragments of a query to search the library with when it has a typo.
+
+    The player only finds what contains the text, so the start and the end of the
+    longest words are tried: the typo is unlikely to be in both.
+    """
+    probes: list[str] = []
+    for word in sorted(normalize(query).split(), key=len, reverse=True)[:3]:
+        if len(word) < 3:
+            continue
+        for probe in ([word] if len(word) <= 5 else [word[:4], word[-4:]]):
+            if probe not in probes:
+                probes.append(probe)
+    return probes[:FUZZY_PROBES]
 
 
 @dataclass(frozen=True)
@@ -101,35 +154,19 @@ async def _library(
     ]
 
 
-async def async_search(
-    client: BluOSClient, entry_id: str, query: SearchMediaQuery
-) -> SearchMedia:
-    """Search the library, the saved playlists and the presets of a player."""
-    text = query.search_query.strip()
-    wanted = set(query.media_filter_classes or [])
-    music = MediaClass.MUSIC in wanted
-    if music:
-        wanted = set()
+def _candidates(
+    entries: list[tuple[Node, str]],
+    playlist_names: list[str],
+    presets: list[Preset],
+    wanted: set[MediaClass],
+    score_of: Callable[[str, str], int],
+) -> list[Candidate]:
+    """Turn what was found into results, with the score of each."""
     candidates: list[Candidate] = []
-
-    def station_allowed() -> bool:
-        return not wanted or MediaClass.CHANNEL in wanted
-
-    # The player's own search fails on punctuation (a hyphen), so retry on the longest word.
-    words = re.findall(r"\w+", text)
-    terms = [text] + ([max(words, key=len)] if len(words) and max(words, key=len) != text else [])
-    entries: list[tuple[Node, str]] = []
-    for term in terms:
-        try:
-            entries = await _library(client, term, wanted)
-        except BluOSError:
-            entries = []
-        if entries:
-            break
     for node, category in entries:
         media_class, media_type, bonus = CATEGORIES[category]
         subtitle = node.subtitle
-        score = match_score(node.title, subtitle, text)
+        score = score_of(node.title, subtitle)
         if not score:
             continue
         if category == "Artists":
@@ -143,24 +180,21 @@ async def async_search(
         if path and is_play_path(path):
             candidates.append(Candidate(title, media_class, media_type, path, score + bonus))
 
-    playlists = set()
-    if not wanted or MediaClass.PLAYLIST in wanted:
-        for name in await _safe(client.async_get_playlist_names()):
-            playlists.add(name)
-            if score := match_score(name, "", text):
-                path = "/Load?" + urlencode({"service": "BluOS", "name": name})
-                candidates.append(
-                    Candidate(name, MediaClass.PLAYLIST, MediaType.PLAYLIST, path, score + PLAYLIST_BONUS)
-                )
-    for preset in await _safe(client.async_get_presets()):
+    for name in playlist_names:
+        if score := score_of(name, ""):
+            path = "/Load?" + urlencode({"service": "BluOS", "name": name})
+            candidates.append(
+                Candidate(name, MediaClass.PLAYLIST, MediaType.PLAYLIST, path, score + PLAYLIST_BONUS)
+            )
+    for preset in presets:
         is_playlist = preset.url.startswith("/Load")
         if is_playlist:
             # It loads a saved playlist, which is a result already.
-            if preset.name in playlists or (wanted and MediaClass.PLAYLIST not in wanted):
+            if preset.name in playlist_names or (wanted and MediaClass.PLAYLIST not in wanted):
                 continue
-        elif not station_allowed():
+        elif wanted and MediaClass.CHANNEL not in wanted:
             continue
-        if score := match_score(preset.name, "", text):
+        if score := score_of(preset.name, ""):
             candidates.append(
                 Candidate(
                     preset.name,
@@ -170,6 +204,55 @@ async def async_search(
                     score + (PLAYLIST_BONUS if is_playlist else STATION_BONUS),
                 )
             )
+    return candidates
+
+
+async def _entries(
+    client: BluOSClient, terms: list[str], wanted: set[MediaClass], *, merge: bool
+) -> list[tuple[Node, str]]:
+    """Search the library for the terms: the first that finds something, or all of them."""
+    found: list[tuple[Node, str]] = []
+    for term in terms:
+        try:
+            entries = await _library(client, term, wanted)
+        except BluOSError:
+            entries = []
+        for entry in entries:
+            if entry not in found:
+                found.append(entry)
+        if found and not merge:
+            break
+    return found
+
+
+async def async_search(
+    client: BluOSClient, entry_id: str, query: SearchMediaQuery
+) -> SearchMedia:
+    """Search the library, the saved playlists and the presets of a player."""
+    text = query.search_query.strip()
+    wanted = set(query.media_filter_classes or [])
+    if MediaClass.MUSIC in wanted:
+        wanted = set()
+    playlist_names = (
+        await _safe(client.async_get_playlist_names())
+        if not wanted or MediaClass.PLAYLIST in wanted
+        else []
+    )
+    presets = await _safe(client.async_get_presets())
+
+    # The player's own search fails on punctuation (a hyphen), so retry on the longest word.
+    words = re.findall(r"\w+", text)
+    longest = max(words, key=len) if words else text
+    terms = [text] + ([longest] if longest != text else [])
+    entries = await _entries(client, terms, wanted, merge=False)
+    candidates = _candidates(
+        entries, playlist_names, presets, wanted, lambda title, sub: match_score(title, sub, text)
+    )
+    if not candidates and len(normalize(text)) >= FUZZY_MIN_LENGTH:
+        entries = await _entries(client, _probes(text), wanted, merge=True)
+        candidates = _candidates(
+            entries, playlist_names, presets, wanted, lambda title, _: fuzzy_score(title, text)
+        )
 
     candidates.sort(key=lambda candidate: candidate.score, reverse=True)
     return SearchMedia(
