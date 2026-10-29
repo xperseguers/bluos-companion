@@ -21,6 +21,11 @@ from custom_components.bluos_companion.const import DOMAIN
 
 from custom_components.bluos_companion.api import Node
 from custom_components.bluos_companion.const import ICONS_URL
+from custom_components.bluos_companion.http import (
+    async_artwork_url,
+    decode_image,
+    encode_image,
+)
 from custom_components.bluos_companion.media_source import TITLES, _encode_node
 
 from .conftest import BASE, SONGS_SECTION, browse_url, calls
@@ -38,6 +43,11 @@ def _ids(item) -> list[str]:
 
 def _thumb_path(thumbnail: str) -> str:
     return thumbnail.split("&authSig=")[0]
+
+
+def _image_of(thumbnail: str) -> str:
+    """Return the player image path a proxied thumbnail points to."""
+    return decode_image(_thumb_path(thumbnail).split("?path=")[1])
 
 
 @pytest.mark.usefixtures("init_integration")
@@ -79,7 +89,7 @@ async def test_recent_albums(
     assert first.media_content_id == (
         f"{ROOT}/{eid}/album/{_b64('album=Definitely+Maybe&artist=Oasis')}"
     )
-    assert first.thumbnail.startswith(f"/api/{DOMAIN}/{eid}/artwork?path=/Artwork")
+    assert _image_of(first.thumbnail).startswith("/Artwork")
     assert "authSig=" in first.thumbnail
 
 
@@ -100,7 +110,7 @@ async def test_albums_by_section(
     ]
     album = albums.children[0]
     assert (album.media_class, album.can_play, album.can_expand) == ("album", True, True)
-    assert album.thumbnail.startswith(f"/api/{DOMAIN}/{eid}/artwork?path=/Artwork")
+    assert _image_of(album.thumbnail).startswith("/Artwork")
 
 
 @pytest.mark.parametrize(
@@ -172,7 +182,7 @@ async def test_presets(hass: HomeAssistant, init_integration: MockConfigEntry) -
     eid = init_integration.entry_id
     item = await async_browse_media(hass, f"{ROOT}/{eid}/presets")
     http_preset, https_preset, no_image = item.children
-    assert http_preset.thumbnail.startswith(f"/api/{DOMAIN}/{eid}/artwork?path=http")
+    assert _image_of(http_preset.thumbnail).startswith("http")
     assert https_preset.thumbnail == "https://cdn.example/s58290.png"
     assert no_image.thumbnail is None
     assert [child.media_content_id for child in item.children] == [
@@ -269,7 +279,7 @@ async def test_artwork_proxy_errors(
     client = await hass_client()
     response = await client.get(
         f"/api/{DOMAIN}/{entry_id.format(eid=init_integration.entry_id)}/artwork",
-        params={"path": path},
+        params={"path": encode_image(path)},
     )
     assert response.status == status
     assert [call for call in calls(player_api) if call[0] == "/Artwork"] == []
@@ -283,9 +293,35 @@ async def test_artwork_proxy_requires_auth(
     """Unsigned, unauthenticated requests are refused."""
     client = await hass_client_no_auth()
     response = await client.get(
-        f"/api/{DOMAIN}/{init_integration.entry_id}/artwork", params={"path": "/Artwork"}
+        f"/api/{DOMAIN}/{init_integration.entry_id}/artwork",
+        params={"path": encode_image("/Artwork")},
     )
     assert response.status == 401
+
+
+async def test_artwork_proxy_signed_url_with_encoded_path(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    hass_client_no_auth: ClientSessionGenerator,
+) -> None:
+    """A signed URL works for paths holding %XX, + and quotes, as in file names."""
+    image = (
+        "/Artwork?service=LocalMusic&fn=%2Fmnt%2FKuschel+Rock%2C+Vol.+10"
+        "%2FI%27d+Lie+%28And%29.m4a"
+    )
+    url = async_artwork_url(hass, init_integration.entry_id, image)
+    player_api.mock_calls.clear()
+
+    response = await (await hass_client_no_auth()).get(url)
+
+    assert response.status == 200
+    assert calls(player_api) == [
+        (
+            "/Artwork",
+            {"service": "LocalMusic", "fn": "/mnt/Kuschel Rock, Vol. 10/I'd Lie (And).m4a"},
+        )
+    ]
 
 
 async def test_titles_follow_the_language(
