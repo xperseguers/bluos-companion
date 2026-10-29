@@ -103,6 +103,33 @@ const STYLE = `
   dialog .player-row .sub { font-size: 12px; color: var(--secondary-text-color); }
   main { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; }
   .crumbs { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .tile { scroll-margin-top: 72px; }
+  .azbar {
+    position: sticky;
+    top: -16px;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 0;
+    margin-bottom: 8px;
+    background: var(--primary-background-color);
+  }
+  .chip {
+    border: 1px solid var(--divider-color);
+    border-radius: 20px;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 10px;
+    font: inherit;
+    background: var(--card-background-color);
+    color: var(--primary-text-color);
+  }
+  .chip.current {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--text-primary-color, #fff);
+  }
   .crumb-cover { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex: none; }
   .crumbs h2 { margin: 0; font-size: 20px; font-weight: 500; }
   .grid {
@@ -257,6 +284,7 @@ const STYLE = `
 
 const REPEAT_CYCLE = { 2: 0, 0: 1, 1: 2 }; // off -> queue -> track -> off
 const ACTIVE_STATES = ["play", "stream"];
+const INITIALS_FROM = 40; // a list this long gets a bar of first letters
 const STORAGE_KEY = "bluos_companion_player";
 const DEFAULT_SEARCH_KEY = "LocalMusic:Search"; // the library, used at the root
 
@@ -774,9 +802,71 @@ class BluOSCompanionPanel extends HTMLElement {
     this._actionRow.hidden = !(this._queue && this._queue.length);
   }
 
+  // The letters (sections) of a long list: shown as a bar, kept above the entries of a letter.
+  _sectionBar() {
+    const level = this._stack[this._stack.length - 1];
+    if (level && level.bar) return level.bar;
+    const items = this._groups && this._groups.length === 1 ? this._groups[0].items : [];
+    return items.length && items.every((item) => item.type === "section") ? items : null;
+  }
+
   _open(item) {
-    this._stack.push({ title: item.title, key: item.browse_key, contextKey: item.context_key, image: item.image });
+    if (item.type === "section") {
+      const bar = this._sectionBar();
+      const top = this._stack[this._stack.length - 1];
+      const base = top && top.bar ? top.base : top ? top.title : "";
+      const level = { title: base ? `${base} \u00b7 ${item.title}` : item.title, base, key: item.browse_key, bar, letter: item.title };
+      // Jumping from a letter to another one replaces it, so that back leaves the list.
+      if (top && top.bar) this._stack[this._stack.length - 1] = level;
+      else this._stack.push(level);
+    } else {
+      this._stack.push({ title: item.title, key: item.browse_key, contextKey: item.context_key, image: item.image });
+    }
     this._browse();
+  }
+
+  _renderInitials(items) {
+    const initial = (item) => {
+      const letter = item.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").charAt(0).toUpperCase();
+      return /[A-Z]/.test(letter) ? letter : "#";
+    };
+    const letters = [...new Set(items.map(initial))].sort((a, b) => (a === "#" ? -1 : b === "#" ? 1 : a < b ? -1 : 1));
+    return el(
+      "div",
+      { class: "azbar" },
+      ...letters.map((letter) =>
+        el(
+          "button",
+          {
+            class: "chip",
+            onclick: () => {
+              const index = items.findIndex((item) => initial(item) === letter);
+              const tile = this._grid.querySelectorAll(".tile")[index];
+              if (tile) tile.scrollIntoView({ block: "start", behavior: "smooth" });
+            },
+          },
+          letter,
+        ),
+      ),
+    );
+  }
+
+  _renderBar(bar, current) {
+    return el(
+      "div",
+      { class: "azbar" },
+      ...bar.map((item) =>
+        el(
+          "button",
+          {
+            class: item.title === current ? "chip current" : "chip",
+            title: item.subtitle ? `${item.title} (${item.subtitle})` : item.title,
+            onclick: () => this._open(item),
+          },
+          item.title,
+        ),
+      ),
+    );
   }
 
   _up() {
@@ -1330,8 +1420,20 @@ class BluOSCompanionPanel extends HTMLElement {
     } else if (!this._groups.some((group) => group.items.length)) {
       this._message.textContent = this._t("nothing_here");
     } else {
+      const bar = this._sectionBar();
+      const level = this._stack[this._stack.length - 1];
+      if (bar) this._grid.append(this._renderBar(bar, level && level.letter));
+      else if (
+        this._groups.length === 1 &&
+        this._groups[0].items.length >= INITIALS_FROM &&
+        this._groups[0].items.every((item) => item.type !== "track")
+      ) {
+        // A long list the player gives without letters (not tracks, they are in playing order).
+        this._grid.append(this._renderInitials(this._groups[0].items));
+      }
       for (const group of this._groups) {
         if (!group.items.length) continue;
+        if (bar && !level.bar) continue; // the letters are the bar, not tiles
         if (group.title) this._grid.append(el("h3", {}, group.title));
         this._grid.append(el("div", { class: "grid" }, ...group.items.map((item) => this._tile(item))));
       }
