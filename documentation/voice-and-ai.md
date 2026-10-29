@@ -100,6 +100,12 @@ through **Assist** gets the same capability for the exposed players: it can ask 
 an album, a song, a playlist or a station. Enable *Control Home Assistant → Assist* in the settings
 of the agent, and expose the players.
 
+Some agents do not use the search of Assist and call `media_player.play_media` themselves, with the title as
+text (`media_content_id: les yeux revolver`, `media_content_type: music`). That works too: BluOS Companion
+searches the name like Assist does and plays the best match. The type can narrow the search (`artist`, `album`,
+`track`, `playlist`). If nothing matches, the action fails with "No results found for ...", which the agent can
+use to try again.
+
 ## Trying the search without playing anything
 
 Developer tools → Actions → `media_player.search_media`:

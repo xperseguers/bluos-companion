@@ -46,6 +46,10 @@ data:
 Presets are `.../preset/<number>` and queue positions `.../queue/<position>`. For everything else, copy the
 value the picker gives you.
 
+`media_content_id` can also be **a name**: the best match of a search is played (`media_content_type: artist`,
+`album`, `track` or `playlist` narrows it, `music` does not). It fails with "No results found" when nothing
+matches.
+
 ## Searching
 
 `media_player.search_media` returns what a name matches, best match first (artists, albums, songs, saved
