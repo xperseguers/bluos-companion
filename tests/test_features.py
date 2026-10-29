@@ -250,7 +250,9 @@ class _Cycling:
         self, method: str, url: URL, data: object
     ) -> AiohttpClientMockResponse:
         self.index = (self.index + 1) % len(self.values)
-        return AiohttpClientMockResponse(method, url, text="<sleep/>")
+        return AiohttpClientMockResponse(
+            method, url, text=f"<sleep>{self.values[self.index]}</sleep>"
+        )
 
 
 @pytest.mark.parametrize(
@@ -275,6 +277,27 @@ async def test_set_sleep_timer(
         blocking=True,
     )
     assert [path for path, _ in calls(player_api) if path == "/Sleep"] == ["/Sleep"] * presses
+
+
+async def test_set_sleep_timer_when_the_status_lags(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The player answers a press with the new delay while /Status keeps the old one."""
+
+    class Lagging(_Cycling):
+        async def _status(self, method, url, data):  # noqa: ANN001, ANN202
+            return AiohttpClientMockResponse(method, url, text=status_xml(sleep=""))
+
+    Lagging(player_api, ["", "15", "30", "45", "60", "90"])
+    await hass.services.async_call(
+        SELECT_DOMAIN,
+        SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: SLEEP_ENTITY_ID, ATTR_OPTION: "30"},
+        blocking=True,
+    )
+    assert [path for path, _ in calls(player_api) if path == "/Sleep"] == ["/Sleep"] * 2
 
 
 async def test_set_sleep_timer_failure(
