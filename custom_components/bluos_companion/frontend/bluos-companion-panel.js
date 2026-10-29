@@ -582,9 +582,9 @@ class BluOSCompanionPanel extends HTMLElement {
     const token = ++this._browseToken;
     this._groups = null;
     this._nextKey = null;
+    this._levelActions = []; // those of the previous page must not be drawn on this one
     this._renderBrowse();
     const level = this._stack[this._stack.length - 1];
-    this._levelActions = [];
     if (level && level.contextKey) {
       this._actions(level.contextKey).then((actions) => {
         if (token !== this._browseToken) return;
@@ -1465,10 +1465,9 @@ class BluOSCompanionPanel extends HTMLElement {
         : []),
     );
     if (level && level.queue) return;
-    this._actionRow.replaceChildren(
-      ...this._levelActions.map((action) => this._actionButton(action, level.title)),
-    );
-    this._actionRow.hidden = !this._levelActions.length;
+    const actions = level ? this._levelActions : [];
+    this._actionRow.replaceChildren(...actions.map((action) => this._actionButton(action, level.title)));
+    this._actionRow.hidden = !actions.length;
   }
 
   _tile(item) {
