@@ -7,3 +7,5 @@ __pycache__/
 .idea/
 # API manual from Lenbrook (confidential, not for redistribution): never commit
 /docs/
+# Local plan (the owner keeps it out of git)
+/TODO.md
