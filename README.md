@@ -73,7 +73,9 @@ folder of your Home Assistant configuration (next to `configuration.yaml`) and r
 | [How it was tested](documentation/how-it-was-tested.md) | tested devices, automated tests, what is not tested |
 | [Development](documentation/development.md) | run it, test it, contribute |
 
-## Credits
+## License
+
+Apache License 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). Copyright 2026 Xavier Perseguers.
 
 Menu icons are based on [Material Design Icons](https://pictogrammers.com/library/mdi/)
 (Apache License 2.0), see `custom_components/bluos_companion/icons/README.md`.

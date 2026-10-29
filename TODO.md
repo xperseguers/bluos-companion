@@ -73,7 +73,7 @@ for free from the player's own browse tree), panel not restricted to admins.
 - [x] Decision: public documentation only describes what the integration does for users, technical notes about the players stay local. Squash the local commits before the first push. Contacting the player vendor is left for later, once the integration is widely used
 ## Publication: HACS default store (at the end, with help)
 Submission is a pull request to `hacs/default` adding the repository to the `integration` list, after the repository passes HACS's checks. State today:
-- [ ] `LICENSE` file at the root with an OSI-approved license (none yet; the README only credits the icons, which are Apache-2.0). To choose: MIT or Apache-2.0 are the usual picks, any OSI license is accepted
+- [x] `LICENSE` (Apache-2.0, the license of Home Assistant itself, which would make a possible core integration simpler) and `NOTICE` (copyright, credit of the Material Design icons, the not-affiliated statement), license section in the README
 - [ ] GitHub Actions on the repository: the HACS action (`hacs/action`, category `integration`) and hassfest (`home-assistant/actions/hassfest`), both must pass, plus the test suite (none in `.github/workflows/` yet)
 - [ ] A GitHub *release* (not only a tag) for the version in `manifest.json` (tags 1.0.0, 1.1.0, 1.2.0 exist locally; check they are releases). The panel and cards are a big step: bump the version (2.0.0 or 1.3.0) and write release notes
 - [ ] `hacs.json`: `name` and `homeassistant` exist; set the minimum Home Assistant version to what the code really needs (it uses `ConfigEntry.created_at`, `async_loaded_entries`, the backup platform hooks; to be checked and tested against that version)
