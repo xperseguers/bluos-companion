@@ -24,7 +24,7 @@ from custom_components.bluos_companion.playlist_backup import (
     render,
 )
 
-from .conftest import BASE, respond
+from .conftest import BASE, calls, respond
 
 SONG = (
     "<song service='LocalMusic'><art>{artist}</art><alb>{album}</alb><title>{title}</title>"
@@ -191,3 +191,104 @@ async def test_backup_service_returns_what_it_saved(
         DOMAIN, "backup_playlists", {}, blocking=True, return_response=True
     )
     assert result == {"playlists": {"Tuning": 3}}
+
+
+FILE = """#EXTM3U
+#PLAYLIST:Tuning
+#EXTINF:193,Samuel Hui - I Got a Name
+/new/share/a.m4a
+/new/share/b.m4a
+"""
+
+
+@pytest.fixture
+def restorable(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    config_dir: Path,
+) -> AiohttpClientMocker:
+    """A player with the playlist Existing, and a saved file for Tuning and Existing."""
+    config_dir.mkdir(parents=True)
+    (config_dir / "Tuning.m3u8").write_text(FILE, encoding="utf-8")
+    (config_dir / "Existing.m3u8").write_text(FILE.replace("Tuning", "Existing"), encoding="utf-8")
+    (config_dir / "Nothing.m3u8").write_text("#EXTM3U\n#PLAYLIST:Nothing\n", encoding="utf-8")
+    respond(player_api, f"{BASE}/Playlists", text="<playlists><name>Existing</name></playlists>")
+    for command in ("Delete", "Save"):
+        respond(player_api, f"{BASE}/{command}", text="<ok/>")
+    # The real player gives the header of the queue as child elements.
+    respond(player_api, f"{BASE}/Playlist", text="<playlist><length>2</length><id>3</id></playlist>")
+    player_api.mock_calls.clear()
+    return player_api
+
+
+async def _restore(hass: HomeAssistant, **data: object) -> dict:
+    return await hass.services.async_call(
+        DOMAIN,
+        "restore_playlists",
+        {"entity_id": "media_player.sejour", **data},
+        blocking=True,
+        return_response=True,
+    )
+
+
+async def test_restore_a_new_playlist(hass: HomeAssistant, restorable: AiohttpClientMocker) -> None:
+    """The queue is emptied, filled file by file and saved under the name."""
+    result = await _restore(hass, playlists=["Tuning", "Unknown"])
+
+    assert result == {"restored": {"Tuning": 2}, "skipped": [], "not_found": ["Unknown"]}
+    add = {"playnow": "-1", "service": "LocalMusic", "where": "last"}
+    assert calls(restorable) == [
+        ("/Playlists", {"service": "BluOS"}),
+        ("/Clear", {}),
+        ("/Add", {"file": "/new/share/a.m4a", **add}),
+        ("/Add", {"file": "/new/share/b.m4a", **add}),
+        ("/Playlist", {"length": "1"}),
+        ("/Save", {"name": "Tuning"}),
+    ]
+
+
+async def test_restore_leaves_an_existing_playlist_alone(
+    hass: HomeAssistant, restorable: AiohttpClientMocker
+) -> None:
+    """Without the explicit request to replace, nothing of an existing playlist is touched."""
+    result = await _restore(hass)
+
+    assert result["restored"] == {"Tuning": 2}
+    assert sorted(result["skipped"]) == ["Existing", "Nothing"]
+    assert ("/Delete", {"name": "Existing", "service": "BluOS"}) not in calls(restorable)
+    assert [query for path, query in calls(restorable) if path == "/Save"] == [{"name": "Tuning"}]
+
+
+async def test_restore_replaces_only_when_asked(
+    hass: HomeAssistant, restorable: AiohttpClientMocker
+) -> None:
+    """The old playlist is deleted after the new queue is ready, just before saving."""
+    result = await _restore(hass, playlists=["Existing"], replace=True)
+
+    assert result["restored"] == {"Existing": 2}
+    paths = [path for path, _ in calls(restorable)]
+    assert paths == ["/Playlists", "/Clear", "/Add", "/Add", "/Playlist", "/Delete", "/Save"]
+    assert calls(restorable)[-2] == ("/Delete", {"name": "Existing", "service": "BluOS"})
+
+
+async def test_restore_warns_when_the_player_finds_fewer_files(
+    hass: HomeAssistant,
+    restorable: AiohttpClientMocker,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Files that are not found at their path (moved share) are reported."""
+    respond(restorable, f"{BASE}/Playlist", text="<playlist><length>1</length><id>3</id></playlist>")
+
+    result = await _restore(hass, playlists=["Tuning"])
+
+    assert result["restored"] == {"Tuning": 1}
+    assert "found 1 of the 2 files" in caplog.text
+
+
+async def test_restore_needs_a_bluos_player(hass: HomeAssistant, restorable: AiohttpClientMocker) -> None:
+    """Another entity is refused."""
+    from homeassistant.exceptions import HomeAssistantError
+
+    with pytest.raises(HomeAssistantError, match="Choose a BluOS Companion player"):
+        await _restore(hass, entity_id="media_player.nope")

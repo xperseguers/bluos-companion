@@ -718,6 +718,22 @@ class BluOSClient:
         """Save the queue as a playlist."""
         await self.async_command("/Save", {"name": name})
 
+    async def async_add_file(self, path: str) -> None:
+        """Add a file of the music share to the end of the queue, without playing it."""
+        await self.async_command(
+            "/Add",
+            {"file": path, "playnow": "-1", "service": "LocalMusic", "where": "last"},
+        )
+
+    async def async_get_queue_length(self) -> int:
+        """Return the number of tracks of the queue."""
+        root = await self._get_xml("/Playlist", {"length": "1"})
+        return _int(root.findtext("length") or root.get("length"))
+
+    async def async_delete_playlist(self, name: str) -> None:
+        """Delete a playlist saved on the player."""
+        await self.async_command("/Delete", {"name": name, "service": "BluOS"})
+
     async def async_select_source(self, type_index: str) -> None:
         """Switch to an input."""
         await self.async_command("/Play", {"inputTypeIndex": type_index})

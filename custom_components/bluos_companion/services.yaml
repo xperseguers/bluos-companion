@@ -1,1 +1,18 @@
 backup_playlists:
+
+restore_playlists:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+    playlists:
+      selector:
+        text:
+          multiple: true
+    replace:
+      default: false
+      selector:
+        boolean:
