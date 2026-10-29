@@ -327,3 +327,33 @@ async def test_search_skips_failing_categories(
     respond(player_api, browse_url("ok"), status=500)
     await client.send_json_auto_id(request)
     assert (await client.receive_json())["success"] is False
+
+
+async def test_browse_root_hides_services(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Hidden services are left out of the root, but not of deeper levels."""
+    respond(player_api, f"{BASE}/Browse", text=ROOT)
+    hass.config_entries.async_update_entry(
+        init_integration, options={"hidden_services": ["BluOS:"]}
+    )
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/browse", "entry_id": init_integration.entry_id}
+    )
+    root = (await client.receive_json())["result"]["items"]
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/browse",
+            "entry_id": init_integration.entry_id,
+            "key": "Any:",
+        }
+    )
+    deeper = (await client.receive_json())["result"]["items"]
+
+    assert [item["title"] for item in root] == ["Library", "Albums"]
+    assert [item["title"] for item in deeper] == ["Playlists", "Library", "Albums"]

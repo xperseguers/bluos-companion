@@ -5,18 +5,35 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_HOST
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+)
 
 from .api import BluOSClient, BluOSError
-from .const import CONF_PORT, DEFAULT_PORT, DOMAIN
+from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DEFAULT_PORT, DOMAIN
 
 
 class BluOSConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> BluOSOptionsFlow:
+        """Return the options flow."""
+        return BluOSOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -47,4 +64,45 @@ class BluOSConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+
+class BluOSOptionsFlow(OptionsFlow):
+    """Choose which services of the player the panel shows."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Let the user hide the services they do not use."""
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        hidden = self.config_entry.options.get(CONF_HIDDEN_SERVICES, [])
+        client = BluOSClient(
+            async_get_clientsession(self.hass),
+            self.config_entry.data[CONF_HOST],
+            self.config_entry.data[CONF_PORT],
+        )
+        try:
+            nodes = await client.async_browse(None)
+        except BluOSError:
+            nodes = []
+        choices = {node.browse_key: node.title for node in nodes if node.browse_key}
+        # Keep what is hidden selectable even if the player does not list it any more.
+        choices.update({key: key for key in hidden if key not in choices})
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_HIDDEN_SERVICES, default=hidden): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                SelectOptionDict(value=key, label=label)
+                                for key, label in choices.items()
+                            ],
+                            multiple=True,
+                        )
+                    )
+                }
+            ),
         )

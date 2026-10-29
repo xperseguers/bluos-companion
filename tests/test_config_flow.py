@@ -87,3 +87,31 @@ async def test_already_configured_updates_host(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
     assert config_entry.data[CONF_HOST] == "192.168.1.101"
+
+
+async def test_options_hide_services(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The options list what the player offers and store what is hidden."""
+    player_api.get(
+        f"{BASE}/Browse",
+        text='''<browse><item browseKey="LocalMusic:" text="Library" type="link"/>
+<item browseKey="Deezer:" text="Deezer" type="link"/><item text="No key" type="audio"/></browse>''',
+    )
+    config_entry.add_to_hass(hass)
+    with patch("custom_components.bluos_companion.async_setup_entry", return_value=True):
+        result = await hass.config_entries.options.async_init(config_entry.entry_id)
+        assert result["type"] is FlowResultType.FORM
+        selector = result["data_schema"].schema["hidden_services"]
+        assert [option["value"] for option in selector.config["options"]] == [
+            "LocalMusic:",
+            "Deezer:",
+        ]
+
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"hidden_services": ["Deezer:"]}
+        )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert config_entry.options == {"hidden_services": ["Deezer:"]}

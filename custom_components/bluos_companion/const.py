@@ -3,6 +3,7 @@
 DOMAIN = "bluos_companion"
 
 CONF_PORT = "port"
+CONF_HIDDEN_SERVICES = "hidden_services"
 DEFAULT_PORT = 11000
 
 LONG_POLL_TIMEOUT = 100
