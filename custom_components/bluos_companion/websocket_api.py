@@ -411,7 +411,7 @@ async def ws_presets(
 
 
 HOME_ALBUMS = 12
-PANEL_PREFIX = f"component.{DOMAIN}.common.panel."
+PANEL_PREFIX = f"component.{DOMAIN}.common.panel_"
 
 
 @websocket_api.websocket_command(
