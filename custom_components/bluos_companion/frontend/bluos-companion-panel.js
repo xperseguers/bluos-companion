@@ -19,6 +19,7 @@ const STYLE = `
     color: var(--app-header-text-color, #fff);
     min-height: 56px;
     box-sizing: border-box;
+    border-bottom: 1px solid var(--divider-color);
   }
   header h1 { font-size: 20px; font-weight: 400; margin: 0; flex: 1; }
   button {
@@ -53,23 +54,32 @@ const STYLE = `
   .tile {
     position: relative;
     cursor: pointer;
-    border-radius: 12px;
+    box-sizing: border-box;
+    padding: 8px 8px 12px;
+    border: 1px solid var(--divider-color);
+    border-radius: var(--ha-card-border-radius, 12px);
     background: var(--card-background-color);
-    box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0, 0, 0, 0.2));
     overflow: hidden;
   }
+  .tile:hover { background: var(--secondary-background-color); }
   .tile .art {
     aspect-ratio: 1;
     width: 100%;
+    display: block;
     object-fit: cover;
+    border-radius: 8px;
+    background: var(--secondary-background-color);
+  }
+  .tile .art.icon { border-radius: 0; background: none; }
+  .tile .art.logo { object-fit: contain; padding: 16px; box-sizing: border-box; }
+  .tile .art.empty {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--secondary-background-color);
     color: var(--secondary-text-color);
     --mdc-icon-size: 48px;
   }
-  .tile .text { padding: 8px 10px; }
+  .tile .text { padding: 12px 8px 0; }
   .tile .title, .tile .subtitle {
     white-space: nowrap;
     overflow: hidden;
@@ -78,8 +88,8 @@ const STYLE = `
   .tile .subtitle { font-size: 12px; color: var(--secondary-text-color); }
   .tile .play {
     position: absolute;
-    right: 6px;
-    top: 6px;
+    right: 14px;
+    top: 14px;
     background: rgba(0, 0, 0, 0.6);
     color: #fff;
     --mdc-icon-size: 24px;
@@ -398,9 +408,10 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _tile(item) {
+    const own = item.image && item.image.includes("/bluos_companion/icons/");
     const art = item.image
-      ? el("img", { class: "art", src: item.image, loading: "lazy", alt: "" })
-      : el("div", { class: "art" }, icon("mdi:music"));
+      ? el("img", { class: own ? "art icon" : item.type === "link" ? "art logo" : "art", src: item.image, loading: "lazy", alt: "" })
+      : el("div", { class: "art empty" }, icon("mdi:music"));
     const tile = el(
       "div",
       { class: "tile", onclick: () => (item.browse_key ? this._open(item) : this._play(item)) },
