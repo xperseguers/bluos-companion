@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -12,7 +13,7 @@ from homeassistant.const import CONF_HOST
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 
-from .api import BluOSClient, BluOSError
+from .api import BluOSClient, BluOSError, Node
 from .const import DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import async_artwork_url
@@ -40,6 +41,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_subscribe)
     websocket_api.async_register_command(hass, ws_control)
     websocket_api.async_register_command(hass, ws_browse)
+    websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_play)
 
 
@@ -96,6 +98,33 @@ def _snapshot(
             ],
         },
     }
+
+
+def _items(
+    hass: HomeAssistant, entry_id: str, nodes: list[Node], titles: dict[str, str]
+) -> list[dict[str, Any]]:
+    """Return the entries the panel can open or play."""
+    items = []
+    for node in nodes:
+        can_play = bool(node.play_path and node.play_path.startswith(PLAY_PATH_PREFIXES))
+        can_expand = node.browse_key is not None and node.type != "playlist"
+        if not (can_play or can_expand):
+            continue
+        title, icon = menu_label(node, titles)
+        image = icon
+        if image is None and node.image:
+            image = async_artwork_url(hass, entry_id, node.image)
+        items.append(
+            {
+                "type": node.type,
+                "title": title,
+                "subtitle": node.subtitle,
+                "image": image,
+                "browse_key": node.browse_key if can_expand else None,
+                "play_path": node.play_path if can_play else None,
+            }
+        )
+    return items
 
 
 def _snapshots(hass: HomeAssistant) -> list[dict[str, Any]]:
@@ -182,31 +211,52 @@ async def ws_browse(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """List the entries below a browse key (the sources if there is no key)."""
-    entry_id = msg["entry_id"]
-    coordinator = _coordinator(hass, entry_id)
-    nodes = await _async_call(coordinator.client.async_browse(msg.get("key")))
+    coordinator = _coordinator(hass, msg["entry_id"])
+    page = await _async_call(coordinator.client.async_browse_page(msg.get("key")))
     titles = await async_get_titles(hass)
-    items = []
-    for node in nodes:
-        can_play = bool(node.play_path and node.play_path.startswith(PLAY_PATH_PREFIXES))
-        can_expand = node.browse_key is not None and node.type != "playlist"
-        if not (can_play or can_expand):
+    connection.send_result(
+        msg["id"],
+        {
+            "items": _items(hass, msg["entry_id"], page.nodes, titles),
+            "search_key": page.search_key,
+        },
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/search",
+        vol.Required("entry_id"): str,
+        vol.Required("key"): str,
+        vol.Required("query"): vol.All(str, vol.Length(min=1, max=100)),
+    }
+)
+@websocket_api.async_response
+async def ws_search(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Search a source and return the first results of each category."""
+    entry_id = msg["entry_id"]
+    client = _coordinator(hass, entry_id).client
+    menu = await _async_call(client.async_browse_page(msg["key"], msg["query"], 1))
+    categories = [node for node in menu.nodes if node.browse_key]
+    pages = await asyncio.gather(
+        *(client.async_browse_page(node.browse_key, None, 1) for node in categories),
+        return_exceptions=True,
+    )
+    errors = [page for page in pages if isinstance(page, BluOSError)]
+    if errors and len(errors) == len(pages):
+        raise HomeAssistantError(f"BluOS player error: {errors[0]}")
+    titles = await async_get_titles(hass)
+    groups = []
+    for node, page in zip(categories, pages, strict=True):
+        if isinstance(page, BluOSError):
             continue
-        title, icon = menu_label(node, titles)
-        image = icon
-        if image is None and node.image:
-            image = async_artwork_url(hass, entry_id, node.image)
-        items.append(
-            {
-                "type": node.type,
-                "title": title,
-                "subtitle": node.subtitle,
-                "image": image,
-                "browse_key": node.browse_key if can_expand else None,
-                "play_path": node.play_path if can_play else None,
-            }
-        )
-    connection.send_result(msg["id"], {"items": items})
+        if items := _items(hass, entry_id, page.nodes, titles):
+            groups.append(
+                {"title": menu_label(node, titles)[0], "type": node.title, "items": items}
+            )
+    connection.send_result(msg["id"], {"groups": groups})
 
 
 @websocket_api.websocket_command(

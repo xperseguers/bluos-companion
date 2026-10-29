@@ -169,6 +169,24 @@ async def test_browse_stops_after_page_limit(
     assert len(calls(aioclient_mock)) == MAX_BROWSE_PAGES
 
 
+async def test_browse_page_search_and_limit(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """A search sends the query once, reports the source's search key and can stop at page one."""
+    aioclient_mock.get(
+        f"{BASE}/Browse",
+        text='<browse searchKey="Deezer:Search" nextKey="more"><item text="a" type="link" browseKey="k"/></browse>',
+    )
+
+    page = await client.async_browse_page("Deezer:Search", "Michael", max_pages=1)
+
+    assert page.search_key == "Deezer:Search"
+    assert [node.title for node in page.nodes] == ["a"]
+    assert calls(aioclient_mock) == [
+        ("/Browse", {"key": "Deezer:Search", "q": "Michael"})
+    ]
+
+
 @pytest.mark.usefixtures("player_api")
 async def test_tracks(client: BluOSClient) -> None:
     """Tracks prefer the autoplay URL and need a play URL."""
