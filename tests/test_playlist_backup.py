@@ -37,22 +37,45 @@ TRACKS = [
 
 
 class Playlists:
-    """Mock /Playlists and /Songs the way the player answers: windows of 10 ending at an offset."""
+    """Mock /Playlists and /Songs the way the players answer.
 
-    def __init__(self, player_api: AiohttpClientMocker, base: str, content: dict[str, list[str]]) -> None:
+    A short playlist (up to 10 entries) comes in the first page. A longer one has an
+    empty first page and a link to the page that ends at offset 10, then 20... (the
+    page for an offset is the window of 10 entries ending there). None is an entry the
+    player cannot find any more: it is not listed.
+    """
+
+    def __init__(
+        self,
+        player_api: AiohttpClientMocker,
+        base: str,
+        content: dict[str, list[str | None]],
+    ) -> None:
         self.content = content
         names = "".join(f"<name>{name}</name>" for name in content)
         respond(player_api, f"{base}/Playlists", text=f"<playlists>{names}</playlists>")
         respond(player_api, f"{base}/Songs", side_effect=self._songs)
 
     async def _songs(self, method: str, url: URL, data: object) -> AiohttpClientMockResponse:
-        titles = self.content[url.query["playlist"]]
-        end = int(url.query["offset"])
-        window = titles[max(end - 10, 0) : end]
+        entries = self.content[url.query["playlist"]]
+        name = url.query["playlist"].replace(" ", "+")
+        if "offset" not in url.query:
+            window, link_end = (entries, None) if len(entries) <= 10 else ([], 10)
+        else:
+            end = int(url.query["offset"])
+            window = entries[max(end - 10, 0) : end]
+            link_end = end + 10 if end < len(entries) else None
         songs = "".join(
-            SONG.format(artist="Artist", album="Album", title=title, time=200) for title in window
+            SONG.format(artist="Artist", album="Album", title=title, time=200)
+            for title in window
+            if title is not None
         )
-        return AiohttpClientMockResponse(method, url, text=f"<songs>{songs}</songs>")
+        link = (
+            f"<nextlink>/Songs?playlist={name}&amp;offset={link_end}</nextlink>"
+            if link_end
+            else ""
+        )
+        return AiohttpClientMockResponse(method, url, text=f"<songs>{songs}{link}</songs>")
 
 
 @pytest.fixture
@@ -93,21 +116,29 @@ def test_file_names(name: str, expected: str) -> None:
     assert file_name(name) == expected
 
 
-async def test_windows_are_read_until_the_end(
+@pytest.mark.parametrize(
+    "entries",
+    [
+        pytest.param(["a"], id="short-playlist-in-the-first-page"),
+        pytest.param([f"T{i}" for i in range(12)], id="empty-first-page"),
+        pytest.param([None] * 250 + [f"T{i}" for i in range(25)], id="old-playlist-with-missing-files"),
+        pytest.param([f"T{i}" for i in range(10)], id="exactly-one-page"),
+    ],
+)
+async def test_playlist_pages_are_followed_to_the_end(
     hass: HomeAssistant,
     client: BluOSClient,
     aioclient_mock: AiohttpClientMocker,
+    entries: list[str | None],
 ) -> None:
-    """Empty leading windows (missing files) are skipped, all the tracks come in order."""
-    titles = [f"T{i}" for i in range(25)]
-    # The first 250 entries of an old playlist cannot be found: 25 empty windows.
-    Playlists(aioclient_mock, BASE, {"Old": [""] * 250 + titles})
-    aioclient_mock.mock_calls.clear()
+    """Every track comes once, in order, however the player pages the playlist."""
+    Playlists(aioclient_mock, BASE, {"Old": entries})
 
     tracks = await client.async_get_playlist_tracks("Old")
 
-    assert [track.title for track in tracks if track.title] == titles
-    assert tracks[0].path.endswith(".m4a")
+    assert [track.path.split("/")[-1] for track in tracks] == [
+        f"{title}.m4a" for title in entries if title is not None
+    ]
 
 
 async def test_backup_writes_one_file_per_playlist(
