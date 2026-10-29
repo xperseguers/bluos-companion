@@ -35,15 +35,15 @@ async def test_panel_is_registered_for_everyone_and_removed(
     assert PANEL_PATH not in hass.data[frontend.DATA_PANELS]
 
 
-async def test_card_module_is_loaded_by_the_frontend(
-    hass: HomeAssistant, init_integration: MockConfigEntry
+@pytest.mark.parametrize(
+    "module", ["bluos-companion-presets-card.js", "bluos-companion-player-card.js"]
+)
+async def test_card_modules_are_loaded_by_the_frontend(
+    hass: HomeAssistant, init_integration: MockConfigEntry, module: str
 ) -> None:
-    """The presets card is available in the card picker without a manual resource."""
+    """The cards are available in the card picker without a manual resource."""
     urls = hass.data[frontend.DATA_EXTRA_MODULE_URL].urls
-    assert any(
-        url.startswith("/bluos_companion/panel/bluos-companion-presets-card.js?v=")
-        for url in urls
-    )
+    assert any(url.startswith(f"/bluos_companion/panel/{module}?v=") for url in urls)
 
 
 async def test_subscribe_pushes_players(
