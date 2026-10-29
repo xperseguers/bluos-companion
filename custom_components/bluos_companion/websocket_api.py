@@ -15,7 +15,7 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
-from .api import BluOSClient, BluOSError, Node
+from .api import SLEEP_OPTIONS, BluOSClient, BluOSError, Node, sleep_bucket
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import async_artwork_url
@@ -35,6 +35,9 @@ CONTROLS: dict[str, Callable[[BluOSClient, Any, bool], Awaitable[None]]] = {
         min(max(int(value), -10), 10), group
     ),
     "mute": lambda client, value, group: client.async_set_mute(bool(value), group),
+    "sleep": lambda client, value, _: client.async_set_sleep(
+        int(value) if int(value) in (0, *SLEEP_OPTIONS) else 0
+    ),
     "shuffle": lambda client, value, _: client.async_set_shuffle(bool(value)),
     "repeat": lambda client, value, _: client.async_set_repeat(int(value)),
 }
@@ -102,7 +105,8 @@ def _snapshot(
         "can_seek": status.can_seek,
         "position": status.position,
         "duration": status.duration,
-        "sleep": status.sleep,
+        "sleep": sleep_bucket(status.sleep),
+        "sleep_options": list(SLEEP_OPTIONS),
         "queue_id": status.queue_id,
         "queue_position": status.queue_position,
         "presets_id": status.presets_id,

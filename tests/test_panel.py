@@ -70,6 +70,7 @@ async def test_subscribe_pushes_players(
         f"/api/bluos_companion/{init_integration.entry_id}/artwork?path="
     )
     assert player["group"] == {"name": None, "master": None, "slaves": []}
+    assert (player["sleep"], player["sleep_options"]) == (0, [15, 30, 45, 60, 90])
     assert player["entity_id"] == "media_player.sejour"
     assert player["sources"] == ["Bluetooth"]
     assert player["source"] is None
