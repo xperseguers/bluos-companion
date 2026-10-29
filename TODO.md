@@ -22,7 +22,7 @@ for free from the player's own browse tree), panel not restricted to admins.
 
 ## P1 Core experience
 - [x] Album and artist pages: play now / shuffle / add next / add last (from the player's context menus)
-- [ ] Browse polish: sections (A-Z) jump bar (a "Show more" button exists for lists cut after a few pages)
+- [x] Browse polish: A-Z bar for the letters the player gives (artists, albums, songs, composers; it stays pinned above the entries of a letter to jump to another one), a bar of first letters for other long lists (genres), and a "Show more" button for lists cut after a few pages
 - [x] Player picker: switch the target player from the now-playing bar (name, what it plays, group), instead of the header select
 - [x] Search: library and services, results grouped Artists / Albums / Songs / Composers
 - [x] Queue view: jump to a track, remove, reorder, clear, save as playlist
