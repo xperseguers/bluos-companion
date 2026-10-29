@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from urllib.parse import urlencode
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -43,6 +44,9 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_browse)
     websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_actions)
+    websocket_api.async_register_command(hass, ws_locate)
+    websocket_api.async_register_command(hass, ws_queue)
+    websocket_api.async_register_command(hass, ws_queue_action)
     websocket_api.async_register_command(hass, ws_play)
 
 
@@ -89,6 +93,8 @@ def _snapshot(
         "position": status.position,
         "duration": status.duration,
         "sleep": status.sleep,
+        "queue_id": status.queue_id,
+        "queue_position": status.queue_position,
         "group": {
             "name": sync.group if sync else None,
             "master": sync and sync.master and entry_ids.get(sync.master.host),
@@ -289,6 +295,100 @@ async def ws_actions(
             ]
         },
     )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/locate",
+        vol.Required("entry_id"): str,
+        vol.Optional("album"): str,
+        vol.Optional("artist"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_locate(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Find the library pages of the album and of the artist of a track."""
+    client = _coordinator(hass, msg["entry_id"]).client
+    artist, album = msg.get("artist"), msg.get("album")
+    result: dict[str, Any] = {"artist": None, "album": None}
+    if artist:
+        query = urlencode({"artist": artist})
+        result["artist"] = {
+            "title": artist,
+            "browse_key": f"LocalMusic:MG/LocalMusic-Artist?{query}",
+            "context_key": f"LocalMusic:CM/LocalMusic-Artist?{query}",
+        }
+    if album and (node := await _async_call(client.async_find_album(album, artist))):
+        result["album"] = {
+            "title": node.title,
+            "browse_key": node.browse_key,
+            "context_key": node.context_key,
+        }
+    connection.send_result(msg["id"], result)
+
+
+QUEUE_ACTIONS: dict[str, Callable[[BluOSClient, dict[str, Any]], Awaitable[None]]] = {
+    "play": lambda client, msg: client.async_play_queue_item(msg["position"]),
+    "remove": lambda client, msg: client.async_delete_queue_item(msg["position"]),
+    "move": lambda client, msg: client.async_move_queue_item(
+        msg["position"], msg["to"]
+    ),
+    "clear": lambda client, msg: client.async_clear_queue(),
+    "save": lambda client, msg: client.async_save_queue(msg["name"]),
+}
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "bluos_companion/queue", vol.Required("entry_id"): str}
+)
+@websocket_api.async_response
+async def ws_queue(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the tracks of the play queue."""
+    client = _coordinator(hass, msg["entry_id"]).client
+    queue = await _async_call(client.async_get_queue())
+    connection.send_result(
+        msg["id"],
+        {
+            "items": [
+                {
+                    "position": item.id,
+                    "title": item.title,
+                    "artist": item.artist,
+                    "album": item.album,
+                    "image": item.image
+                    and async_artwork_url(hass, msg["entry_id"], item.image),
+                }
+                for item in queue
+            ]
+        },
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/queue_action",
+        vol.Required("entry_id"): str,
+        vol.Required("action"): vol.In(QUEUE_ACTIONS),
+        vol.Optional("position"): vol.All(int, vol.Range(min=0)),
+        vol.Optional("to"): vol.All(int, vol.Range(min=0)),
+        vol.Optional("name"): vol.All(str, vol.Strip, vol.Length(min=1, max=100)),
+    }
+)
+@websocket_api.async_response
+async def ws_queue_action(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Play, remove or move a track of the queue, clear it or save it as a playlist."""
+    needed = {"play": ("position",), "remove": ("position",), "move": ("position", "to"), "save": ("name",)}
+    if missing := [key for key in needed.get(msg["action"], ()) if key not in msg]:
+        raise HomeAssistantError(f"Missing {', '.join(missing)}")
+    client = _coordinator(hass, msg["entry_id"]).client
+    await _async_call(QUEUE_ACTIONS[msg["action"]](client, msg))
+    connection.send_result(msg["id"])
 
 
 @websocket_api.websocket_command(

@@ -141,6 +141,35 @@ const STYLE = `
   dialog p { margin: 0 0 12px; color: var(--secondary-text-color); font-size: 13px; }
   dialog .list { display: flex; flex-direction: column; gap: 8px; }
   dialog button.action { justify-content: flex-start; border-radius: 12px; width: 100%; }
+  .qrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 8px 8px 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--divider-color);
+    border-radius: var(--ha-card-border-radius, 12px);
+    background: var(--card-background-color);
+    cursor: pointer;
+  }
+  .qrow.current { border-color: var(--primary-color); }
+  .qrow .pos { width: 28px; text-align: right; color: var(--secondary-text-color); flex: none; }
+  .qrow .cover { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none; background: var(--secondary-background-color); display: flex; align-items: center; justify-content: center; --mdc-icon-size: 24px; }
+  .qrow .text { flex: 1; min-width: 0; }
+  .qrow .text div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qrow .sub { font-size: 12px; color: var(--secondary-text-color); }
+  .qrow button { --mdc-icon-size: 24px; padding: 6px; }
+  dialog input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border: 1px solid var(--divider-color);
+    border-radius: 12px;
+    background: var(--card-background-color);
+    color: var(--primary-text-color);
+  }
   form.search { display: flex; gap: 8px; margin-bottom: 16px; }
   form.search input {
     flex: 1;
@@ -232,6 +261,8 @@ class BluOSCompanionPanel extends HTMLElement {
     this._stack = []; // [{ title, key }], the root is implicit
     this._groups = null; // [{ title, items }]
     this._levelActions = [];
+    this._queue = null; // [{ position, title, artist, image }]
+    this._queueKey = null;
     this._searchKey = DEFAULT_SEARCH_KEY;
     this._receivedAt = 0;
     this._browseToken = 0;
@@ -296,6 +327,7 @@ class BluOSCompanionPanel extends HTMLElement {
     }
     this._renderPlayers();
     this._renderNowPlaying();
+    this._refreshQueue();
   }
 
   _call(message) {
@@ -380,6 +412,10 @@ class BluOSCompanionPanel extends HTMLElement {
       });
     }
     let groups;
+    if (level && level.queue) {
+      await this._loadQueue();
+      return;
+    }
     if (level && level.search) {
       const result = await this._call({
         type: "bluos_companion/search",
@@ -411,6 +447,135 @@ class BluOSCompanionPanel extends HTMLElement {
     if (this._stack.length && this._stack[this._stack.length - 1].search) this._stack.pop();
     this._stack.push({ title: `\u201c${query}\u201d`, search: { key: this._searchKey, query } });
     this._browse();
+  }
+
+  get _inQueue() {
+    const level = this._stack[this._stack.length - 1];
+    return Boolean(level && level.queue);
+  }
+
+  _toggleQueue() {
+    if (this._inQueue) {
+      this._up();
+      return;
+    }
+    this._stack.push({ title: "Queue", queue: true });
+    this._browse();
+  }
+
+  async _loadQueue() {
+    const player = this._player;
+    if (!player) return;
+    const token = ++this._browseToken;
+    const result = await this._call({ type: "bluos_companion/queue", entry_id: player.entry_id });
+    if (token !== this._browseToken) return;
+    this._queue = result ? result.items : [];
+    this._queueKey = `${player.queue_id}/${player.queue_position}`;
+    this._groups = [];
+    this._renderBrowse();
+  }
+
+  _refreshQueue() {
+    const player = this._player;
+    if (this._inQueue && player && `${player.queue_id}/${player.queue_position}` !== this._queueKey) {
+      this._loadQueue();
+    }
+  }
+
+  async _queueAction(action, extra = {}) {
+    await this._call({ type: "bluos_companion/queue_action", entry_id: this._playerId, action, ...extra });
+    await this._loadQueue();
+  }
+
+  _confirmClear() {
+    this._dialog.replaceChildren(
+      el("h2", {}, "Clear the queue?"),
+      el("p", {}, "All the tracks are removed from the queue."),
+      el(
+        "div",
+        { class: "list" },
+        el(
+          "button",
+          {
+            class: "action",
+            onclick: () => {
+              this._dialog.close();
+              this._queueAction("clear");
+            },
+          },
+          icon("mdi:delete-sweep"),
+          "Clear",
+        ),
+      ),
+    );
+    this._dialog.showModal();
+  }
+
+  _askSaveName() {
+    const input = el("input", { type: "text", placeholder: "Playlist name", maxlength: 100 });
+    const save = async () => {
+      const name = input.value.trim();
+      if (!name) return;
+      this._dialog.close();
+      await this._call({ type: "bluos_companion/queue_action", entry_id: this._playerId, action: "save", name });
+      this._notify(`Saved: ${name}`);
+    };
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") save();
+    });
+    this._dialog.replaceChildren(
+      el("h2", {}, "Save the queue as a playlist"),
+      input,
+      el("div", { class: "list" }, el("button", { class: "action", onclick: save }, icon("mdi:content-save"), "Save")),
+    );
+    this._dialog.showModal();
+    input.focus();
+  }
+
+  _queueRow(item, index, count, current) {
+    const stop = (fn) => (event) => {
+      event.stopPropagation();
+      fn();
+    };
+    const move = (to) => this._queueAction("move", { position: item.position, to });
+    const up = el("button", { onclick: stop(() => move(item.position - 1)) }, icon("mdi:chevron-up"));
+    const down = el("button", { onclick: stop(() => move(item.position + 1)) }, icon("mdi:chevron-down"));
+    up.disabled = index === 0;
+    down.disabled = index === count - 1;
+    return el(
+      "div",
+      {
+        class: `qrow${item.position === current ? " current" : ""}`,
+        onclick: () => this._queueAction("play", { position: item.position }),
+      },
+      el("div", { class: "pos" }, item.position === current ? icon("mdi:volume-high") : String(item.position + 1)),
+      item.image
+        ? el("img", { class: "cover", src: item.image, alt: "", loading: "lazy" })
+        : el("div", { class: "cover" }, icon("mdi:music")),
+      el(
+        "div",
+        { class: "text" },
+        el("div", { title: item.title }, item.title),
+        el("div", { class: "sub" }, [item.artist, item.album].filter(Boolean).join(" - ") || "\u00a0"),
+      ),
+      up,
+      down,
+      el("button", { onclick: stop(() => this._queueAction("remove", { position: item.position })) }, icon("mdi:close")),
+    );
+  }
+
+  _renderQueue() {
+    const player = this._player;
+    const current = player ? player.queue_position : null;
+    this._grid.replaceChildren(
+      ...(this._queue || []).map((item, index) => this._queueRow(item, index, this._queue.length, current)),
+    );
+    this._message.textContent = this._queue && !this._queue.length ? "The queue is empty." : "";
+    this._actionRow.replaceChildren(
+      el("button", { class: "action", onclick: () => this._confirmClear() }, icon("mdi:delete-sweep"), "Clear"),
+      el("button", { class: "action", onclick: () => this._askSaveName() }, icon("mdi:content-save"), "Save as playlist"),
+    );
+    this._actionRow.hidden = !(this._queue && this._queue.length);
   }
 
   _open(item) {
@@ -478,6 +643,7 @@ class BluOSCompanionPanel extends HTMLElement {
       previous: el("button", { onclick: () => this._control("previous") }, icon("mdi:skip-previous")),
       toggle: el("button", { onclick: () => this._togglePlayback() }, icon("mdi:play")),
       next: el("button", { onclick: () => this._control("next") }, icon("mdi:skip-next")),
+      queue: el("button", { onclick: () => this._toggleQueue() }, icon("mdi:playlist-music")),
       repeat: el("button", { onclick: () => this._control("repeat", REPEAT_CYCLE[this._player.repeat]) }, icon("mdi:repeat")),
       mute: el("button", { onclick: () => this._control("mute", !this._player.muted) }, icon("mdi:volume-high")),
     };
@@ -515,6 +681,7 @@ class BluOSCompanionPanel extends HTMLElement {
         this._buttons.toggle,
         this._buttons.next,
         this._buttons.repeat,
+        this._buttons.queue,
       ),
       el("div", { class: "volume" }, this._buttons.mute, this._volume),
       this._playerButton,
@@ -615,9 +782,14 @@ class BluOSCompanionPanel extends HTMLElement {
   _renderBrowse() {
     if (!this._built) return;
     this._renderCrumbs();
+    this._buttons.queue.classList.toggle("on", this._inQueue);
     this._grid.replaceChildren();
     this._message.textContent = "";
-    this._searchForm.hidden = !this._player;
+    this._searchForm.hidden = !this._player || this._inQueue;
+    if (this._inQueue) {
+      this._renderQueue();
+      return;
+    }
     if (!this._player) {
       this._message.textContent = "No BluOS player configured.";
     } else if (this._groups === null) {
@@ -643,6 +815,7 @@ class BluOSCompanionPanel extends HTMLElement {
           ]
         : []),
     );
+    if (level && level.queue) return;
     this._actionRow.replaceChildren(
       ...this._levelActions.map((action) => this._actionButton(action, level.title)),
     );

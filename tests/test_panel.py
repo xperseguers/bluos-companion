@@ -13,7 +13,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.bluos_companion.const import PANEL_PATH
 
-from .conftest import BASE, browse_url, calls, respond
+from .conftest import BASE, browse_url, calls, respond, status_xml
 
 ROOT = """<browse type="menu">
   <item browseKey="BluOS:" text="Playlists" image="/images/ci_myplaylists.png" type="link"></item>
@@ -409,3 +409,162 @@ async def test_browse_items_carry_the_context_key(
     )
     [item] = (await client.receive_json())["result"]["items"]
     assert item["context_key"] == "ctx"
+
+
+async def test_queue_lists_tracks_with_covers(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+) -> None:
+    """The queue gives the position of each track, with a signed cover."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/queue", "entry_id": init_integration.entry_id}
+    )
+    items = (await client.receive_json())["result"]["items"]
+    assert [(item["position"], item["title"]) for item in items] == [
+        (0, "U Got the Look"),
+        (1, "Kiss"),
+    ]
+    assert items[0]["image"].startswith("/api/bluos_companion/")
+    assert items[1]["image"] is None
+
+
+@pytest.mark.parametrize(
+    ("message", "path", "query"),
+    [
+        ({"action": "play", "position": 3}, "/Play", {"id": "3"}),
+        ({"action": "remove", "position": 2}, "/Delete", {"id": "2"}),
+        ({"action": "move", "position": 2, "to": 8}, "/Move", {"old": "2", "new": "8"}),
+        ({"action": "clear"}, "/Clear", {}),
+        ({"action": "save", "name": "  Dinner Music "}, "/Save", {"name": "Dinner Music"}),
+    ],
+)
+async def test_queue_actions(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    message: dict[str, Any],
+    path: str,
+    query: dict[str, str],
+) -> None:
+    """Queue actions are translated into player commands."""
+    player_api.get(f"{BASE}/Delete", text="<deleted>1</deleted>")
+    player_api.get(f"{BASE}/Move", text="<moved/>")
+    player_api.get(f"{BASE}/Save", text="<saved><entries>2</entries></saved>")
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/queue_action",
+            "entry_id": init_integration.entry_id,
+            **message,
+        }
+    )
+    assert (await client.receive_json())["success"]
+    assert calls(player_api) == [(path, query)]
+
+
+@pytest.mark.parametrize(
+    "message",
+    [{"action": "remove"}, {"action": "move", "position": 1}, {"action": "save"}, {"action": "save", "name": " "}],
+)
+async def test_queue_action_needs_its_parameters(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    message: dict[str, Any],
+) -> None:
+    """Incomplete queue actions never reach the player."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/queue_action",
+            "entry_id": init_integration.entry_id,
+            **message,
+        }
+    )
+    assert (await client.receive_json())["success"] is False
+    assert calls(player_api) == []
+
+
+async def test_snapshot_has_the_queue_position(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The panel knows which track of which queue is playing."""
+    respond(
+        player_api,
+        f"{BASE}/Status",
+        text=status_xml(song="4", pid="1491"),
+    )
+    await init_integration.runtime_data.async_refresh()
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": "bluos_companion/subscribe"})
+    await client.receive_json()
+    [player] = (await client.receive_json())["event"]["players"]
+    assert (player["queue_id"], player["queue_position"]) == ("1491", 4)
+
+
+async def test_locate_finds_the_album_and_the_artist(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The album is searched by title and matched on its (album) artist."""
+    respond(
+        player_api,
+        browse_url("LocalMusic:Search"),
+        text='<browse><item browseKey="albums-key" text="Albums" type="link"/></browse>',
+    )
+    respond(
+        player_api,
+        browse_url("albums-key"),
+        text="""<browse>
+  <item browseKey="other" contextMenuKey="cm-other" text="Hits" text2="Someone" type="album"/>
+  <item browseKey="various" contextMenuKey="cm-various" text="Hits" text2="Various Artists" type="album"/>
+  <item browseKey="longer" text="Hits 2" text2="Prince" type="album"/>
+</browse>""",
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/locate",
+            "entry_id": init_integration.entry_id,
+            "album": "Hits",
+            "artist": "Meat Loaf & Co",
+        }
+    )
+    result = (await client.receive_json())["result"]
+
+    assert result["album"] == {
+        "title": "Hits",
+        "browse_key": "various",
+        "context_key": "cm-various",
+    }
+    assert result["artist"]["browse_key"] == (
+        "LocalMusic:MG/LocalMusic-Artist?artist=Meat+Loaf+%26+Co"
+    )
+
+
+async def test_locate_without_a_match(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """An album missing from the library is reported as null."""
+    respond(player_api, browse_url("LocalMusic:Search"), text="<browse/>")
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/locate",
+            "entry_id": init_integration.entry_id,
+            "album": "Nope",
+        }
+    )
+    assert (await client.receive_json())["result"] == {"artist": None, "album": None}
