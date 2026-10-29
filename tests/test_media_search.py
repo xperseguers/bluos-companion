@@ -289,3 +289,55 @@ def test_the_closest_whole_name_wins_among_close_words() -> None:
     many = fuzzy_score("Catherine Deneuve; Alain Souchon; Laurent Voulzy; Jean-Jacques Goldman", query)
     assert alone > duo > many > 0
     assert alone < match_score("Jean-Jacques Goldman", "", "Jean-Jacques Goldman")
+
+
+@pytest.mark.parametrize(
+    ("media_type", "name", "expected"),
+    [
+        ("music", "adele", ("/Add", {"artist": "Adele", "playnow": "1", "service": "LocalMusic", "shuffle": "0"})),
+        ("artist", "adelle", ("/Add", {"artist": "Adele", "playnow": "1", "service": "LocalMusic", "shuffle": "0"})),
+        ("playlist", "tuning", ("/Load", {"service": "BluOS", "name": "Tuning"})),
+        ("music", "Rtsf la premiere", ("/Preset", {"id": "1"})),
+    ],
+)
+async def test_play_media_accepts_a_name(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    library: AiohttpClientMocker,
+    media_type: str,
+    name: str,
+    expected: tuple[str, dict[str, str]],
+) -> None:
+    """An AI agent asks to play a title as text: the best match of a search is played."""
+    await hass.services.async_call(
+        MEDIA_PLAYER_DOMAIN,
+        SERVICE_PLAY_MEDIA,
+        {
+            ATTR_ENTITY_ID: ENTITY_ID,
+            ATTR_MEDIA_CONTENT_ID: name,
+            ATTR_MEDIA_CONTENT_TYPE: media_type,
+        },
+        blocking=True,
+    )
+    assert calls(library)[-1] == expected
+
+
+async def test_play_media_by_name_without_a_match(
+    hass: HomeAssistant, init_integration: MockConfigEntry, library: AiohttpClientMocker
+) -> None:
+    """A name that matches nothing says so, and sends nothing to the player."""
+    from homeassistant.exceptions import HomeAssistantError
+
+    library.mock_calls.clear()
+    with pytest.raises(HomeAssistantError, match="No results found for xylophone orchestra"):
+        await hass.services.async_call(
+            MEDIA_PLAYER_DOMAIN,
+            SERVICE_PLAY_MEDIA,
+            {
+                ATTR_ENTITY_ID: ENTITY_ID,
+                ATTR_MEDIA_CONTENT_ID: "xylophone orchestra",
+                ATTR_MEDIA_CONTENT_TYPE: "music",
+            },
+            blocking=True,
+        )
+    assert [path for path, _ in calls(library) if path in ("/Add", "/Play", "/Load", "/Preset")] == []

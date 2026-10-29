@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant.components import media_source
 from homeassistant.components.media_player import (
     BrowseMedia,
+    MediaClass,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
@@ -39,6 +40,12 @@ STATES = {
     "stream": MediaPlayerState.PLAYING,
     "pause": MediaPlayerState.PAUSED,
     "connecting": MediaPlayerState.BUFFERING,
+}
+SEARCH_CLASSES = {
+    "artist": [MediaClass.ARTIST],
+    "album": [MediaClass.ALBUM],
+    "track": [MediaClass.TRACK],
+    "playlist": [MediaClass.PLAYLIST],
 }
 REPEAT_TO_BLUOS = {RepeatMode.ALL: 0, RepeatMode.ONE: 1, RepeatMode.OFF: 2}
 REPEAT_FROM_BLUOS = {value: key for key, value in REPEAT_TO_BLUOS.items()}
@@ -338,5 +345,19 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
                 self.hass, media_id, self.entity_id
             )
             media_id = play_item.url
+        elif not media_id.startswith(("http://", "https://", "/")):
+            # A name, as AI agents ask for: play the best match of a search.
+            results = await self.async_search_media(
+                SearchMediaQuery(
+                    search_query=media_id,
+                    media_content_type=media_type,
+                    media_filter_classes=SEARCH_CLASSES.get(str(media_type).lower()),
+                )
+            )
+            if not results.result:
+                raise HomeAssistantError(f"No results found for {media_id}")
+            _, path = play_path_from_media_id(results.result[0].media_content_id)
+            await self._async_call(self._client.async_command(path))
+            return
         url = async_process_play_media_url(self.hass, media_id)
         await self._async_call(self._client.async_command("/Play", {"url": url}))
