@@ -152,6 +152,47 @@ async def test_select_source(
         )
 
 
+async def test_same_named_inputs_are_told_apart(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The module's Bluetooth and the amplifier's Bluetooth get different names."""
+    respond(
+        player_api,
+        f"{BASE}/SyncStatus",
+        text=GROUPED_SYNC_STATUS.replace(
+            '<item id="5" name="Phono"/>',
+            '<item id="5" name="Phono"/><item id="8" name="Bluetooth"/>',
+        ),
+    )
+    respond(player_api, f"{BASE}/ExternalSource", text="<externalSource/>")
+    await _refresh(
+        hass,
+        init_integration,
+        player_api,
+        status_xml(streamUrl="Capture:bluez:bluetooth", syncStat="2"),
+    )
+    attributes = hass.states.get(ENTITY_ID).attributes
+    assert sorted(attributes["source_list"]) == sorted(
+        ["Bluetooth (BluOS)", "Phono", "Bluetooth", "BluOS"]
+    )
+    assert attributes[ATTR_INPUT_SOURCE] == "Bluetooth (BluOS)"
+
+    player_api.mock_calls.clear()
+    for name in ("Bluetooth (BluOS)", "Bluetooth"):
+        await hass.services.async_call(
+            MEDIA_PLAYER_DOMAIN,
+            SERVICE_SELECT_SOURCE,
+            {ATTR_ENTITY_ID: ENTITY_ID, ATTR_INPUT_SOURCE: name},
+            blocking=True,
+        )
+    assert calls(player_api) == [
+        ("/Play", {"inputTypeIndex": "bluetooth-1"}),
+        ("/ExternalSource", {"id": "8"}),
+    ]
+
+
 @pytest.mark.usefixtures("init_integration")
 async def test_clear_queue(hass: HomeAssistant, player_api: AiohttpClientMocker) -> None:
     """The queue can be emptied."""
