@@ -17,6 +17,17 @@
       "already_configured": "Ce lecteur est déjà configuré."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Services affichés dans le panneau",
+        "description": "Masquez les services que vous n'utilisez pas, par exemple un service de musique sans compte. Ils restent disponibles dans l'application BluOS.",
+        "data": {
+          "hidden_services": "Services masqués"
+        }
+      }
+    }
+  },
   "entity": {
     "select": {
       "sleep_timer": {

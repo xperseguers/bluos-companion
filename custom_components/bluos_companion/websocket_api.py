@@ -14,7 +14,7 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 
 from .api import BluOSClient, BluOSError, Node
-from .const import DOMAIN
+from .const import CONF_HIDDEN_SERVICES, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import async_artwork_url
 from .media_source import PLAY_PATH_PREFIXES, async_get_titles, menu_label
@@ -214,10 +214,14 @@ async def ws_browse(
     coordinator = _coordinator(hass, msg["entry_id"])
     page = await _async_call(coordinator.client.async_browse_page(msg.get("key")))
     titles = await async_get_titles(hass)
+    nodes = page.nodes
+    if "key" not in msg:
+        hidden = coordinator.config_entry.options.get(CONF_HIDDEN_SERVICES, [])
+        nodes = [node for node in nodes if node.browse_key not in hidden]
     connection.send_result(
         msg["id"],
         {
-            "items": _items(hass, msg["entry_id"], page.nodes, titles),
+            "items": _items(hass, msg["entry_id"], nodes, titles),
             "search_key": page.search_key,
         },
     )
