@@ -551,6 +551,28 @@ async def test_locate_finds_the_album_and_the_artist(
     )
 
 
+async def test_locate_searches_a_word_of_the_title(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Punctuation in a title does not reach the player's search."""
+    respond(player_api, browse_url("LocalMusic:Search"), text="<browse/>")
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/locate",
+            "entry_id": init_integration.entry_id,
+            "album": "Recommence-moi",
+        }
+    )
+    await client.receive_json()
+    assert calls(player_api) == [
+        ("/Browse", {"key": "LocalMusic:Search", "q": "Recommence"})
+    ]
+
+
 async def test_locate_without_a_match(
     hass: HomeAssistant,
     hass_ws_client: WebSocketGenerator,

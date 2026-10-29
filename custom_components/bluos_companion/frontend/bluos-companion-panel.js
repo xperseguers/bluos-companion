@@ -201,7 +201,7 @@ const STYLE = `
     background: var(--secondary-background-color);
     flex: none;
   }
-  .info { flex: 1 1 160px; min-width: 0; }
+  .info { flex: 1 1 160px; min-width: 0; cursor: pointer; }
   .info div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .info .track { font-weight: 500; }
   .info .artist { font-size: 13px; color: var(--secondary-text-color); }
@@ -356,6 +356,86 @@ class BluOSCompanionPanel extends HTMLElement {
     this._notify(`${action.title}: ${label}`);
   }
 
+  _showPlaying() {
+    const player = this._player;
+    if (!player || !player.title) return;
+    if (player.service !== "LocalMusic") {
+      this._notify("Only tracks of the library have an album and an artist page");
+      return;
+    }
+    this._showGoTo(player.title, [player.artist, player.album].filter(Boolean).join(" - "), {
+      album: player.album,
+      artist: player.artist,
+    });
+  }
+
+  async _jump(kind, names) {
+    const found = await this._call({
+      type: "bluos_companion/locate",
+      entry_id: this._playerId,
+      ...(names.album ? { album: names.album } : {}),
+      ...(names.artist ? { artist: names.artist } : {}),
+    });
+    if (!found) return;
+    const level = (page) => ({ title: page.title, key: page.browse_key, contextKey: page.context_key });
+    const stack = found.artist ? [level(found.artist)] : [];
+    if (kind === "album") {
+      if (!found.album) {
+        this._notify("Album not found in the library");
+        return;
+      }
+      stack.push(level(found.album));
+    } else if (!found.artist) {
+      return;
+    }
+    this._stack = stack;
+    this._browse();
+  }
+
+  _gotoButtons(names) {
+    const button = (kind, iconName, label, name) =>
+      el(
+        "button",
+        {
+          class: "action",
+          onclick: () => {
+            this._dialog.close();
+            this._jump(kind, names);
+          },
+        },
+        icon(iconName),
+        `${label}: ${name}`,
+      );
+    return [
+      names.album ? button("album", "mdi:album", "Album", names.album) : null,
+      names.artist ? button("artist", "mdi:account-music", "Artist", names.artist) : null,
+    ].filter(Boolean);
+  }
+
+  _menuButton(iconName, label, run) {
+    return el(
+      "button",
+      {
+        class: "action",
+        onclick: () => {
+          this._dialog.close();
+          run();
+        },
+      },
+      icon(iconName),
+      label,
+    );
+  }
+
+  _showGoTo(title, subtitle, names, extra = []) {
+    this._dialog.replaceChildren(
+      el("h2", {}, title),
+      el("p", {}, subtitle || "\u00a0"),
+      el("div", { class: "list" }, ...this._gotoButtons(names), ...extra),
+    );
+    this._dialog.showModal();
+  }
+
   _actionButton(action, label, after) {
     return el(
       "button",
@@ -373,14 +453,22 @@ class BluOSCompanionPanel extends HTMLElement {
 
   async _showActions(item) {
     const actions = await this._actions(item.context_key);
-    if (!actions.length) {
+    // Songs read "Artist \u2022 Album": offer to jump to them.
+    const [artist, album] = item.type === "track" ? (item.subtitle || "").split(" \u2022 ") : [];
+    const names = artist && album ? { artist, album } : {};
+    if (!actions.length && !names.album) {
       this._notify("No action available");
       return;
     }
     this._dialog.replaceChildren(
       el("h2", {}, item.title),
       el("p", {}, item.subtitle || "\u00a0"),
-      el("div", { class: "list" }, ...actions.map((action) => this._actionButton(action, item.title, () => this._dialog.close()))),
+      el(
+        "div",
+        { class: "list" },
+        ...this._gotoButtons(names),
+        ...actions.map((action) => this._actionButton(action, item.title, () => this._dialog.close())),
+      ),
     );
     this._dialog.showModal();
   }
@@ -538,10 +626,19 @@ class BluOSCompanionPanel extends HTMLElement {
       fn();
     };
     const move = (to) => this._queueAction("move", { position: item.position, to });
-    const up = el("button", { onclick: stop(() => move(item.position - 1)) }, icon("mdi:chevron-up"));
-    const down = el("button", { onclick: stop(() => move(item.position + 1)) }, icon("mdi:chevron-down"));
-    up.disabled = index === 0;
-    down.disabled = index === count - 1;
+    const moves = [
+      item.position > 0 ? this._menuButton("mdi:chevron-up", "Move up", () => move(item.position - 1)) : null,
+      index < count - 1 ? this._menuButton("mdi:chevron-down", "Move down", () => move(item.position + 1)) : null,
+    ].filter(Boolean);
+    const more = el(
+      "button",
+      {
+        onclick: stop(() =>
+          this._showGoTo(item.title, [item.artist, item.album].filter(Boolean).join(" - "), item, moves),
+        ),
+      },
+      icon("mdi:dots-vertical"),
+    );
     return el(
       "div",
       {
@@ -558,8 +655,7 @@ class BluOSCompanionPanel extends HTMLElement {
         el("div", { title: item.title }, item.title),
         el("div", { class: "sub" }, [item.artist, item.album].filter(Boolean).join(" - ") || "\u00a0"),
       ),
-      up,
-      down,
+      more,
       el("button", { onclick: stop(() => this._queueAction("remove", { position: item.position })) }, icon("mdi:close")),
     );
   }
@@ -672,7 +768,7 @@ class BluOSCompanionPanel extends HTMLElement {
       "footer",
       {},
       this._cover,
-      el("div", { class: "info" }, this._track, this._artist),
+      el("div", { class: "info", onclick: () => this._showPlaying() }, this._track, this._artist),
       el(
         "div",
         { class: "controls" },

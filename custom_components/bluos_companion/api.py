@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from urllib.parse import unquote, urlencode
 from xml.etree import ElementTree as ET
@@ -355,7 +356,10 @@ class BluOSClient:
         The album key needs the album artist, which differs from the track artist
         on compilations, so the album is searched and the best match is returned.
         """
-        menu = await self.async_browse_page("LocalMusic:Search", title, 1)
+        # The player's search chokes on punctuation (it finds nothing for "A-B"), so
+        # search the longest word and match the exact title afterwards.
+        query = max(re.findall(r"\w+", title), key=len, default=title)
+        menu = await self.async_browse_page("LocalMusic:Search", query, 1)
         category = next((node for node in menu.nodes if node.title == "Albums"), None)
         if category is None or category.browse_key is None:
             return None
