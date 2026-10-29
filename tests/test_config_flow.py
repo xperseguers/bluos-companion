@@ -114,4 +114,8 @@ async def test_options_hide_services(
             result["flow_id"], {"hidden_services": ["Deezer:"], "max_volume": 60}
         )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert config_entry.options == {"hidden_services": ["Deezer:"], "max_volume": 60}
+    assert config_entry.options == {
+        "hidden_services": ["Deezer:"],
+        "max_volume": 60,
+        "backup_playlists": True,
+    }

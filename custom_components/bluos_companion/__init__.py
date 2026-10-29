@@ -6,7 +6,7 @@ from pathlib import Path
 
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.const import CONF_HOST, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
@@ -21,6 +21,7 @@ from .panel import (
     async_register_static_path,
     async_remove_panel,
 )
+from .playlist_backup import async_backup_playlists
 from .websocket_api import async_setup_websocket_api
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SELECT]
@@ -37,6 +38,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     await async_register_static_path(hass)
     async_register_card(hass)
     async_setup_websocket_api(hass)
+
+    async def backup_playlists(call: ServiceCall) -> dict[str, dict[str, int]]:
+        """Save the playlists as text files, as before every Home Assistant backup."""
+        return {"playlists": await async_backup_playlists(hass)}
+
+    hass.services.async_register(
+        DOMAIN,
+        "backup_playlists",
+        backup_playlists,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
     return True
 
 

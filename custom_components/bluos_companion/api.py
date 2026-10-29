@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass
 from urllib.parse import parse_qs, unquote, urlencode, urlparse
@@ -12,6 +13,9 @@ from aiohttp import ClientError, ClientSession, ClientTimeout
 REQUEST_TIMEOUT = 20
 MAX_BROWSE_PAGES = 8
 MAX_EMPTY_BROWSE_PAGES = 60
+PLAYLIST_BATCH = 10
+PLAYLIST_EMPTY_WINDOWS = 60
+PLAYLIST_LEADING_WINDOWS = 120
 HOME_ROWS = ("mostUsed", "recent-stations", "recent")
 UI_HEADERS = {"x-sovi-schema-version": "35", "x-sovi-ui-schema-version": "7"}
 MAX_QUEUE_LENGTH = 500
@@ -176,6 +180,17 @@ class Album:
     def play_path(self) -> str:
         """Player path starting the album."""
         return f"/Add?playnow=1&service=LocalMusic&{self.query}"
+
+
+@dataclass(frozen=True, slots=True)
+class PlaylistTrack:
+    """A track of a playlist saved on the player, identified by its file on the music share."""
+
+    title: str
+    artist: str
+    album: str
+    duration: int | None
+    path: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -479,6 +494,49 @@ class BluOSClient:
             for item in root.iter("item")
             if item.get("actionURL")
         ]
+
+    async def async_get_playlist_names(self) -> list[str]:
+        """Return the names of the playlists saved on the player."""
+        root = await self._get_xml("/Playlists", {"service": "BluOS"})
+        return [name.text for name in root.iter("name") if name.text]
+
+    async def _async_playlist_window(self, name: str, end: int) -> list[PlaylistTrack]:
+        """Return the (at most 10) tracks of a playlist ending at an offset."""
+        root = await self._get_xml("/Songs", {"playlist": name, "offset": str(end)})
+        return [
+            PlaylistTrack(
+                title=song.findtext("title", ""),
+                artist=song.findtext("art", ""),
+                album=song.findtext("alb", ""),
+                duration=_int(song.findtext("time")) or None,
+                path=song.findtext("fn", ""),
+            )
+            for song in root.iter("song")
+            if song.findtext("fn")
+        ]
+
+    async def async_get_playlist_tracks(self, name: str) -> list[PlaylistTrack]:
+        """Return all the tracks of a playlist saved on the player, in order.
+
+        The player answers the window of 10 entries ending at an offset. The entries
+        it cannot find any more (moved files) give empty windows, also at the start,
+        so windows are read until a long run of them is empty.
+        """
+        tracks: list[PlaylistTrack] = []
+        empty = 0
+        end = PLAYLIST_BATCH
+        while True:
+            ends = range(end, end + PLAYLIST_BATCH * PLAYLIST_BATCH, PLAYLIST_BATCH)
+            for window in await asyncio.gather(
+                *(self._async_playlist_window(name, e) for e in ends)
+            ):
+                tracks.extend(window)
+                empty = 0 if window else empty + 1
+            end = ends[-1] + PLAYLIST_BATCH
+            if empty >= PLAYLIST_EMPTY_WINDOWS or (
+                not tracks and end // PLAYLIST_BATCH > PLAYLIST_LEADING_WINDOWS
+            ):
+                return tracks
 
     async def async_get_home(self, language: str = "en") -> list[HomeRow]:
         """Return the recently played, recent stations and most used rows of the player."""

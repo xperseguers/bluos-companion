@@ -24,7 +24,8 @@
         "description": "Hide the services you do not use, for example a music service you have no account for. They stay available in the BluOS app. The maximum volume applies to Home Assistant (panel, cards, services), not to the BluOS app or the remote.",
         "data": {
           "hidden_services": "Hidden services",
-          "max_volume": "Maximum volume"
+          "max_volume": "Maximum volume",
+          "backup_playlists": "Back up the playlists of this player"
         }
       }
     }
@@ -57,5 +58,11 @@
     "favourites": "Favourites",
     "folders": "Folders",
     "sources": "Sources"
+  },
+  "services": {
+    "backup_playlists": {
+      "name": "Save the playlists as text files now",
+      "description": "Writes the playlists saved on the players as text files (.m3u8) in the bluos_companion/playlists folder of the Home Assistant configuration. This also happens before every Home Assistant backup, which then contains them."
+    }
   }
 }
