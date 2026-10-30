@@ -2,11 +2,17 @@
 
 ## Adding players
 
-**Settings → Devices & services → Add integration → BluOS Companion**, then enter the IP address of the
-player. The port is 11000 for all BluOS players. Repeat for each player.
+Players on your network are discovered: they appear under **Settings → Devices & services → Discovered**,
+click **Add**.
 
-A player is identified by its MAC address: if its IP address changes, add it again with the new address
-and the existing entry is updated. A fixed IP address (or a DHCP reservation) is recommended.
+To add one by hand, **Settings → Devices & services → Add integration → BluOS Companion**. If you have set
+up players with the official Bluesound integration (even if it is disabled now), you can pick one of them
+instead of typing its address. Otherwise enter the IP address of the player (the port is 11000 for all BluOS
+players). Repeat for each player.
+
+A player is identified by its MAC address: if its IP address changes, it is updated when the player is
+discovered again, or when you add it again with the new address. A fixed IP address (or a DHCP reservation)
+is still recommended.
 
 ## Options of a player
 

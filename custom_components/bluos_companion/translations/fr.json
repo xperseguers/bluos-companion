@@ -3,18 +3,39 @@
     "step": {
       "user": {
         "title": "Connexion à votre lecteur BluOS",
+        "description": "Comment voulez-vous ajouter le lecteur ?",
+        "menu_options": {
+          "manual": "Saisir son adresse IP",
+          "official": "Choisir un lecteur connu de l'intégration Bluesound"
+        }
+      },
+      "manual": {
+        "title": "Connexion à votre lecteur BluOS",
         "description": "Saisissez l'adresse IP de votre lecteur BluOS (amplificateur, streamer...).",
         "data": {
           "host": "Hôte",
           "port": "Port"
         }
+      },
+      "official": {
+        "title": "Lecteurs de l'intégration Bluesound",
+        "description": "Ces lecteurs sont déjà enregistrés dans Home Assistant par l'intégration Bluesound officielle. Choisissez celui à ajouter ; les deux intégrations peuvent coexister.",
+        "data": {
+          "player": "Lecteur"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Lecteur BluOS découvert",
+        "description": "Ajouter le lecteur {name} ({host}) à Home Assistant ?"
       }
     },
     "error": {
       "cannot_connect": "Impossible de se connecter à un lecteur BluOS à cette adresse."
     },
     "abort": {
-      "already_configured": "Ce lecteur est déjà configuré."
+      "already_configured": "Ce lecteur est déjà configuré.",
+      "no_ipv4_address": "Le lecteur n'a pas d'adresse IPv4.",
+      "cannot_connect": "Impossible de se connecter à un lecteur BluOS à cette adresse."
     }
   },
   "options": {

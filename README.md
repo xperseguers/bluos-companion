@@ -52,8 +52,8 @@ folder of your Home Assistant configuration (next to `configuration.yaml`) and r
 
 ## Quick start
 
-1. **Settings → Devices & services → Add integration → BluOS Companion**, and enter the IP address of a
-   player. Repeat for each player (a player is identified by its MAC address, so a new IP address just
+1. **Settings → Devices & services → Add integration → BluOS Companion**, and pick a discovered player or
+   enter its IP address. Repeat for each player (a player is identified by its MAC address, so a new IP address just
    updates the existing entry).
 2. Open **BluOS Companion** in the sidebar. Pick the player with the button in the bottom bar.
 3. On a dashboard, **Add card** and pick *BluOS Companion presets* or *BluOS Companion player*.

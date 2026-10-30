@@ -3,18 +3,39 @@
     "step": {
       "user": {
         "title": "Connect to your BluOS player",
+        "description": "How do you want to add the player?",
+        "menu_options": {
+          "manual": "Enter its IP address",
+          "official": "Pick a player known to the Bluesound integration"
+        }
+      },
+      "manual": {
+        "title": "Connect to your BluOS player",
         "description": "Enter the IP address of your BluOS player (amplifier, streamer...).",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "port": "[%key:common::config_flow::data::port%]"
         }
+      },
+      "official": {
+        "title": "Players of the Bluesound integration",
+        "description": "These players are already registered in Home Assistant by the official Bluesound integration. Pick the one to add; both integrations can coexist.",
+        "data": {
+          "player": "Player"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Discovered BluOS player",
+        "description": "Add the player {name} ({host}) to Home Assistant?"
       }
     },
     "error": {
       "cannot_connect": "Could not connect to a BluOS player at this address."
     },
     "abort": {
-      "already_configured": "This player is already configured."
+      "already_configured": "This player is already configured.",
+      "no_ipv4_address": "The player has no IPv4 address.",
+      "cannot_connect": "Could not connect to a BluOS player at this address."
     }
   },
   "options": {

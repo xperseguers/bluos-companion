@@ -358,6 +358,7 @@ async def pulse(
         domain=DOMAIN,
         unique_id="11:22:33:44:55:66",
         title="Pulse",
+        minor_version=2,
         data={"host": OTHER_HOST, CONF_PORT: 11000},
     )
     entry.add_to_hass(hass)
@@ -595,6 +596,7 @@ async def third(
         domain=DOMAIN,
         unique_id="11:22:33:44:55:77",
         title="Kitchen",
+        minor_version=2,
         data={"host": "192.168.1.102", CONF_PORT: 11000},
     )
     entry.add_to_hass(hass)

@@ -3,18 +3,39 @@
     "step": {
       "user": {
         "title": "Mit Ihrem BluOS-Player verbinden",
+        "description": "Wie möchten Sie den Player hinzufügen?",
+        "menu_options": {
+          "manual": "IP-Adresse eingeben",
+          "official": "Einen Player der Bluesound-Integration wählen"
+        }
+      },
+      "manual": {
+        "title": "Mit Ihrem BluOS-Player verbinden",
         "description": "Geben Sie die IP-Adresse Ihres BluOS-Players (Verstärker, Streamer ...) ein.",
         "data": {
           "host": "Host",
           "port": "Port"
         }
+      },
+      "official": {
+        "title": "Player der Bluesound-Integration",
+        "description": "Diese Player sind bereits von der offiziellen Bluesound-Integration in Home Assistant registriert. Wählen Sie den Player, der hinzugefügt werden soll; beide Integrationen können nebeneinander laufen.",
+        "data": {
+          "player": "Player"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "BluOS-Player gefunden",
+        "description": "Den Player {name} ({host}) zu Home Assistant hinzufügen?"
       }
     },
     "error": {
       "cannot_connect": "Unter dieser Adresse konnte keine Verbindung zu einem BluOS-Player hergestellt werden."
     },
     "abort": {
-      "already_configured": "Dieser Player ist bereits konfiguriert."
+      "already_configured": "Dieser Player ist bereits konfiguriert.",
+      "no_ipv4_address": "Der Player hat keine IPv4-Adresse.",
+      "cannot_connect": "Unter dieser Adresse konnte keine Verbindung zu einem BluOS-Player hergestellt werden."
     }
   },
   "options": {

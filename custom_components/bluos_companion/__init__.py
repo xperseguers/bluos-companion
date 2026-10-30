@@ -8,8 +8,9 @@ import voluptuous as vol
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_HOST, Platform
-from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -97,6 +98,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> boo
     entry.async_create_background_task(
         hass, coordinator.async_long_poll(), "bluos_companion_long_poll"
     )
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> bool:
+    """Normalise the MAC address used as unique ID, keeping the entities and the device."""
+    if entry.minor_version < 2:
+        old = entry.unique_id
+        new = dr.format_mac(old) if old else old
+        if old and new != old:
+
+            @callback
+            def migrate(entity: er.RegistryEntry) -> dict[str, str] | None:
+                """Move the entities of the player to the new unique ID."""
+                if entity.unique_id.startswith(old):
+                    return {"new_unique_id": new + entity.unique_id[len(old) :]}
+                return None
+
+            await er.async_migrate_entries(hass, entry.entry_id, migrate)
+            registry = dr.async_get(hass)
+            if device := registry.async_get_device(identifiers={(DOMAIN, old)}):
+                registry.async_update_device(
+                    device.id, new_identifiers={(DOMAIN, new)}
+                )
+        hass.config_entries.async_update_entry(entry, unique_id=new, minor_version=2)
     return True
 
 

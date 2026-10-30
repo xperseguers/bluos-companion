@@ -8,6 +8,7 @@ import pytest
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.device_registry import format_mac
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from yarl import URL
@@ -170,8 +171,9 @@ def config_entry() -> MockConfigEntry:
     """Return a config entry."""
     return MockConfigEntry(
         domain=DOMAIN,
-        unique_id=MAC,
+        unique_id=format_mac(MAC),
         title="Séjour",
+        minor_version=2,
         data={CONF_HOST: HOST, CONF_PORT: 11000},
     )
 
