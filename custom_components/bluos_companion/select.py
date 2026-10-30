@@ -12,6 +12,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api import SLEEP_OPTIONS, BluOSError, sleep_bucket
 from .const import DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
+from .api import PlayerSetting
+from .settings import BluOSSettingEntity, BluOSSettingsCoordinator
 
 OFF = "off"
 OPTIONS = [OFF, *(str(minutes) for minutes in SLEEP_OPTIONS)]
@@ -23,7 +25,17 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the sleep timer."""
-    async_add_entities([BluOSSleepTimer(entry.runtime_data)])
+    settings = entry.runtime_data.settings
+    async_add_entities(
+        [
+            BluOSSleepTimer(entry.runtime_data),
+            *(
+                BluOSSettingSelect(settings, setting)
+                for setting in (settings.data or {}).values()
+                if setting.kind == "list"
+            ),
+        ]
+    )
 
 
 class BluOSSleepTimer(CoordinatorEntity[BluOSCoordinator], SelectEntity):
@@ -56,3 +68,25 @@ class BluOSSleepTimer(CoordinatorEntity[BluOSCoordinator], SelectEntity):
             )
         except BluOSError as err:
             raise HomeAssistantError(f"BluOS player error: {err}") from err
+
+
+class BluOSSettingSelect(BluOSSettingEntity, SelectEntity):
+    """A setting with a few choices, such as the listening mode."""
+
+    def __init__(self, coordinator: BluOSSettingsCoordinator, setting: PlayerSetting) -> None:
+        """Initialize the entity."""
+        super().__init__(coordinator, setting)
+        self._labels = dict(setting.options)
+        self._attr_options = [label for _, label in setting.options]
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the label of the current choice."""
+        return self._labels.get(self.setting.value) if self.setting else None
+
+    async def async_select_option(self, option: str) -> None:
+        """Choose one of the options."""
+        value = next((name for name, label in self._labels.items() if label == option), None)
+        if value is None:
+            raise HomeAssistantError(f"Unknown option: {option}")
+        await self._async_write(value)

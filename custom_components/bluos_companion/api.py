@@ -106,6 +106,27 @@ class SyncStatus:
 
 
 @dataclass(frozen=True, slots=True)
+class PlayerSetting:
+    """A setting of the player (listening mode, bass, indicator brightness...)."""
+
+    id: str
+    name: str
+    label: str
+    kind: str
+    url: str
+    value: str
+    options: tuple[tuple[str, str], ...] = ()
+    minimum: float = 0
+    maximum: float = 0
+    step: float = 1
+    unit: str | None = None
+
+
+SETTING_KINDS = ("list", "boolean", "range")
+SETTING_PAGES = ("audio", "player")
+
+
+@dataclass(frozen=True, slots=True)
 class QueueItem:
     """A track of the play queue."""
 
@@ -283,6 +304,14 @@ def _home_item(element: ET.Element) -> HomeItem | None:
     if play_path.startswith("/Play?url="):
         return HomeItem("station", title, "", element.get("image"), None, play_path, None)
     return None
+
+
+def _float(value: str | None, default: float = 0) -> float:
+    """Return value as a float, default when it is not a number."""
+    try:
+        return float(value) if value is not None else default
+    except ValueError:
+        return default
 
 
 def _int(value: str | None, default: int = 0) -> int:
@@ -628,6 +657,46 @@ class BluOSClient:
                 return await response.read(), response.content_type
         except (ClientError, TimeoutError) as err:
             raise BluOSError(str(err)) from err
+
+    async def async_get_settings(self) -> dict[str, PlayerSetting]:
+        """Return the list, on/off and range settings of the player, by id."""
+        settings: dict[str, PlayerSetting] = {}
+        for page in SETTING_PAGES:
+            root = await self._get_xml(
+                "/Settings", {"id": page, "schemaVersion": "36"}
+            )
+            for element in root.iter("setting"):
+                kind = element.get("class")
+                setting_id = element.get("id")
+                if kind not in SETTING_KINDS or not setting_id or element.get("value") is None:
+                    continue
+                values = element.findall("value")
+                bounds = values[0] if kind == "range" and values else None
+                settings[setting_id] = PlayerSetting(
+                    id=setting_id,
+                    name=element.get("name", setting_id),
+                    label=element.get("displayName", setting_id),
+                    kind=kind,
+                    url=element.get("url", "/setting"),
+                    value=element.get("value", ""),
+                    options=(
+                        tuple(
+                            (value.get("name", ""), value.get("displayName", ""))
+                            for value in values
+                        )
+                        if kind == "list"
+                        else ()
+                    ),
+                    minimum=_float(bounds.get("min")) if bounds is not None else 0,
+                    maximum=_float(bounds.get("max")) if bounds is not None else 0,
+                    step=_float(bounds.get("step"), 1) if bounds is not None else 1,
+                    unit=bounds.get("units") if bounds is not None else None,
+                )
+        return settings
+
+    async def async_set_setting(self, setting: PlayerSetting, value: str) -> None:
+        """Change a setting of the player."""
+        await self.async_command(urlparse(setting.url).path, {setting.name: value})
 
     async def async_command(
         self, path: str, params: dict[str, str] | None = None

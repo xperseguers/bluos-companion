@@ -30,6 +30,10 @@ is still recommended.
   shuffle, repeat, play media, select source, clear the queue, group and ungroup, and search media (for
   [voice and AI](voice-and-ai.md)). It shows the title, artist, album, cover and position.
 - A **sleep timer** select entity (off, 15, 30, 45, 60 or 90 minutes).
+- The **settings** the player offers, named as the player names them: listening mode, bass, treble, indicator
+  brightness, Late Night... Which ones depend on the model (an amplifier such as the NAD C368 has almost none). They
+  are configuration entities; the listening mode, bass and treble are enabled, enable the others from the entity
+  settings of the device.
 - The **media browser**, in the sidebar *Media* panel and in the media browser of the player's more-info
   dialog: library, saved playlists (with their covers), presets and the queue.
 

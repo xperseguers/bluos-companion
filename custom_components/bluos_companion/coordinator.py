@@ -11,6 +11,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import BluOSClient, BluOSError, Source, Status, SyncStatus
+from .settings import BluOSSettingsCoordinator
 from .const import CONF_MAX_VOLUME, DOMAIN, EXTERNAL_SOURCE_URL, LONG_POLL_TIMEOUT, MIN_POLL_INTERVAL, RETRY_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         super().__init__(hass, _LOGGER, config_entry=entry, name=DOMAIN)
         self.client = client
         self.sync: SyncStatus | None = None
+        self.settings = BluOSSettingsCoordinator(hass, entry, client)
         self.sources: list[Source] = []
         self._sync_stat: str | None = None
         # Cover (player path) of the first track of a playlist, with the time it was read.

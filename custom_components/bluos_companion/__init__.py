@@ -29,7 +29,7 @@ from .panel import (
 from .playlist_backup import async_backup_playlists, async_restore_playlists
 from .websocket_api import async_setup_websocket_api
 
-PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SELECT]
+PLATFORMS = [Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.SELECT, Platform.SWITCH]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -92,6 +92,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> boo
     coordinator = BluOSCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
+    # Not every player has settings, and none is needed to play: never block the setup
+    await coordinator.settings.async_refresh()
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_register_panel(hass)
