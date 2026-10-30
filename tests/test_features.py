@@ -36,9 +36,10 @@ from custom_components.bluos_companion.api import (
     SyncStatus,
     sleep_bucket,
 )
+from custom_components.bluos_companion.diagnostics import async_get_config_entry_diagnostics
 from custom_components.bluos_companion.const import CONF_PORT, DOMAIN
 
-from .conftest import BASE, GROUPED_SYNC_STATUS, HOST, calls, respond, status_xml
+from .conftest import BASE, GROUPED_SYNC_STATUS, HOST, MAC, calls, respond, status_xml
 
 ENTITY_ID = "media_player.sejour"
 SLEEP_ENTITY_ID = "select.sejour_sleep_timer"
@@ -790,3 +791,15 @@ async def test_panel_does_not_move_a_stopped_player(
     assert response["success"] is False
     assert "stopped" in response["error"]["message"]
     assert calls(player_api) == []
+
+
+async def test_diagnostics_hide_addresses_and_names(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """The diagnostics carry the state of the player but not where or who it is."""
+    result = await async_get_config_entry_diagnostics(hass, init_integration)
+    assert result["status"]["state"]
+    assert result["entry"]["data"]["host"] == "**REDACTED**"
+    assert result["entry"]["unique_id"] == "**REDACTED**"
+    assert HOST not in str(result)
+    assert MAC.lower() not in str(result).lower()

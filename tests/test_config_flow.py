@@ -274,3 +274,4 @@ async def test_migrate_unique_id(hass: HomeAssistant) -> None:
     assert registry.async_get_entity_id("media_player", DOMAIN, new)
     assert registry.async_get_entity_id("select", DOMAIN, f"{new}_sleep_timer")
     assert dr.async_get(hass).async_get(device.id).identifiers == {(DOMAIN, new)}
+
