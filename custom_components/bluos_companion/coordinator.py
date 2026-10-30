@@ -7,6 +7,7 @@ import logging
 import time
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -103,11 +104,26 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         raise HomeAssistantError(f"Unknown source: {name}")
 
     async def async_reindex(self) -> None:
-        """Start reading the library and follow the scan closely until it is over."""
-        await self.client.async_reindex()
-        self.config_entry.async_create_background_task(
-            self.hass, self._async_follow_indexing(), f"{DOMAIN} indexing"
-        )
+        """Start reading the library and follow the scan closely until it is over.
+
+        A player grouped under another one does not read the library: the primary does.
+        """
+        primary = self
+        if self.sync is not None and self.sync.master is not None:
+            primary = self._coordinator_of(self.sync.master.host)
+            if primary is None:
+                raise HomeAssistantError("The primary player of the group is not configured")
+        await primary.client.async_reindex()
+        for coordinator in {self, primary}:
+            coordinator.config_entry.async_create_background_task(
+                self.hass, coordinator._async_follow_indexing(), f"{DOMAIN} indexing"
+            )
+
+    def _coordinator_of(self, host: str) -> BluOSCoordinator | None:
+        for entry in self.hass.config_entries.async_loaded_entries(DOMAIN):
+            if entry.data[CONF_HOST] == host:
+                return entry.runtime_data
+        return None
 
     async def _async_follow_indexing(self) -> None:
         """Poll the status often while the scan runs: its last count is short lived."""

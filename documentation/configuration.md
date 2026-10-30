@@ -34,7 +34,8 @@ is still recommended.
   the last count (empty until a first reindex) and shows the running count in its `indexing` attribute during a scan. The scan is followed closely only when started
   with the reindex button below; a scan started elsewhere (the BluOS app) is checked every 100 seconds or so and may be
   missed.
-- A **Reindex music library** button, to run after you add music (press it from an automation to schedule it), and a
+- A **Reindex music library** button, to run after you add music (press it from an automation to schedule it; in a
+  group, the primary player reads the library, so the button of a secondary asks the primary), and a
   **Restart** button to restart the player. The restart button is disabled by default: enable it in the entity
   settings of the device.
 - The **settings** the player offers, named as the player names them: listening mode, bass, treble, indicator

@@ -825,6 +825,34 @@ async def test_reindex_button(
     assert calls(player_api) == [("/Reindex", {})]
 
 
+async def test_reindex_of_a_secondary_goes_to_its_primary(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Only the primary of a group reads the library: a secondary's button asks it to."""
+    respond(player_api, f"{BASE}/SyncStatus", text=GROUPED_SYNC_STATUS)
+    respond(
+        player_api,
+        f"{OTHER_BASE}/SyncStatus",
+        text=f'<SyncStatus id="x" syncStat="2"><master port="11000">{HOST}</master></SyncStatus>',
+    )
+    respond(player_api, f"{BASE}/Reindex", text="<indexing>1</indexing>")
+    for entry, base in ((init_integration, BASE), (pulse, OTHER_BASE)):
+        respond(player_api, f"{base}/Status", text=status_xml(syncStat="2"))
+        await entry.runtime_data.async_refresh()
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "button", DOMAIN, f"{pulse.unique_id}_reindex"
+    )
+    player_api.mock_calls.clear()
+    await hass.services.async_call(
+        "button", "press", {ATTR_ENTITY_ID: entity_id}, blocking=True
+    )
+    assert calls(player_api) == [("/Reindex", {})]
+    assert str(player_api.mock_calls[0][1]).startswith(BASE)
+
+
 async def test_reindex_follows_the_scan_until_it_ends(
     hass: HomeAssistant, init_integration: MockConfigEntry
 ) -> None:
