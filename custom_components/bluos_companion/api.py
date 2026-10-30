@@ -327,6 +327,7 @@ class BluOSClient:
     def __init__(self, session: ClientSession, host: str, port: int) -> None:
         """Initialize the client."""
         self._session = session
+        self._host = host
         self.base_url = f"http://{host}:{port}"
 
     async def _get(
@@ -697,6 +698,22 @@ class BluOSClient:
     async def async_set_setting(self, setting: PlayerSetting, value: str) -> None:
         """Change a setting of the player."""
         await self.async_command(urlparse(setting.url).path, {setting.name: value})
+
+    async def async_reindex(self) -> None:
+        """Ask the player to read its music library again."""
+        await self.async_command("/Reindex")
+
+    async def async_reboot(self) -> None:
+        """Restart the player (its web server listens on the default port, not the API's)."""
+        try:
+            async with self._session.post(
+                f"http://{self._host}/reboot",
+                data={"yes": "1"},
+                timeout=ClientTimeout(total=REQUEST_TIMEOUT),
+            ) as response:
+                response.raise_for_status()
+        except (ClientError, TimeoutError) as err:
+            raise BluOSError(str(err)) from err
 
     async def async_command(
         self, path: str, params: dict[str, str] | None = None

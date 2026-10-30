@@ -64,6 +64,11 @@
           "90": "90 minutes"
         }
       }
+    },
+    "button": {
+      "reindex": {
+        "name": "Reindex music library"
+      }
     }
   },
   "common": {

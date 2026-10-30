@@ -64,6 +64,11 @@
           "90": "90 Minuten"
         }
       }
+    },
+    "button": {
+      "reindex": {
+        "name": "Musikbibliothek neu indizieren"
+      }
     }
   },
   "common": {

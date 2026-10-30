@@ -29,6 +29,8 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
 )
 from yarl import URL
 
+from homeassistant.helpers import entity_registry as er
+
 from custom_components.bluos_companion.api import (
     BluOSClient,
     BluOSError,
@@ -803,3 +805,34 @@ async def test_diagnostics_hide_addresses_and_names(
     assert result["entry"]["unique_id"] == "**REDACTED**"
     assert HOST not in str(result)
     assert MAC.lower() not in str(result).lower()
+
+
+async def test_reindex_button(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """Pressing the button asks the player to read its music library again."""
+    respond(player_api, f"{BASE}/Reindex", text="<ok/>")
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "button", DOMAIN, f"{init_integration.unique_id}_reindex"
+    )
+    player_api.mock_calls.clear()
+    await hass.services.async_call(
+        "button", "press", {ATTR_ENTITY_ID: entity_id}, blocking=True
+    )
+    assert calls(player_api) == [("/Reindex", {})]
+
+
+async def test_restart_button_is_off_by_default_and_posts_to_the_web_server(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """The restart goes to the player's web server, and has to be enabled first."""
+    registry = er.async_get(hass)
+    entity_id = registry.async_get_entity_id(
+        "button", DOMAIN, f"{init_integration.unique_id}_restart"
+    )
+    assert registry.async_get(entity_id).disabled_by is er.RegistryEntryDisabler.INTEGRATION
+
+    player_api.post(f"http://{HOST}/reboot", text="Rebooting")
+    await init_integration.runtime_data.client.async_reboot()
+    method, url, data, _ = player_api.mock_calls[-1]
+    assert (method, str(url), data) == ("POST", f"http://{HOST}/reboot", {"yes": "1"})

@@ -30,6 +30,9 @@ is still recommended.
   shuffle, repeat, play media, select source, clear the queue, group and ungroup, and search media (for
   [voice and AI](voice-and-ai.md)). It shows the title, artist, album, cover and position.
 - A **sleep timer** select entity (off, 15, 30, 45, 60 or 90 minutes).
+- A **Reindex music library** button, to run after you add music (press it from an automation to schedule it), and a
+  **Restart** button to restart the player. The restart button is disabled by default: enable it in the entity
+  settings of the device.
 - The **settings** the player offers, named as the player names them: listening mode, bass, treble, indicator
   brightness, Late Night... Which ones depend on the model (an amplifier such as the NAD C368 has almost none). They
   are configuration entities; the listening mode, bass and treble are enabled, enable the others from the entity
