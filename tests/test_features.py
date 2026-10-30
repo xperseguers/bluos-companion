@@ -869,6 +869,9 @@ async def test_library_tracks_keep_the_last_count(
         ("1500", "unknown", 1500),
         ("5500", "unknown", 5500),
         ("0", "5500", None),
+        # A reindex the player does not carry out only flashes a count of 1
+        ("1", "5500", 1),
+        ("0", "5500", None),
     ):
         await _refresh(hass, init_integration, player_api, status_xml(indexing=counter))
         state = hass.states.get(entity_id)

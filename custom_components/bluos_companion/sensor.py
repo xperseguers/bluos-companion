@@ -24,6 +24,10 @@ async def async_setup_entry(
     async_add_entities([BluOSLibraryTracks(entry.runtime_data)])
 
 
+# The player shows a count of 1 for a second when it is asked to reindex, whether it scans or not
+MIN_SCAN_COUNT = 100
+
+
 class BluOSLibraryTracks(CoordinatorEntity[BluOSCoordinator], RestoreSensor):
     """Number of tracks the player found when it last read its library.
 
@@ -60,7 +64,8 @@ class BluOSLibraryTracks(CoordinatorEntity[BluOSCoordinator], RestoreSensor):
             self._counted = indexing
         elif self._counted:
             # The scan is over: the last count is the number of tracks
-            self._attr_native_value = self._counted
+            if self._counted >= MIN_SCAN_COUNT:
+                self._attr_native_value = self._counted
             self._counted = 0
         super()._handle_coordinator_update()
 
