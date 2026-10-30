@@ -836,3 +836,22 @@ async def test_restart_button_is_off_by_default_and_posts_to_the_web_server(
     await init_integration.runtime_data.client.async_reboot()
     method, url, data, _ = player_api.mock_calls[-1]
     assert (method, str(url), data) == ("POST", f"http://{HOST}/reboot", {"yes": "1"})
+
+
+async def test_library_tracks_keep_the_last_count(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """The player forgets how many tracks it read once it is done: the sensor does not."""
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{init_integration.unique_id}_library_tracks"
+    )
+    assert hass.states.get(entity_id).state == "unknown"
+
+    for counter, expected_state, expected_progress in (
+        ("1500", "unknown", 1500),
+        ("5500", "unknown", 5500),
+        ("0", "5500", None),
+    ):
+        await _refresh(hass, init_integration, player_api, status_xml(indexing=counter))
+        state = hass.states.get(entity_id)
+        assert (state.state, state.attributes["indexing"]) == (expected_state, expected_progress)

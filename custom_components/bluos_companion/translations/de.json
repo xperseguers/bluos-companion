@@ -69,6 +69,11 @@
       "reindex": {
         "name": "Musikbibliothek neu indizieren"
       }
+    },
+    "sensor": {
+      "library_tracks": {
+        "name": "Titel in der Bibliothek"
+      }
     }
   },
   "common": {

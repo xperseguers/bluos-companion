@@ -9,6 +9,11 @@
       "reindex": {
         "default": "mdi:database-refresh"
       }
+    },
+    "sensor": {
+      "library_tracks": {
+        "default": "mdi:music-box-multiple"
+      }
     }
   },
   "services": {

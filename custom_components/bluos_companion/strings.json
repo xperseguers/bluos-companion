@@ -69,6 +69,11 @@
       "reindex": {
         "name": "Reindex music library"
       }
+    },
+    "sensor": {
+      "library_tracks": {
+        "name": "Tracks in library"
+      }
     }
   },
   "common": {

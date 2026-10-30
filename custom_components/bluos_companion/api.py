@@ -60,6 +60,7 @@ class Status:
     presets_id: str | None = None
     preset_name: str | None = None
     can_move: bool = False
+    indexing: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -440,6 +441,7 @@ class BluOSClient:
             presets_id=root.findtext("prid"),
             preset_name=root.findtext("preset_name"),
             can_move=root.findtext("canMovePlayback") == "true",
+            indexing=_int(root.findtext("indexing")),
             queue_position=(
                 _int(song) if (song := root.findtext("song")) is not None else None
             ),
