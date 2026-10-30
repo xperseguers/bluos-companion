@@ -119,10 +119,11 @@ async def async_migrate_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> b
 
             await er.async_migrate_entries(hass, entry.entry_id, migrate)
             registry = dr.async_get(hass)
-            if device := registry.async_get_device(identifiers={(DOMAIN, old)}):
-                registry.async_update_device(
-                    device.id, new_identifiers={(DOMAIN, new)}
-                )
+            for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
+                if (DOMAIN, old) in device.identifiers:
+                    registry.async_update_device(
+                        device.id, new_identifiers={(DOMAIN, new)}
+                    )
         hass.config_entries.async_update_entry(entry, unique_id=new, minor_version=2)
     return True
 
