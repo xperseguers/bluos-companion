@@ -16,7 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api import BluOSClient, BluOSError
+from .api import BluOSError
 from .const import DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 
@@ -25,7 +25,7 @@ from .coordinator import BluOSConfigEntry, BluOSCoordinator
 class BluOSButtonDescription(ButtonEntityDescription):
     """A button and what it asks of the player."""
 
-    press_fn: Callable[[BluOSClient], Awaitable[None]]
+    press_fn: Callable[[BluOSCoordinator], Awaitable[None]]
 
 
 BUTTONS = (
@@ -33,14 +33,14 @@ BUTTONS = (
         key="reindex",
         translation_key="reindex",
         entity_category=EntityCategory.CONFIG,
-        press_fn=lambda client: client.async_reindex(),
+        press_fn=lambda coordinator: coordinator.async_reindex(),
     ),
     BluOSButtonDescription(
         key="restart",
         device_class=ButtonDeviceClass.RESTART,
         entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
-        press_fn=lambda client: client.async_reboot(),
+        press_fn=lambda coordinator: coordinator.client.async_reboot(),
     ),
 )
 
@@ -63,7 +63,7 @@ class BluOSButton(ButtonEntity):
     def __init__(self, coordinator: BluOSCoordinator, description: BluOSButtonDescription) -> None:
         """Initialize the entity."""
         self.entity_description = description
-        self._client = coordinator.client
+        self._coordinator = coordinator
         entry = coordinator.config_entry
         identifier = entry.unique_id or entry.entry_id
         self._attr_unique_id = f"{identifier}_{description.key}"
@@ -72,6 +72,6 @@ class BluOSButton(ButtonEntity):
     async def async_press(self) -> None:
         """Press the button."""
         try:
-            await self.entity_description.press_fn(self._client)
+            await self.entity_description.press_fn(self._coordinator)
         except BluOSError as err:
             raise HomeAssistantError(f"BluOS player error: {err}") from err

@@ -31,7 +31,9 @@ is still recommended.
   [voice and AI](voice-and-ai.md)). It shows the title, artist, album, cover and position.
 - A **sleep timer** select entity (off, 15, 30, 45, 60 or 90 minutes).
 - A **Tracks in library** sensor: the player only counts its tracks while it reads the library, so the sensor keeps
-  the last count (empty until a first reindex) and shows the running count in its `indexing` attribute during a scan.
+  the last count (empty until a first reindex) and shows the running count in its `indexing` attribute during a scan. The scan is followed closely only when started
+  with the reindex button below; a scan started elsewhere (the BluOS app) is checked every 100 seconds or so and may be
+  missed.
 - A **Reindex music library** button, to run after you add music (press it from an automation to schedule it), and a
   **Restart** button to restart the player. The restart button is disabled by default: enable it in the entity
   settings of the device.

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from homeassistant.components.media_player import (
     ATTR_GROUP_MEMBERS,
@@ -820,6 +823,21 @@ async def test_reindex_button(
         "button", "press", {ATTR_ENTITY_ID: entity_id}, blocking=True
     )
     assert calls(player_api) == [("/Reindex", {})]
+
+
+async def test_reindex_follows_the_scan_until_it_ends(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """After a reindex the status is read often, until the count has been seen and is gone."""
+    coordinator = init_integration.runtime_data
+    statuses = [replace(coordinator.data, indexing=count) for count in (0, 1500, 17012, 0)]
+    with (
+        patch.object(coordinator.client, "async_get_status", AsyncMock(side_effect=statuses)) as get,
+        patch("custom_components.bluos_companion.coordinator.asyncio.sleep", AsyncMock()),
+    ):
+        await coordinator._async_follow_indexing()
+    assert get.await_count == 4
+    assert coordinator.data.indexing == 0
 
 
 async def test_restart_button_is_off_by_default_and_posts_to_the_web_server(

@@ -11,6 +11,9 @@ DEFAULT_PORT = 11000
 LONG_POLL_TIMEOUT = 100
 MIN_POLL_INTERVAL = 1
 RETRY_INTERVAL = 15
+# While the player reads its library: how often the scan is looked at, and how long to wait for it to start
+INDEXING_POLL_INTERVAL = 1
+INDEXING_START_TIMEOUT = 30
 
 ICONS_URL = "/bluos_companion/icons"
 

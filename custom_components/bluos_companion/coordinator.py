@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -12,7 +13,16 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import BluOSClient, BluOSError, Source, Status, SyncStatus
 from .settings import BluOSSettingsCoordinator
-from .const import CONF_MAX_VOLUME, DOMAIN, EXTERNAL_SOURCE_URL, LONG_POLL_TIMEOUT, MIN_POLL_INTERVAL, RETRY_INTERVAL
+from .const import (
+    CONF_MAX_VOLUME,
+    DOMAIN,
+    EXTERNAL_SOURCE_URL,
+    INDEXING_POLL_INTERVAL,
+    INDEXING_START_TIMEOUT,
+    LONG_POLL_TIMEOUT,
+    MIN_POLL_INTERVAL,
+    RETRY_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,6 +101,30 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
                 await self.client.async_select_external_source(external.id)
                 return
         raise HomeAssistantError(f"Unknown source: {name}")
+
+    async def async_reindex(self) -> None:
+        """Start reading the library and follow the scan closely until it is over."""
+        await self.client.async_reindex()
+        self.config_entry.async_create_background_task(
+            self.hass, self._async_follow_indexing(), f"{DOMAIN} indexing"
+        )
+
+    async def _async_follow_indexing(self) -> None:
+        """Poll the status often while the scan runs: its last count is short lived."""
+        started = False
+        deadline = time.monotonic() + INDEXING_START_TIMEOUT
+        while started or time.monotonic() < deadline:
+            await asyncio.sleep(INDEXING_POLL_INTERVAL)
+            try:
+                status = await self.client.async_get_status()
+            except BluOSError as err:
+                _LOGGER.debug("Status poll failed while indexing: %s", err)
+                continue
+            self.async_set_updated_data(status)
+            if status.indexing:
+                started = True
+            elif started:
+                return
 
     async def _async_update_data(self) -> Status:
         try:
