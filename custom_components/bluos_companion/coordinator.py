@@ -40,6 +40,14 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         """Return the volume (0..100) the player may be set to from Home Assistant."""
         return int(self.config_entry.options.get(CONF_MAX_VOLUME, 100))
 
+    def ensure_can_group(self) -> None:
+        """Refuse to group the second speaker of a stereo pair: the pair would be split."""
+        if self.sync is not None and self.sync.pair_secondary:
+            raise HomeAssistantError(
+                f"{self.config_entry.title} is the second speaker of a stereo pair, "
+                "group the first speaker of the pair instead"
+            )
+
     def _input_name(self, source: Source) -> str:
         """Return the name of a player input, told apart from an amplifier input."""
         if self.sync and any(

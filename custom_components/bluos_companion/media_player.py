@@ -276,10 +276,16 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
     async def async_join_players(self, group_members: list[str]) -> None:
         """Add players to the group of this one, which becomes the primary player."""
         registry = er.async_get(self.hass)
-        for entity_id in group_members:
-            if entity_id == self.entity_id:
-                continue
-            entry = self._entry_of_entity(registry, entity_id)
+        entries = [
+            self._entry_of_entity(registry, entity_id)
+            for entity_id in group_members
+            if entity_id != self.entity_id
+        ]
+        # Check everything first so that a refusal leaves the group untouched
+        self.coordinator.ensure_can_group()
+        for entry in entries:
+            entry.runtime_data.ensure_can_group()
+        for entry in entries:
             await self._async_call(
                 self._client.async_add_slave(
                     entry.data[CONF_HOST], entry.data[CONF_PORT]

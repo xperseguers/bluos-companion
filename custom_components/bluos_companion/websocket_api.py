@@ -702,6 +702,8 @@ async def ws_group(
         if "target" not in msg:
             raise HomeAssistantError("Missing target")
         primary = _primary(hass, _coordinator(hass, msg["target"]))
+        coordinator.ensure_can_group()
+        primary.ensure_can_group()
         if primary is not coordinator:
             if sync is not None and sync.slaves:
                 raise HomeAssistantError("This player leads a group, ungroup it first")

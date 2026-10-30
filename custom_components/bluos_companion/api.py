@@ -97,6 +97,7 @@ class SyncStatus:
     slaves: tuple[Member, ...]
     external_source: str | None
     external_sources: tuple[ExternalSource, ...] = ()
+    pair_secondary: bool = False
 
     @property
     def is_grouped(self) -> bool:
@@ -367,6 +368,7 @@ class BluOSClient:
                 for slave in root.findall("slave")
             ),
             external_source=external.get("name") if external is not None else None,
+            pair_secondary=root.get("zoneSlave") == "true",
             external_sources=tuple(
                 ExternalSource(item.get("id", ""), item.get("name", ""))
                 for item in (external.findall("item") if external is not None else [])

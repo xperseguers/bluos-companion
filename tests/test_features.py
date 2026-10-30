@@ -381,6 +381,36 @@ async def test_join_players(
     assert calls(player_api) == [("/AddSlave", {"slave": OTHER_HOST, "port": "11000"})]
 
 
+@pytest.mark.parametrize("pair_member", ["pulse", "main"])
+async def test_join_refuses_to_split_a_stereo_pair(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    pair_member: str,
+) -> None:
+    """The second speaker of a stereo pair can neither join nor be joined."""
+    entry = pulse if pair_member == "pulse" else init_integration
+    base = OTHER_BASE if pair_member == "pulse" else BASE
+    respond(
+        player_api,
+        f"{base}/SyncStatus",
+        text='<SyncStatus id="x" syncStat="3" zone="Pair" zoneSlave="true"/>',
+    )
+    respond(player_api, f"{base}/Status", text=status_xml(syncStat="3"))
+    await entry.runtime_data.async_refresh()
+    player_api.mock_calls.clear()
+
+    with pytest.raises(HomeAssistantError, match="stereo pair"):
+        await hass.services.async_call(
+            MEDIA_PLAYER_DOMAIN,
+            SERVICE_JOIN,
+            {ATTR_ENTITY_ID: ENTITY_ID, ATTR_GROUP_MEMBERS: ["media_player.pulse"]},
+            blocking=True,
+        )
+    assert calls(player_api) == []
+
+
 async def test_join_rejects_foreign_entities(
     hass: HomeAssistant, pulse: MockConfigEntry
 ) -> None:
