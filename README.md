@@ -1,5 +1,10 @@
 # BluOS Companion
 
+[![Release](https://img.shields.io/github/v/release/xperseguers/bluos-companion)](https://github.com/xperseguers/bluos-companion/releases)
+[![Issues](https://img.shields.io/github/issues/xperseguers/bluos-companion)](https://github.com/xperseguers/bluos-companion/issues)
+[![Tests](https://img.shields.io/github/actions/workflow/status/xperseguers/bluos-companion/tests.yml?label=tests)](https://github.com/xperseguers/bluos-companion/actions/workflows/tests.yml)
+[![Validate](https://img.shields.io/github/actions/workflow/status/xperseguers/bluos-companion/validate.yml?label=hacs%20%26%20hassfest)](https://github.com/xperseguers/bluos-companion/actions/workflows/validate.yml)
+
 A Home Assistant integration for players running BluOS (NAD, Bluesound, DALI...). It brings much of
 the BluOS controller app into Home Assistant: a **sidebar player** made for a wall tablet, **dashboard
 cards**, search and **voice** control, playlists with a **text backup** that Home Assistant's own
