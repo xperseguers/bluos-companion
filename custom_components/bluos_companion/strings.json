@@ -113,6 +113,7 @@
     "panel_nothing_here": "Nothing here.",
     "panel_show_more": "Show more",
     "panel_back": "Back",
+    "panel_home": "Home",
     "panel_album_label": "Album: {name}",
     "panel_artist_label": "Artist: {name}",
     "panel_album_not_found": "Album not found in the library",

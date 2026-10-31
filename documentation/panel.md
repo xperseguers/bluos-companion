@@ -35,6 +35,8 @@ Presets belong to a player: a player without presets has no presets row.
 - **Library**: artists, albums, songs and composers come with an **A–Z bar** (`# A B … Z`). Inside a
   letter the bar stays at the top, to jump to another letter. Long lists without letters (genres) get a bar of first
   letters. Very long lists are cut and offer **Show more**.
+- **Going back**: the arrow goes up one level. From the second level on, a **home** button next to it takes you
+  straight back to the start page.
 - **Albums and artists** open on a page with **Play now, Shuffle, Add next, Add last** (the
   actions the player offers). Every tile has a **⋮** menu with the same actions, and a play button on albums.
 - **Favourites**: albums, artists and songs of your library also offer **Add to favourites** (or **Remove from

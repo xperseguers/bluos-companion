@@ -908,6 +908,11 @@ class BluOSCompanionPanel extends HTMLElement {
     this._browse();
   }
 
+  _home() {
+    this._stack = [];
+    this._browse();
+  }
+
   _play(item) {
     return this._call({
       type: "bluos_companion/play",
@@ -1490,7 +1495,11 @@ class BluOSCompanionPanel extends HTMLElement {
     this._crumbs.replaceChildren(
       ...(level
         ? [
-            el("button", { onclick: () => this._up() }, icon("mdi:arrow-left")),
+            el("button", { title: this._t("back"), onclick: () => this._up() }, icon("mdi:arrow-left")),
+            // From the second level on, a quick way back to the home page
+            this._stack.length > 1
+              ? el("button", { title: this._t("home"), onclick: () => this._home() }, icon("mdi:home"))
+              : null,
             level.image && !level.image.includes("/bluos_companion/icons/")
               ? el("img", { class: "crumb-cover", src: level.image, alt: "" })
               : null,
