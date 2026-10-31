@@ -126,6 +126,8 @@ def _snapshot(
         "stream_url": status.stream_url,
         "preset_name": status.preset_name,
         "max_volume": coordinator.max_volume,
+        # None for a player that is not built into an amplifier we can switch
+        "power": coordinator.amplifier.data if coordinator.amplifier else None,
         "sources": coordinator.source_names,
         "source": coordinator.active_source,
         "group": {
@@ -208,8 +210,10 @@ def ws_subscribe(
         )
 
     unsubscribes: list[CALLBACK_TYPE] = [
-        entry.runtime_data.async_add_listener(publish)
+        coordinator.async_add_listener(publish)
         for entry in hass.config_entries.async_loaded_entries(DOMAIN)
+        for coordinator in (entry.runtime_data, entry.runtime_data.amplifier)
+        if coordinator is not None
     ]
 
     @callback
@@ -226,7 +230,7 @@ def ws_subscribe(
     {
         vol.Required("type"): "bluos_companion/control",
         vol.Required("entry_id"): str,
-        vol.Required("action"): vol.In([*CONTROLS, "source"]),
+        vol.Required("action"): vol.In([*CONTROLS, "source", "power"]),
         vol.Optional("value"): vol.Any(bool, int, str),
         vol.Optional("group"): bool,
     }
@@ -251,6 +255,10 @@ async def ws_control(
             return
     if msg["action"] == "source":
         await _async_call(coordinator.async_select_source(str(msg.get("value", ""))))
+    elif msg["action"] == "power":
+        if coordinator.amplifier is None:
+            raise HomeAssistantError("This player has no amplifier to switch")
+        await coordinator.amplifier.async_set_power(bool(value))
     else:
         await _async_call(
             CONTROLS[msg["action"]](

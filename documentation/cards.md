@@ -14,6 +14,9 @@ The presets of a player as a grid of artworks, like a wall of radio stations. Ta
 - A preset that loads a saved playlist and has no image of its own shows the **cover of that playlist**.
 - Under the grid: the name of the player, an **input select** (Bluetooth, TV... only what the player
   offers; a streamer has no amplifier inputs), mute, a volume slider and play / pause.
+- A **power button** for the amplifier a player is built into, if you turn it on (off by default): it is
+  highlighted while the amplifier is on and waits for the amplifier to answer (a few seconds when switching
+  on). It only shows for a player that has an *Amplifier power* switch, see [Configuration](configuration.md).
 - A player without presets shows a short message.
 
 ```yaml
@@ -21,6 +24,7 @@ type: custom:bluos-companion-presets-card
 entity: media_player.living_room
 columns: 3          # 1 to 8, default 3
 show_footer: true   # false hides the name, input, volume and play button
+show_power: false   # true shows the power button of the amplifier
 ```
 
 ## Player card
@@ -30,6 +34,8 @@ thin progress bar and the volume.
 
 - A **move playback** button appears while the player is playing and another player exists: it lists the
   other players, and the music continues there at once.
+- A **power button** for the amplifier a player is built into, if you turn it on (off by default), next to
+  the transport buttons: same behaviour as in the presets card.
 - An **Open control panel** link to the web page of the player, in a new tab, if you turn it on (off by
   default). The device page of Home Assistant only says "Visit" for the same link and cannot be changed.
 - A card whose entity is not a BluOS Companion player says so ("Player not found").
@@ -38,6 +44,7 @@ thin progress bar and the volume.
 type: custom:bluos-companion-player-card
 entity: media_player.living_room
 show_volume: true          # false hides the mute button and the volume slider
+show_power: false          # true shows the power button of the amplifier
 show_control_panel: false  # true shows the "Open control panel" link
 ```
 

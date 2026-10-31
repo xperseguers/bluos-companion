@@ -55,6 +55,7 @@ const PLAYER_CARD_STYLE = `
   dialog button.target .sub { font-size: 12px; color: var(--secondary-text-color); }
   progress { display: block; width: calc(100% - 24px); height: 4px; margin: 4px 12px; accent-color: var(--primary-color); }
   .controls { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; }
+  button.icon.on { color: var(--primary-color); }
   .link { display: flex; align-items: center; gap: 4px; padding: 0 16px 12px; font-size: 13px; color: var(--primary-color); text-decoration: none; --mdc-icon-size: 16px; }
   .volume { display: flex; align-items: center; gap: 8px; padding: 0 12px 8px; }
   button.icon {
@@ -211,6 +212,22 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     );
     this._next = pel("button", { class: "icon", onclick: () => this._control("next") }, picon("mdi:skip-next"));
     this._move = pel("button", { class: "icon", title: this._t("move_playback"), onclick: () => this._showMove() }, picon("mdi:transfer-right"));
+    // Switching an amplifier on takes a few seconds: the button waits for the answer
+    this._power = pel(
+      "button",
+      {
+        class: "icon",
+        onclick: async () => {
+          this._power.disabled = true;
+          try {
+            await this._control("power", !this._player.power);
+          } finally {
+            this._power.disabled = false;
+          }
+        },
+      },
+      picon("mdi:power"),
+    );
     this._dialog = pel("dialog", {
       onclick: (event) => {
         if (event.target === this._dialog) this._dialog.close();
@@ -231,7 +248,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
       {},
       pel("div", { class: "top" }, this._cover, pel("div", { class: "info" }, this._title, this._sub, this._where)),
       this._progress,
-      pel("div", { class: "controls" }, this._prev, this._toggle, this._next, this._move),
+      pel("div", { class: "controls" }, this._prev, this._toggle, this._next, this._move, this._power),
       this._volumeRow,
       this._link,
     );
@@ -263,6 +280,9 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     this._prev.disabled = this._next.disabled = !player.available;
     this._move.title = this._t("move_playback");
     this._move.hidden = !(player.can_move && PLAYER_ACTIVE.includes(player.state) && (this._all || []).length > 1);
+    this._power.hidden = !(this._config.show_power === true && typeof player.power === "boolean");
+    this._power.title = this._t("power");
+    this._power.classList.toggle("on", player.power === true);
     this._volumeRow.hidden = this._config.show_volume === false;
     this._volume.disabled = player.volume < 0;
     this._volume.max = player.max_volume;
@@ -369,6 +389,7 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
       this._form.schema = [
         { name: "entity", required: true, selector: { entity: { domain: "media_player", integration: "bluos_companion" } } },
         { name: "show_volume", selector: { boolean: {} } },
+        { name: "show_power", selector: { boolean: {} } },
         { name: "show_control_panel", selector: { boolean: {} } },
       ];
       this._form.addEventListener("value-changed", (event) => {
@@ -381,11 +402,12 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
     const labels = {
       entity: "editor_player",
       show_volume: "editor_show_volume",
+      show_power: "editor_show_power",
       show_control_panel: "editor_show_control_panel",
     };
     this._form.computeLabel = (schema) => this._t(labels[schema.name] || schema.name);
     this._form.hass = this._hass;
-    this._form.data = { show_volume: true, show_control_panel: false, ...this._config };
+    this._form.data = { show_volume: true, show_power: false, show_control_panel: false, ...this._config };
   }
 }
 

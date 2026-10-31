@@ -17,6 +17,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
+from .amplifier import async_detect_amplifier
 from .api import BluOSClient, BluOSError
 from .const import CONF_PORT, DOMAIN, ICONS_URL
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
@@ -129,6 +130,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> boo
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     await _async_register_device(hass, entry, client)
+    coordinator.amplifier = await async_detect_amplifier(hass, entry, entry.data[CONF_HOST])
     # Not every player has settings, and none is needed to play: never block the setup
     await coordinator.settings.async_refresh()
 

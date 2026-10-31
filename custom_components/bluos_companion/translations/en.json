@@ -80,6 +80,11 @@
       "covers_too_large": {
         "name": "Covers too large"
       }
+    },
+    "switch": {
+      "amplifier_power": {
+        "name": "Amplifier power"
+      }
     }
   },
   "common": {
@@ -139,6 +144,8 @@
     "panel_editor_show_footer": "Show volume and input",
     "panel_editor_show_volume": "Show the volume",
     "panel_editor_show_control_panel": "Show the link to the control panel",
+    "panel_editor_show_power": "Show the power button of the amplifier",
+    "panel_power": "Amplifier power",
     "panel_open_control_panel": "Open control panel",
     "panel_input": "Input"
   },

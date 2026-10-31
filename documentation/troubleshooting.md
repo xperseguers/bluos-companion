@@ -76,6 +76,13 @@ after fixing the paths, see [Playlist backup and restore](backup-and-restore.md)
   presets to it in the BluOS app.
 - A service you do not use can be hidden in the options of the player.
 
+## No *Amplifier power* switch
+
+The switch only exists for a player built into an amplifier that accepts network control, and it is looked for
+once, when the integration starts. If the amplifier was unreachable then, or if you enabled its network control
+afterwards, reload the integration (Settings → Devices & services → BluOS Companion → the three dots of the
+player → Reload). A streamer plugged into an amplifier has no such switch: it cannot switch the amplifier.
+
 ## Volume cannot go higher
 
 The **maximum volume** option of the player (Configure) limits Home Assistant, including the sliders, voice

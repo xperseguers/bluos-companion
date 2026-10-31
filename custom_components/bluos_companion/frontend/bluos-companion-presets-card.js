@@ -52,6 +52,7 @@ const CARD_STYLE = `
     --mdc-icon-size: 24px;
   }
   button.icon:disabled { opacity: 0.4; cursor: default; }
+  button.icon.on { color: var(--primary-color); }
   input[type="range"] { flex: 1; accent-color: var(--primary-color); min-width: 0; }
 `;
 
@@ -213,10 +214,26 @@ class BluOSCompanionPresetsCard extends HTMLElement {
       },
       icon("mdi:play"),
     );
+    // Switching an amplifier on takes a few seconds: the button waits for the answer
+    this._power = el(
+      "button",
+      {
+        class: "icon",
+        onclick: async () => {
+          this._power.disabled = true;
+          try {
+            await this._control("power", !this._player.power);
+          } finally {
+            this._power.disabled = false;
+          }
+        },
+      },
+      icon("mdi:power"),
+    );
     this._footer = el(
       "footer",
       {},
-      el("div", { class: "row" }, icon("mdi:speaker"), this._name, this._source),
+      el("div", { class: "row" }, icon("mdi:speaker"), this._name, this._source, this._power),
       el("div", { class: "row" }, this._mute, this._volume, this._toggle),
     );
     this.shadowRoot.replaceChildren(
@@ -255,6 +272,9 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     this._source.firstChild.disabled = true;
     this._source.firstChild.hidden = true;
     this._source.value = player.source || "";
+    this._power.hidden = !(this._config.show_power === true && typeof player.power === "boolean");
+    this._power.title = this._t("power");
+    this._power.classList.toggle("on", player.power === true);
     this._mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
     this._volume.disabled = player.volume < 0;
     this._volume.max = player.max_volume;
@@ -328,6 +348,7 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
         { name: "entity", required: true, selector: { entity: { domain: "media_player", integration: "bluos_companion" } } },
         { name: "columns", selector: { number: { min: 1, max: 8, mode: "box" } } },
         { name: "show_footer", selector: { boolean: {} } },
+        { name: "show_power", selector: { boolean: {} } },
       ];
       this._form.addEventListener("value-changed", (event) => {
         this.dispatchEvent(
@@ -336,10 +357,15 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
       });
       this.append(this._form);
     }
-    const labels = { entity: "editor_player", columns: "editor_columns", show_footer: "editor_show_footer" };
+    const labels = {
+      entity: "editor_player",
+      columns: "editor_columns",
+      show_footer: "editor_show_footer",
+      show_power: "editor_show_power",
+    };
     this._form.computeLabel = (schema) => this._t(labels[schema.name] || schema.name);
     this._form.hass = this._hass;
-    this._form.data = { columns: 3, show_footer: true, ...this._config };
+    this._form.data = { columns: 3, show_footer: true, show_power: false, ...this._config };
   }
 }
 

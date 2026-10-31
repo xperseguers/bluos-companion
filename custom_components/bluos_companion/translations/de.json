@@ -80,6 +80,11 @@
       "covers_too_large": {
         "name": "Zu große Cover"
       }
+    },
+    "switch": {
+      "amplifier_power": {
+        "name": "Verstärker ein/aus"
+      }
     }
   },
   "common": {
@@ -139,6 +144,8 @@
     "panel_editor_show_footer": "Lautstärke und Eingang anzeigen",
     "panel_editor_show_volume": "Lautstärke anzeigen",
     "panel_editor_show_control_panel": "Link zum Bedienfeld anzeigen",
+    "panel_editor_show_power": "Ein/Aus-Taste des Verstärkers anzeigen",
+    "panel_power": "Verstärker ein/aus",
     "panel_open_control_panel": "Bedienfeld öffnen",
     "panel_input": "Eingang"
   },

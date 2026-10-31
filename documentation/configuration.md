@@ -30,6 +30,13 @@ is still recommended.
   shuffle, repeat, play media, select source, clear the queue, group and ungroup, and search media (for
   [voice and AI](voice-and-ai.md)). It shows the title, artist, album, cover and position.
 - A **sleep timer** select entity (off, 15, 30, 45, 60 or 90 minutes).
+- An **Amplifier power** switch, for a player built into an amplifier that accepts network control (the NAD
+  C368 with its BluOS module, for example): on, or off for standby. Nothing to configure, the amplifier is
+  looked for at the address of the player when the integration starts, and a player that is not built into
+  one has no such switch. Switching on takes about six seconds. The player itself stays reachable while the
+  amplifier is in standby, and starting playback wakes the amplifier by itself. The volume, mute and inputs
+  are those of the player and need no other integration. The switch replaces the old Home Assistant
+  *NAD* integration for this purpose: you can remove that one if you only used it to switch the amplifier.
 - A **Tracks in library** sensor: the player only counts its tracks while it reads the library, so the sensor keeps
   the last count (empty until a first reindex) and shows the running count in its `indexing` attribute during a scan. The scan is followed closely only when started
   with the reindex button below; a scan started elsewhere (the BluOS app) is checked every 100 seconds or so and may be

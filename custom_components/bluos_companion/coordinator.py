@@ -13,6 +13,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import BluOSClient, BluOSError, Source, Status, SyncStatus
+from .amplifier import BluOSAmplifier
 from .cover_check import CoverCheck, async_check_covers
 from .settings import BluOSSettingsCoordinator
 from .const import (
@@ -50,6 +51,8 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         self.playlist_covers: dict[str, tuple[float, str | None]] = {}
         self.cover_check: CoverCheck | None = None
         self.checking_covers = False
+        # The amplifier the player is built into, if it answers on its control port
+        self.amplifier: BluOSAmplifier | None = None
 
     @property
     def max_volume(self) -> int:

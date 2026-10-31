@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -156,6 +157,16 @@ def respond(mocker: AiohttpClientMocker, url: str | URL, **kwargs: object) -> No
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
     """Enable loading the custom integration."""
+
+
+@pytest.fixture(autouse=True)
+def detect_amplifier() -> Generator[AsyncMock]:
+    """Tests do not open sockets: no player is built into an amplifier unless a test says so."""
+    with patch(
+        "custom_components.bluos_companion.async_detect_amplifier",
+        new=AsyncMock(return_value=None),
+    ) as mock:
+        yield mock
 
 
 @pytest.fixture

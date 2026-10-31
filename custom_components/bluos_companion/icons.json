@@ -20,6 +20,11 @@
       "covers_too_large": {
         "default": "mdi:image-broken-variant"
       }
+    },
+    "switch": {
+      "amplifier_power": {
+        "default": "mdi:power"
+      }
     }
   },
   "services": {

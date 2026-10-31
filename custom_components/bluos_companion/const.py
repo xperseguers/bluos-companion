@@ -22,3 +22,7 @@ PANEL_PATH = "bluos-companion"
 PANEL_ELEMENT = "bluos-companion-panel"
 PANEL_URL = "/bluos_companion/panel"
 EXTERNAL_SOURCE_URL = "Capture:External"
+
+# The amplifier a BluOS module is built into, controlled on the same address
+AMPLIFIER_PORT = 23
+AMPLIFIER_SCAN_INTERVAL = 30
