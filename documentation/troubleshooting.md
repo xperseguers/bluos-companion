@@ -104,7 +104,24 @@ the search can be tried in Developer tools → Actions with `media_player.search
 
 The paths in the file do not match the music share as the player sees it. Compare a path of the file with the
 path of a track of that player and fix the beginning of the paths in the file, then restore again with
-`replace: true`.
+`replace: true`. If only a few files are missing and the others are found, see the next section.
+
+## Some tracks are on the share but not in the player's library
+
+It can happen that files that are on the music share never show up in the player's library: they are missing
+when you browse or search, and a playlist you restore or import reports that the player did not find them (the
+`files_not_found` entry of the result, and a warning in the log). The player only plays what its own library
+knows, and the integration cannot add files to it, so the playlist is built with the tracks that are found, in
+their order.
+
+We have seen this with a few albums of a large library, among files that were indexed normally, and running the
+**Reindex music library** button several times did not change it. **We do not know the cause and have no
+solution at the moment.** The problem is in the player's library, not in the integration. What you can do:
+
+- Check that the BluOS app does not show those tracks either: then the player's library is what is missing them.
+- Check that the paths are right (the section above): a wrong path looks the same, but then *all* the files are
+  missing, not a few.
+- If you find out what the affected files have in common, or how to bring them in, an issue is welcome.
 
 ## Reporting a problem
 
