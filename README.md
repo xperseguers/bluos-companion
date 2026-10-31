@@ -1,5 +1,7 @@
 # BluOS Companion
 
+![BluOS Companion for Home Assistant](documentation/images/banner.jpg)
+
 [![Release](https://img.shields.io/github/v/release/xperseguers/bluos-companion)](https://github.com/xperseguers/bluos-companion/releases)
 [![Issues](https://img.shields.io/github/issues/xperseguers/bluos-companion)](https://github.com/xperseguers/bluos-companion/issues)
 [![Tests](https://img.shields.io/github/actions/workflow/status/xperseguers/bluos-companion/tests.yml?label=tests)](https://github.com/xperseguers/bluos-companion/actions/workflows/tests.yml)
