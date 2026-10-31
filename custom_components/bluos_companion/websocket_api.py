@@ -55,6 +55,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     """Register the websocket commands."""
     websocket_api.async_register_command(hass, ws_subscribe)
     websocket_api.async_register_command(hass, ws_favourite)
+    websocket_api.async_register_command(hass, ws_playing_favourite)
     websocket_api.async_register_command(hass, ws_control)
     websocket_api.async_register_command(hass, ws_browse)
     websocket_api.async_register_command(hass, ws_search)
@@ -382,6 +383,42 @@ async def ws_actions(
                 }
             )
     connection.send_result(msg["id"], {"actions": result})
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "bluos_companion/playing_favourite", vol.Required("entry_id"): str}
+)
+@websocket_api.async_response
+async def ws_playing_favourite(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Say whether the playing track of the library is a favourite (nothing if it is not one)."""
+    # A player grouped under another one plays its queue
+    primary = _coordinator(hass, msg["entry_id"]).group_primary()
+    status = primary.data
+    if status.service != "LocalMusic" or status.queue_position is None:
+        connection.send_result(msg["id"], None)
+        return
+    file = await _async_call(primary.client.async_get_queue_file(status.queue_position))
+    if not file:
+        connection.send_result(msg["id"], None)
+        return
+    favourite = Favourite(
+        "song", status.artist or "", status.album or "", file, status.title or ""
+    )
+    on = favourite in await _async_call(primary.client.async_get_favourites())
+    connection.send_result(
+        msg["id"],
+        {
+            "favourite": {
+                "kind": "song",
+                "artist": favourite.artist,
+                "album": favourite.album,
+                "file": file,
+            },
+            "on": on,
+        },
+    )
 
 
 @websocket_api.websocket_command(

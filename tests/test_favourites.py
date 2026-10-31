@@ -26,7 +26,7 @@ from custom_components.bluos_companion.favourites_backup import (
     render,
 )
 
-from .conftest import BASE, browse_url, calls, respond
+from .conftest import BASE, browse_url, calls, respond, status_xml
 
 FILE = "/var/mnt/nas/Music/Marine/Cœur maladroit/06 Dalida.m4a"
 FAVOURITE_ALBUMS = """<albums category="FAVOURITES"><album isFavourite="1"><alb>Promesse</alb><art>Patrick Fiori</art></album></albums>"""
@@ -387,3 +387,71 @@ async def test_the_backup_service_returns_the_count(
     """The action tells how many favourites were saved."""
     result = await hass.services.async_call(DOMAIN, "backup_favourites", blocking=True, return_response=True)
     assert result == {"favourites": {"albums": 1, "artists": 1, "songs": 1}}
+
+
+# ---- the favourite of the playing track ----
+
+QUEUE_SONG = '<playlist length="5"><song service="{service}" id="3"><art>Marine</art><fn>{file}</fn></song></playlist>'
+
+
+async def test_the_file_of_a_queue_track(client: BluOSClient, aioclient_mock: AiohttpClientMocker) -> None:
+    """The file is the one of a track of the library, a station has none."""
+    aioclient_mock.get(f"{BASE}/Playlist?start=3&end=3", text=QUEUE_SONG.format(service="LocalMusic", file=FILE))
+    assert await client.async_get_queue_file(3) == FILE
+    assert calls(aioclient_mock) == [("/Playlist", {"start": "3", "end": "3"})]
+
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{BASE}/Playlist", text=QUEUE_SONG.format(service="TuneIn", file="x"))
+    assert await client.async_get_queue_file(3) is None
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{BASE}/Playlist", text="<playlist/>")
+    assert await client.async_get_queue_file(3) is None
+
+
+async def _playing(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, entry: MockConfigEntry
+) -> dict | None:
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/playing_favourite", "entry_id": entry.entry_id}
+    )
+    return (await client.receive_json())["result"]
+
+
+@pytest.mark.parametrize(("file", "on"), [(FILE, True), ("/var/mnt/nas/Music/Other/x/01 y.m4a", False)])
+async def test_the_playing_track_is_a_favourite_or_not(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    favourites_api: AiohttpClientMocker,
+    file: str,
+    on: bool,
+) -> None:
+    """The track is found from the queue, whatever its position, and compared with the favourites."""
+    respond(favourites_api, f"{BASE}/Status", text=status_xml(song="3"))
+    await init_integration.runtime_data.async_refresh()
+    respond(favourites_api, f"{BASE}/Playlist?start=3&end=3", text=QUEUE_SONG.format(service="LocalMusic", file=file))
+
+    result = await _playing(hass, hass_ws_client, init_integration)
+
+    assert result["on"] is on
+    assert result["favourite"] == {"kind": "song", "artist": "Adele", "album": "21", "file": file}
+
+
+@pytest.mark.parametrize(
+    "status",
+    [status_xml(service="TuneIn", song="0"), status_xml()],
+    ids=["a station", "no position in the queue"],
+)
+async def test_nothing_to_favour_when_it_is_not_a_track_of_the_library(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    favourites_api: AiohttpClientMocker,
+    status: str,
+) -> None:
+    """A station, or a player with nothing in its queue, offers no favourite."""
+    respond(favourites_api, f"{BASE}/Status", text=status)
+    await init_integration.runtime_data.async_refresh()
+
+    assert await _playing(hass, hass_ws_client, init_integration) is None

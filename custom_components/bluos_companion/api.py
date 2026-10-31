@@ -768,6 +768,12 @@ class BluOSClient:
             for song in root.iter("song")
         ]
 
+    async def async_get_queue_file(self, position: int) -> str | None:
+        """Return the file of a track of the queue, for a track of the library."""
+        root = await self._get_xml("/Playlist", {"start": str(position), "end": str(position)})
+        song = root.find("song")
+        return song.findtext("fn") if song is not None and song.get("service") == "LocalMusic" else None
+
     async def async_get_image(self, path: str) -> tuple[bytes, str]:
         """Fetch an image from the player (relative path) or a preset CDN (URL)."""
         url = (

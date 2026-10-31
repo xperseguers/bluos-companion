@@ -477,9 +477,16 @@ class BluOSCompanionPanel extends HTMLElement {
       this._notify(this._t("library_only"));
       return;
     }
-    this._showGoTo(player.title, [player.artist, player.album].filter(Boolean).join(" - "), {
+    const list = this._showGoTo(player.title, [player.artist, player.album].filter(Boolean).join(" - "), {
       album: player.album,
       artist: player.artist,
+    });
+    // Whether the track is a favourite takes a request: the button comes when it is known
+    this._call({ type: "bluos_companion/playing_favourite", entry_id: this._playerId }).then((result) => {
+      if (!result || !this._dialog.open) return;
+      list.append(
+        this._actionButton({ favourite: result.favourite, on: result.on }, player.title, () => this._dialog.close()),
+      );
     });
   }
 
@@ -542,12 +549,10 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _showGoTo(title, subtitle, names, extra = []) {
-    this._dialog.replaceChildren(
-      el("h2", {}, title),
-      el("p", {}, subtitle || "\u00a0"),
-      el("div", { class: "list" }, ...this._gotoButtons(names), ...extra),
-    );
+    const list = el("div", { class: "list" }, ...this._gotoButtons(names), ...extra);
+    this._dialog.replaceChildren(el("h2", {}, title), el("p", {}, subtitle || "\u00a0"), list);
     this._dialog.showModal();
+    return list;
   }
 
   _actionButton(action, label, after) {

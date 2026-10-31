@@ -38,11 +38,13 @@ Presets belong to a player: a player without presets has no presets row.
 - **Albums and artists** open on a page with **Play now, Shuffle, Add next, Add last** (the
   actions the player offers). Every tile has a **⋮** menu with the same actions, and a play button on albums.
 - **Favourites**: albums, artists and songs of your library also offer **Add to favourites** (or **Remove from
-  favourites** when they are one), on their page and in their **⋮** menu. The favourites are the player's own, you
+  favourites** when they are one), on their page and in their **⋮** menu. For the **track that is playing**, tap
+  its title in the bar: next to *go to the album* and *go to the artist* you find the same action, so there is no
+  extra button on the screen. The favourites are the player's own, you
   find them under **Favourites** in the library, in the BluOS app and on every player (they are shared). Removing
   from the *Favourites* list of the BluOS app works as well.
 - **Playlists** open to their tracks. Tap a track to play it and carry on with the rest of the playlist.
-  Entries the player cannot find any more (moved files) are not listed.
+  Entries the player cannot find anymore (moved files) are not listed.
 - **Search** (the field at the top): searches the source you are in, the library from the home page.
   Results are grouped (artists, albums, songs...).
 - Tap a track in the bar, in a queue row's ⋮ menu or in a song result's ⋮ menu to jump to its **album page** or
