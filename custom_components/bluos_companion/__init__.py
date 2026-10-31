@@ -81,6 +81,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             call.data["replace"],
         )
 
+    async def mute_group(call: ServiceCall) -> None:
+        """Mute or unmute all the players of the group of a player."""
+        await loaded_entry(call.data["entity_id"]).runtime_data.async_mute_group(call.data["mute"])
+
     async def check_covers(call: ServiceCall) -> dict[str, object]:
         """List the albums whose cover is too large for the player to show."""
         check = await loaded_entry(call.data["entity_id"]).runtime_data.async_check_covers()
@@ -110,6 +114,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             }
         ),
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "mute_group",
+        mute_group,
+        schema=vol.Schema({vol.Required("entity_id"): cv.entity_id, vol.Required("mute"): bool}),
     )
     hass.services.async_register(
         DOMAIN,

@@ -187,6 +187,20 @@
           "description": "The player whose library is checked."
         }
       }
+    },
+    "mute_group": {
+      "name": "Mute or unmute a group",
+      "description": "Mutes or unmutes all the players of the group a player belongs to, in one go (the standard mute service only affects the player it targets). Works with any member of the group. A player that is not grouped is muted alone.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Any player of the group."
+        },
+        "mute": {
+          "name": "Mute",
+          "description": "On to mute, off to unmute."
+        }
+      }
     }
   }
 }

@@ -187,6 +187,20 @@
           "description": "Der Player, dessen Bibliothek geprüft wird."
         }
       }
+    },
+    "mute_group": {
+      "name": "Gruppe stummschalten oder aufheben",
+      "description": "Schaltet alle Player der Gruppe, zu der ein Player gehört, auf einmal stumm oder hebt die Stummschaltung auf (der Standarddienst betrifft nur den angesprochenen Player). Funktioniert mit jedem Mitglied der Gruppe. Ein Player ohne Gruppe wird allein stummgeschaltet.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Ein beliebiger Player der Gruppe."
+        },
+        "mute": {
+          "name": "Stumm",
+          "description": "Ein zum Stummschalten, aus zum Aufheben."
+        }
+      }
     }
   }
 }

@@ -25,3 +25,16 @@ check_covers:
         entity:
           integration: bluos_companion
           domain: media_player
+
+mute_group:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+    mute:
+      required: true
+      selector:
+        boolean:

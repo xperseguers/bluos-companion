@@ -131,8 +131,11 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
                 return
         raise HomeAssistantError(f"Unknown source: {name}")
 
-    def _library_owner(self) -> BluOSCoordinator:
-        """Return the player that holds the library: a player grouped under another one has none."""
+    def group_primary(self) -> BluOSCoordinator:
+        """Return the player that leads the group (itself if alone or leading).
+
+        It is the one that holds the library: a player grouped under another one has none.
+        """
         if self.sync is not None and self.sync.master is not None:
             primary = self._coordinator_of(self.sync.master.host)
             if primary is None:
@@ -149,7 +152,7 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
     async def _async_run_cover_check(self) -> CoverCheck:
         try:
             try:
-                self.cover_check = await async_check_covers(self._library_owner().client)
+                self.cover_check = await async_check_covers(self.group_primary().client)
             except BluOSError as err:
                 raise HomeAssistantError(f"BluOS player error: {err}") from err
         finally:
@@ -180,7 +183,7 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
 
         A player grouped under another one does not read the library: the primary does.
         """
-        primary = self._library_owner()
+        primary = self.group_primary()
         await primary.client.async_reindex()
         for coordinator in {self, primary}:
             coordinator.config_entry.async_create_background_task(
@@ -228,6 +231,13 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
             self.sources = await self.client.async_get_sources()
         except BluOSError as err:
             _LOGGER.debug("Could not list the inputs: %s", err)
+
+    async def async_mute_group(self, mute: bool) -> None:
+        """Mute or unmute all the players of the group, which the primary player does."""
+        try:
+            await self.group_primary().client.async_set_mute(mute, group=True)
+        except BluOSError as err:
+            raise HomeAssistantError(f"BluOS player error: {err}") from err
 
     async def async_long_poll(self) -> None:
         """Push status and own volume changes as the player reports them."""

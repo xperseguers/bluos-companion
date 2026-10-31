@@ -187,6 +187,20 @@
           "description": "Le lecteur dont la bibliothèque est vérifiée."
         }
       }
+    },
+    "mute_group": {
+      "name": "Couper ou rétablir le son d'un groupe",
+      "description": "Coupe ou rétablit le son de tous les lecteurs du groupe auquel appartient un lecteur, en une fois (le service standard ne touche que le lecteur visé). Fonctionne avec n'importe quel membre du groupe. Un lecteur sans groupe est coupé seul.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "N'importe quel lecteur du groupe."
+        },
+        "mute": {
+          "name": "Couper le son",
+          "description": "Activé pour couper, désactivé pour rétablir."
+        }
+      }
     }
   }
 }

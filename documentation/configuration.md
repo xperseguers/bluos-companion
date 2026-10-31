@@ -70,7 +70,8 @@ Use the standard `media_player.join` and `media_player.unjoin` actions, or the g
 player. The group is shown in the `group_members` attribute (the primary player first). Only the primary
 player of a group can add or remove players: the integration takes care of that. The volume of each
 player of a group and the volume of the group are available in the sidebar player. The media player of a secondary
-player shows **its own** volume and mute, not the group's.
+player shows **its own** volume and mute, not the group's. To mute or unmute a whole group, use the group button of
+the sidebar player or the action `bluos_companion.mute_group` (see [Developer tools](developer-tools.md)).
 
 Starting music on any player of a group (the sidebar player, `media_player.play_media`, voice or AI) plays it for
 the **whole group**, whether you name the leader or a member. To play on one player alone, ungroup it first.

@@ -969,3 +969,41 @@ async def test_the_primary_is_not_affected(
     _group(init_integration, pulse)
     coordinator = init_integration.runtime_data
     assert (coordinator.volume_level, coordinator.is_muted) == (25, False)
+
+
+@pytest.mark.parametrize("entity", ["media_player.sejour", "media_player.pulse"])
+@pytest.mark.parametrize("mute", [True, False])
+async def test_mute_group_goes_to_the_primary_for_the_whole_group(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    entity: str,
+    mute: bool,
+) -> None:
+    """Whichever member is chosen, the primary mutes or unmutes every player of its group."""
+    _group(init_integration, pulse)
+    player_api.mock_calls.clear()
+
+    await hass.services.async_call(
+        DOMAIN, "mute_group", {"entity_id": entity, "mute": mute}, blocking=True
+    )
+
+    assert calls(player_api) == [("/Volume", {"mute": str(int(mute)), "tell_slaves": "1"})]
+    assert str(player_api.mock_calls[0][1]).startswith(BASE)
+
+
+async def test_mute_group_reports_a_player_error(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A player that cannot be reached is an error."""
+    respond(player_api, f"{BASE}/Volume", exc=aiohttp.ClientError)
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            DOMAIN,
+            "mute_group",
+            {"entity_id": "media_player.sejour", "mute": True},
+            blocking=True,
+        )

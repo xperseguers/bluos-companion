@@ -42,6 +42,9 @@
     },
     "check_covers": {
       "service": "mdi:image-search"
+    },
+    "mute_group": {
+      "service": "mdi:volume-off"
     }
   }
 }

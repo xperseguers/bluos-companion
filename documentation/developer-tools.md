@@ -28,6 +28,22 @@ data:
 
 The volume actions are limited by the **maximum volume** option of the player.
 
+### Muting a whole group
+
+`media_player.volume_mute` only mutes the player it targets. To mute or unmute **every player of a group** in one
+go, use `bluos_companion.mute_group` with any member of the group (a player that is not grouped is muted alone):
+
+```yaml
+action: bluos_companion.mute_group
+data:
+  entity_id: media_player.living_room
+  mute: true
+```
+
+To toggle a mute, use a template: `mute: "{{ not is_state_attr('media_player.living_room', 'is_volume_muted', true) }}"`.
+In a group, the volume and the mute of **each** player are its own (a secondary player does not show the
+volume or the mute of the group).
+
 ## Playing something
 
 `media_player.play_media` plays what the media browser offers. The easiest way to get the right values:
