@@ -39,12 +39,23 @@ def file_name(name: str) -> str:
     return (FORBIDDEN.sub("_", name).strip(" .") or "playlist") + EXTENSION
 
 
-def render(name: str, tracks: list[PlaylistTrack], player: str, now: datetime) -> str:
-    """Return the text of a playlist file."""
+def render(
+    name: str,
+    tracks: list[PlaylistTrack],
+    player: str,
+    now: datetime,
+    imported_from: str | None = None,
+) -> str:
+    """Return the text of a playlist file, saved from a player or imported from a file."""
+    origin = (
+        f'# Imported by BluOS Companion from "{imported_from}" on {now.isoformat(timespec="seconds")}.'
+        if imported_from
+        else f'# Saved by BluOS Companion from the player "{player}" on {now.isoformat(timespec="seconds")}.'
+    )
     lines = [
         "#EXTM3U",
         f"#PLAYLIST:{name}",
-        f'# Saved by BluOS Companion from the player "{player}" on {now.isoformat(timespec="seconds")}.',
+        origin,
         "# After moving the music share, change the beginning of the paths below (find and",
         "# replace), then restore with the service bluos_companion.restore_playlists.",
     ]
@@ -184,6 +195,8 @@ async def async_restore_playlists(
             await client.async_save_queue(name)
             result["restored"][name] = queued
             if queued < len(tracks):
+                # The player only keeps the files its library knows: say how many it did not
+                result.setdefault("files_not_found", {})[name] = len(tracks) - queued
                 _LOGGER.warning(
                     "Playlist %s: the player found %d of the %d files, check the paths",
                     name,

@@ -215,6 +215,32 @@
           "description": "Die Nummer oder der Name des Presets."
         }
       }
+    },
+    "import_playlists": {
+      "name": "Von einem anderen Musikplayer exportierte Wiedergabelisten importieren",
+      "description": "Wandelt die Wiedergabelisten (.m3u8-Dateien) um, die Sie aus Apple Music oder einem anderen Musikplayer exportiert und in den Ordner bluos_companion/import der Home-Assistant-Konfiguration gelegt haben, damit die Dateien die der Musikfreigabe sind, wie der Player sie kennt, und legt sie dann auf dem Player an. Die Warteschlange dieses Players wird für jede Liste geleert und neu gefüllt, nutzen Sie also einen Player, der nicht spielt. Eine vorhandene Liste bleibt unberührt, außer Sie verlangen das Ersetzen.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, auf dem die Listen angelegt werden und über den die Musikfreigabe gefunden wird."
+        },
+        "restore": {
+          "name": "Listen auf dem Player anlegen",
+          "description": "Aus, um die Dateien nur umzuwandeln, sie anzusehen oder zuerst zu ändern, dann die Wiederherstellung nutzen."
+        },
+        "replace": {
+          "name": "Vorhandene Listen ersetzen",
+          "description": "Ersetzt eine Liste mit demselben Namen. Standardmäßig aus."
+        },
+        "source_path": {
+          "name": "Ordner der Musik auf dem Computer",
+          "description": "Der Anfang der Pfade der exportierten Dateien, zum Beispiel /Users/ich/Music/Music/Media.localized/Music/. Wird selbst gefunden, wenn leer."
+        },
+        "library_path": {
+          "name": "Ordner der Musik auf dem Player",
+          "description": "Wo derselbe Ordner für den Player liegt, zum Beispiel /var/mnt/nas-Freigabe/Music/. Wird selbst gefunden, wenn leer."
+        }
+      }
     }
   }
 }

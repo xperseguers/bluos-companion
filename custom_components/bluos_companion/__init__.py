@@ -29,6 +29,7 @@ from .panel import (
     async_remove_panel,
 )
 from .playlist_backup import async_backup_playlists, async_restore_playlists
+from .playlist_import import async_import_playlists
 from .websocket_api import async_setup_websocket_api
 
 PLATFORMS = [
@@ -81,6 +82,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             call.data["replace"],
         )
 
+    async def import_playlists(call: ServiceCall) -> dict[str, object]:
+        """Bring playlists exported from another music player to a player."""
+        return await async_import_playlists(
+            hass,
+            loaded_entry(call.data["entity_id"]),
+            call.data["restore"],
+            call.data["replace"],
+            call.data.get("source_path"),
+            call.data.get("library_path"),
+        )
+
     async def play_preset(call: ServiceCall) -> None:
         """Start a preset of a player, by its number or its name."""
         await loaded_entry(call.data["entity_id"]).runtime_data.async_play_preset(
@@ -117,6 +129,21 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 vol.Required("entity_id"): cv.entity_id,
                 vol.Optional("playlists"): vol.All(cv.ensure_list, [str]),
                 vol.Optional("replace", default=False): bool,
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "import_playlists",
+        import_playlists,
+        schema=vol.Schema(
+            {
+                vol.Required("entity_id"): cv.entity_id,
+                vol.Optional("restore", default=True): bool,
+                vol.Optional("replace", default=False): bool,
+                vol.Optional("source_path"): cv.string,
+                vol.Optional("library_path"): cv.string,
             }
         ),
         supports_response=SupportsResponse.OPTIONAL,

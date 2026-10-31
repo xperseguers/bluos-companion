@@ -215,6 +215,32 @@
           "description": "Le numéro ou le nom du préréglage."
         }
       }
+    },
+    "import_playlists": {
+      "name": "Importer des listes de lecture exportées d'un autre lecteur de musique",
+      "description": "Convertit les listes de lecture (fichiers .m3u8) exportées d'Apple Musique ou d'un autre lecteur de musique et placées dans le dossier bluos_companion/import de la configuration de Home Assistant, pour que les fichiers soient ceux du partage de musique tels que le lecteur les connaît, puis les crée sur le lecteur. La file d'attente de ce lecteur est vidée et remplie pour chaque liste : utilisez un lecteur qui ne joue pas. Une liste qui existe déjà est laissée telle quelle, sauf si vous demandez de la remplacer.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur sur lequel créer les listes, et par lequel retrouver le partage de musique."
+        },
+        "restore": {
+          "name": "Créer les listes sur le lecteur",
+          "description": "Désactivé pour seulement convertir les fichiers, les regarder ou les modifier d'abord, puis utiliser l'action de restauration."
+        },
+        "replace": {
+          "name": "Remplacer les listes existantes",
+          "description": "Remplace une liste qui porte le même nom. Désactivé par défaut."
+        },
+        "source_path": {
+          "name": "Dossier de la musique sur l'ordinateur",
+          "description": "Le début des chemins des fichiers exportés, par exemple /Users/moi/Music/Music/Media.localized/Music/. Trouvé tout seul si vide."
+        },
+        "library_path": {
+          "name": "Dossier de la musique sur le lecteur",
+          "description": "L'emplacement de ce même dossier pour le lecteur, par exemple /var/mnt/nas-Partage/Music/. Trouvé tout seul si vide."
+        }
+      }
     }
   }
 }

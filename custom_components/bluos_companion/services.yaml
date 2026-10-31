@@ -51,3 +51,26 @@ play_preset:
       required: true
       selector:
         text:
+
+import_playlists:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+    restore:
+      default: true
+      selector:
+        boolean:
+    replace:
+      default: false
+      selector:
+        boolean:
+    source_path:
+      selector:
+        text:
+    library_path:
+      selector:
+        text:

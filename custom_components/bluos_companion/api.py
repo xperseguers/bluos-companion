@@ -547,6 +547,11 @@ class BluOSClient:
         root = await self._get_xml("/Playlists", {"service": "BluOS"})
         return [name.text for name in root.iter("name") if name.text]
 
+    async def async_get_artist_files(self, artist: str) -> list[str]:
+        """Return the files (paths on the player) of the songs of an artist of the library."""
+        root = await self._get_xml("/Songs", {"service": "LocalMusic", "artist": artist})
+        return [fn for song in root.iter("song") if (fn := song.findtext("fn"))]
+
     async def async_get_playlist_tracks(self, name: str) -> list[PlaylistTrack]:
         """Return all the tracks of a playlist saved on the player, in order.
 

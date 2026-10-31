@@ -314,6 +314,7 @@ async def test_restore_warns_when_the_player_finds_fewer_files(
     result = await _restore(hass, playlists=["Tuning"])
 
     assert result["restored"] == {"Tuning": 1}
+    assert result["files_not_found"] == {"Tuning": 1}
     assert "found 1 of the 2 files" in caplog.text
 
 

@@ -215,6 +215,32 @@
           "description": "The number or the name of the preset."
         }
       }
+    },
+    "import_playlists": {
+      "name": "Import playlists exported from another music player",
+      "description": "Converts the playlists (.m3u8 files) you exported from Apple Music or another music player and put in the bluos_companion/import folder of the Home Assistant configuration, so that the files are the ones of the music share as the player knows them, then builds them on the player. The queue of that player is emptied and refilled for each playlist, so use a player that is not playing. A playlist that exists already is left alone unless you ask to replace it.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player to build the playlists on, and to find the music share from."
+        },
+        "restore": {
+          "name": "Build the playlists on the player",
+          "description": "Off to only convert the files, to look at them or to change them first, then use the restore action."
+        },
+        "replace": {
+          "name": "Replace existing playlists",
+          "description": "Replace a playlist that has the same name. Off by default."
+        },
+        "source_path": {
+          "name": "Folder of the music on the computer",
+          "description": "The beginning of the paths of the exported files, for example /Users/me/Music/Music/Media.localized/Music/. Found by itself if empty."
+        },
+        "library_path": {
+          "name": "Folder of the music on the player",
+          "description": "Where the same folder is for the player, for example /var/mnt/nas-Share/Music/. Found by itself if empty."
+        }
+      }
     }
   }
 }
