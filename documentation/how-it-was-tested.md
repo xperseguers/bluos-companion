@@ -40,6 +40,7 @@ afterwards:
 - **Favourites**: adding and removing an album, an artist and a song, the players sharing them, the backup, and the
   restore (including a favourite the library does not have); adding and removing a favourite by hand in the sidebar
   player, from an album page and from the title of the playing track.
+- **Sidebar player**: the home button of the breadcrumb, used by hand several levels deep.
 - **Import**: a real playlist of 134 tracks exported from Apple Music, with accents written the way a Mac does, built
   on the player in its order; the tracks the player's library did not know were reported.
 - **Presets and inputs by name**: a preset by a word of its name, inputs by common names, and the error for a name
@@ -53,7 +54,6 @@ afterwards:
 - the favourites of the streaming services and favourite playlists, and the import of playlists exported in another
   format than `.m3u8` or from a library that is not organised as artist / album / file (the paths of Windows are
   covered by automated tests only)
-- the home button of the sidebar player in a browser (only its code and its texts are checked automatically)
 - the accounts of music services (Deezer, Tidal...) and Amazon Music
 - selecting the HDMI ARC input or using the sleep timer of the NODE
 - the sidebar player in browsers and tablets other than the ones used during development, and live use on Home
