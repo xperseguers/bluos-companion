@@ -102,6 +102,7 @@ def _snapshot(
             "media_player", DOMAIN, entry.unique_id
         ),
         "name": entry.title,
+        "configuration_url": f"http://{entry.data[CONF_HOST]}",
         "available": coordinator.last_update_success,
         "state": status.state,
         "title": status.title,

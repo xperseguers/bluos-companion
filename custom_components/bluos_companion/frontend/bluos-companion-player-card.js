@@ -55,6 +55,7 @@ const PLAYER_CARD_STYLE = `
   dialog button.target .sub { font-size: 12px; color: var(--secondary-text-color); }
   progress { display: block; width: calc(100% - 24px); height: 4px; margin: 4px 12px; accent-color: var(--primary-color); }
   .controls { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; }
+  .link { display: flex; align-items: center; gap: 4px; padding: 0 16px 12px; font-size: 13px; color: var(--primary-color); text-decoration: none; --mdc-icon-size: 16px; }
   .volume { display: flex; align-items: center; gap: 8px; padding: 0 12px 8px; }
   button.icon {
     border: none;
@@ -223,6 +224,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
       onchange: (event) => this._control("volume", Number(event.target.value)),
     });
     this._volumeRow = pel("div", { class: "volume" }, this._mute, this._volume);
+    this._link = pel("a", { class: "link", target: "_blank", rel: "noopener" }, picon("mdi:open-in-new"), pel("span"));
     this._message = pel("div", { class: "sub", style: "padding: 16px; text-align: center" });
     this._content = pel(
       "div",
@@ -231,6 +233,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
       this._progress,
       pel("div", { class: "controls" }, this._prev, this._toggle, this._next, this._move),
       this._volumeRow,
+      this._link,
     );
     this.shadowRoot.replaceChildren(
       pel("style", {}, PLAYER_CARD_STYLE),
@@ -266,6 +269,9 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     this._volume.value = Math.max(player.volume, 0);
     this._mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
     this._progress.hidden = !(player.duration > 0);
+    this._link.hidden = !(this._config.show_control_panel === true && player.configuration_url);
+    this._link.href = player.configuration_url || "";
+    this._link.lastChild.textContent = this._t("open_control_panel");
     this._tick();
   }
 
@@ -363,6 +369,7 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
       this._form.schema = [
         { name: "entity", required: true, selector: { entity: { domain: "media_player", integration: "bluos_companion" } } },
         { name: "show_volume", selector: { boolean: {} } },
+        { name: "show_control_panel", selector: { boolean: {} } },
       ];
       this._form.addEventListener("value-changed", (event) => {
         this.dispatchEvent(
@@ -371,10 +378,14 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
       });
       this.append(this._form);
     }
-    const labels = { entity: "editor_player", show_volume: "editor_show_volume" };
+    const labels = {
+      entity: "editor_player",
+      show_volume: "editor_show_volume",
+      show_control_panel: "editor_show_control_panel",
+    };
     this._form.computeLabel = (schema) => this._t(labels[schema.name] || schema.name);
     this._form.hass = this._hass;
-    this._form.data = { show_volume: true, ...this._config };
+    this._form.data = { show_volume: true, show_control_panel: false, ...this._config };
   }
 }
 

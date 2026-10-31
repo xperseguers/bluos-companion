@@ -16,6 +16,7 @@ from custom_components.bluos_companion.const import PANEL_PATH
 from .conftest import (
     BASE,
     GROUPED_SYNC_STATUS,
+    HOST,
     browse_url,
     calls,
     respond,
@@ -74,6 +75,7 @@ async def test_subscribe_pushes_players(
     [player] = event["players"]
     assert player["entry_id"] == init_integration.entry_id
     assert player["name"] == "Séjour"
+    assert player["configuration_url"] == f"http://{HOST}"
     assert (player["title"], player["artist"], player["state"]) == (
         "Rolling In the Deep",
         "Adele",

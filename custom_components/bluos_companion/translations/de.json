@@ -138,6 +138,8 @@
     "panel_editor_columns": "Spalten",
     "panel_editor_show_footer": "Lautstärke und Eingang anzeigen",
     "panel_editor_show_volume": "Lautstärke anzeigen",
+    "panel_editor_show_control_panel": "Link zum Bedienfeld anzeigen",
+    "panel_open_control_panel": "Bedienfeld öffnen",
     "panel_input": "Eingang"
   },
   "services": {

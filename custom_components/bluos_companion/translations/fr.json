@@ -138,6 +138,8 @@
     "panel_editor_columns": "Colonnes",
     "panel_editor_show_footer": "Afficher le volume et l'entrée",
     "panel_editor_show_volume": "Afficher le volume",
+    "panel_editor_show_control_panel": "Afficher le lien vers le panneau de contrôle",
+    "panel_open_control_panel": "Ouvrir le panneau de contrôle",
     "panel_input": "Entrée"
   },
   "services": {

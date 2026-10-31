@@ -30,12 +30,15 @@ thin progress bar and the volume.
 
 - A **move playback** button appears while the player is playing and another player exists: it lists the
   other players, and the music continues there at once.
+- An **Open control panel** link to the web page of the player, in a new tab, if you turn it on (off by
+  default). The device page of Home Assistant only says "Visit" for the same link and cannot be changed.
 - A card whose entity is not a BluOS Companion player says so ("Player not found").
 
 ```yaml
 type: custom:bluos-companion-player-card
 entity: media_player.living_room
-show_volume: true   # false hides the mute button and the volume slider
+show_volume: true          # false hides the mute button and the volume slider
+show_control_panel: false  # true shows the "Open control panel" link
 ```
 
 ## Good to know
