@@ -39,12 +39,12 @@ LIBRARY = {
     "genres": "LocalMusic:GG/Genres",
     "playlists": "BluOS:",
     "composers": "LocalMusic:bySection:Composer/%2Flibrary%2Fv1%2FComposers%3Fservice=LocalMusic",
+    "favourites": "LocalMusic:MG/LocalMusic-Favourites",
 }
-TITLES = ("recently_added", *LIBRARY, "presets", "queue", "favourites", "folders")
+TITLES = ("recently_added", *LIBRARY, "presets", "queue", "folders")
 PANEL_TITLES = (*TITLES, "sources", "library")
 MENU_LABELS = {
     **{category.capitalize(): category for category in LIBRARY},
-    "Favourites": "favourites",
     "Favorites": "favourites",
     "Folders": "folders",
 }

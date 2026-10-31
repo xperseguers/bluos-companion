@@ -16,7 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.translation import async_get_translations
 
-from .api import SLEEP_OPTIONS, BluOSClient, BluOSError, Node, sleep_bucket
+from .api import SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .covers import async_playlist_covers, async_preset_images, image_path
@@ -54,6 +54,7 @@ CONTROLS: dict[str, Callable[[BluOSClient, Any, bool], Awaitable[None]]] = {
 def async_setup_websocket_api(hass: HomeAssistant) -> None:
     """Register the websocket commands."""
     websocket_api.async_register_command(hass, ws_subscribe)
+    websocket_api.async_register_command(hass, ws_favourite)
     websocket_api.async_register_command(hass, ws_control)
     websocket_api.async_register_command(hass, ws_browse)
     websocket_api.async_register_command(hass, ws_search)
@@ -347,16 +348,68 @@ async def ws_actions(
     """List what can be done with an item: play now, shuffle, add next / last."""
     client = _coordinator(hass, msg["entry_id"]).client
     actions = await _async_call(client.async_get_actions(msg["key"]))
-    connection.send_result(
-        msg["id"],
-        {
-            "actions": [
-                {"type": action.type, "title": action.title, "path": action.path}
-                for action in actions
-                if is_play_path(action.path)
-            ]
-        },
+    result: list[dict[str, Any]] = [
+        {"type": action.type, "title": action.title, "path": action.path}
+        for action in actions
+        if is_play_path(action.path)
+    ]
+    # The player offers to add the item as a favourite: offer the one that fits what it is now
+    favourite = next(
+        (
+            found
+            for action in actions
+            if action.type == "favourite-add" and (found := Favourite.from_path(action.path))
+        ),
+        None,
     )
+    if favourite is not None:
+        try:
+            on = favourite in await client.async_get_favourites()
+        except BluOSError:
+            pass
+        else:
+            result.append(
+                {
+                    "type": "favourite",
+                    "title": "",
+                    "favourite": {
+                        "kind": favourite.kind,
+                        "artist": favourite.artist,
+                        "album": favourite.album,
+                        "file": favourite.file,
+                    },
+                    "on": on,
+                }
+            )
+    connection.send_result(msg["id"], {"actions": result})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/favourite",
+        vol.Required("entry_id"): str,
+        vol.Required("kind"): vol.In(["album", "artist", "song"]),
+        vol.Optional("artist", default=""): str,
+        vol.Optional("album", default=""): str,
+        vol.Optional("file", default=""): str,
+        vol.Required("on"): bool,
+    }
+)
+@websocket_api.async_response
+async def ws_favourite(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Make an album, an artist or a song of the library a favourite, or not any more."""
+    favourite = Favourite(msg["kind"], msg["artist"], msg["album"], msg["file"])
+    if not (
+        (favourite.kind == "album" and favourite.artist and favourite.album)
+        or (favourite.kind == "artist" and favourite.artist)
+        or (favourite.kind == "song" and favourite.file)
+    ):
+        raise HomeAssistantError("Say which album, artist or song")
+    client = _coordinator(hass, msg["entry_id"]).client
+    await _async_call(client.async_set_favourite(favourite, msg["on"]))
+    connection.send_result(msg["id"])
 
 
 @websocket_api.websocket_command(

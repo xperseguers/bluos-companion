@@ -53,7 +53,7 @@ is still recommended.
   are configuration entities; the listening mode, bass and treble are enabled, enable the others from the entity
   settings of the device.
 - The **media browser**, in the sidebar *Media* panel and in the media browser of the player's more-info
-  dialog: library, saved playlists (with their covers), presets and the queue.
+  dialog: library (with its favourites), saved playlists (with their covers), presets and the queue.
 
 ### Inputs
 

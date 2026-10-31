@@ -443,8 +443,31 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   async _runAction(action, label) {
+    if (action.favourite) {
+      const done = await this._call({
+        type: "bluos_companion/favourite",
+        entry_id: this._playerId,
+        on: !action.on,
+        ...action.favourite,
+      });
+      if (done === undefined) return;
+      this._notify(`${this._t(action.on ? "favourite_removed" : "favourite_added")}: ${label}`);
+      this._refreshLevelActions();
+      return;
+    }
     await this._call({ type: "bluos_companion/play", entry_id: this._playerId, path: action.path });
     this._notify(`${action.title}: ${label}`);
+  }
+
+  // The actions of the page on display, after one of them changed (a favourite).
+  async _refreshLevelActions() {
+    const level = this._stack[this._stack.length - 1];
+    if (!level || !level.contextKey) return;
+    const token = this._browseToken;
+    const actions = await this._actions(level.contextKey);
+    if (token !== this._browseToken) return;
+    this._levelActions = actions;
+    this._renderCrumbs();
   }
 
   _showPlaying() {
@@ -537,8 +560,14 @@ class BluOSCompanionPanel extends HTMLElement {
           if (after) after();
         },
       },
-      icon(ACTION_ICONS[action.type] || "mdi:playlist-plus"),
-      action.title,
+      icon(
+        action.favourite
+          ? action.on
+            ? "mdi:heart-off"
+            : "mdi:heart"
+          : ACTION_ICONS[action.type] || "mdi:playlist-plus",
+      ),
+      action.favourite ? this._t(action.on ? "favourite_remove" : "favourite_add") : action.title,
     );
   }
 

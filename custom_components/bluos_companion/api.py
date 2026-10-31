@@ -217,6 +217,65 @@ class Album:
 
 
 @dataclass(frozen=True, slots=True)
+class Favourite:
+    """An album, an artist or a song of the library that is (or can be) a favourite."""
+
+    kind: str
+    artist: str = ""
+    album: str = ""
+    file: str = ""
+
+    @property
+    def params(self) -> dict[str, str]:
+        """Return what identifies it to the player."""
+        match self.kind:
+            case "album":
+                params = {"album": self.album, "artist": self.artist}
+            case "artist":
+                params = {"artist": self.artist}
+            case _:
+                params = {"fn": self.file}
+        return {**params, "service": "LocalMusic"}
+
+    @classmethod
+    def from_path(cls, path: str) -> Favourite | None:
+        """Return the favourite an add or delete request of the player is about."""
+        url = urlparse(path)
+        if url.path not in ("/AddFavourite", "/DeleteFavourite"):
+            return None
+        query = {key: values[0] for key, values in parse_qs(url.query).items()}
+        if query.get("service") != "LocalMusic":
+            return None
+        if file := query.get("fn"):
+            return cls("song", file=file)
+        if (artist := query.get("artist")) and (album := query.get("album")):
+            return cls("album", artist=artist, album=album)
+        if artist := query.get("artist"):
+            return cls("artist", artist=artist)
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class Favourites:
+    """The favourite albums, artists and songs of the library (the players share them)."""
+
+    albums: frozenset[tuple[str, str]]
+    artists: frozenset[str]
+    songs: frozenset[str]
+
+    def __contains__(self, favourite: object) -> bool:
+        if not isinstance(favourite, Favourite):
+            return False
+        match favourite.kind:
+            case "album":
+                return (favourite.artist, favourite.album) in self.albums
+            case "artist":
+                return favourite.artist in self.artists
+            case _:
+                return favourite.file in self.songs
+
+
+@dataclass(frozen=True, slots=True)
 class PlaylistTrack:
     """A track of a playlist saved on the player, identified by its file on the music share."""
 
@@ -546,6 +605,24 @@ class BluOSClient:
         """Return the names of the playlists saved on the player."""
         root = await self._get_xml("/Playlists", {"service": "BluOS"})
         return [name.text for name in root.iter("name") if name.text]
+
+    async def async_get_favourites(self) -> Favourites:
+        """Return the favourite albums, artists and songs of the library."""
+        params = {"service": "LocalMusic", "category": "FAVOURITES"}
+        albums = await self._get_xml("/Albums", params)
+        artists = await self._get_xml("/Artists", params)
+        songs = await self._get_xml("/Songs", params)
+        return Favourites(
+            albums=frozenset(
+                (album.findtext("art", ""), album.findtext("alb", "")) for album in albums.iter("album")
+            ),
+            artists=frozenset(artist.text for artist in artists.iter("art") if artist.text),
+            songs=frozenset(fn for song in songs.iter("song") if (fn := song.findtext("fn"))),
+        )
+
+    async def async_set_favourite(self, favourite: Favourite, on: bool) -> None:
+        """Make an album, an artist or a song a favourite, or not any more."""
+        await self.async_command("/AddFavourite" if on else "/DeleteFavourite", favourite.params)
 
     async def async_get_artist_files(self, artist: str) -> list[str]:
         """Return the files (paths on the player) of the songs of an artist of the library."""

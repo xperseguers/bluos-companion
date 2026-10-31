@@ -75,6 +75,7 @@ async def test_player_menu(hass: HomeAssistant, init_integration: MockConfigEntr
         "Genres",
         "Playlists",
         "Composers",
+        "Favourites",
         "Presets",
         "Queue",
     ]
@@ -344,6 +345,7 @@ async def test_titles_follow_the_language(
         "Genres",
         "Listes de lecture",
         "Compositeurs",
+        "Favoris",
         "Préréglages",
         "File d'attente",
     ]
@@ -467,6 +469,7 @@ async def test_menu_items_have_icons(
             "genres",
             "playlists",
             "composers",
+            "favourites",
             "presets",
             "queue",
         )
@@ -544,3 +547,21 @@ async def test_playlists_have_the_cover_of_their_first_track(
     assert _image_of(item.children[0].thumbnail) == (
         "/Artwork?service=LocalMusic&artist=ADELE&album=Skyfall+-+Single"
     )
+
+
+async def test_favourites_of_the_library_can_be_browsed(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """The favourites folder lists what the player has as favourite albums, songs, artists."""
+    player_api.get(
+        browse_url("LocalMusic:MG/LocalMusic-Favourites"),
+        text='''<browse type="menu">
+  <item browseKey="fav-artists" text="Artists" type="link"></item>
+  <item browseKey="fav-albums" text="Albums" type="link"></item>
+</browse>''',
+    )
+
+    item = await async_browse_media(hass, f"{ROOT}/{init_integration.entry_id}/favourites")
+
+    assert item.title == "Favourites"
+    assert [child.title for child in item.children] == ["Artists", "Albums"]
