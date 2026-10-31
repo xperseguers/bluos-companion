@@ -20,6 +20,7 @@ from homeassistant.components.media_player import (
 
 from .api import BluOSClient, BluOSError, Node, Preset
 from .media_source import URI_PREFIX, _encode, is_play_path
+from .names import normalize
 
 MAX_RESULTS = 10
 SEARCH_KEY = "LocalMusic:Search"
@@ -36,12 +37,6 @@ STATION_BONUS = 3
 FUZZY_THRESHOLD = 0.8
 FUZZY_MIN_LENGTH = 4
 FUZZY_PROBES = 4
-
-
-def normalize(text: str) -> str:
-    """Return lower case words without accents or punctuation, to compare names."""
-    plain = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
-    return " ".join(re.findall(r"[a-z0-9]+", plain.lower()))
 
 
 def match_score(title: str, subtitle: str, query: str) -> int:

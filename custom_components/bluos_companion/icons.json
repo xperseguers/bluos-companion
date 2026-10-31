@@ -45,6 +45,9 @@
     },
     "mute_group": {
       "service": "mdi:volume-off"
+    },
+    "play_preset": {
+      "service": "mdi:radio"
     }
   }
 }

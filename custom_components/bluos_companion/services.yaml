@@ -38,3 +38,16 @@ mute_group:
       required: true
       selector:
         boolean:
+
+play_preset:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+    preset:
+      required: true
+      selector:
+        text:

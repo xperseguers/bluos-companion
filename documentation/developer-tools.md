@@ -66,6 +66,28 @@ value the picker gives you.
 `album`, `track` or `playlist` narrows it, `music` does not). It fails with "No results found" when nothing
 matches.
 
+### Playing a preset
+
+`bluos_companion.play_preset` starts a preset by its **number** or its **name**, with nothing to look up first:
+
+```yaml
+action: bluos_companion.play_preset
+data:
+  entity_id: media_player.living_room
+  preset: Rouge FM    # or 2
+```
+
+A name is understood without its case or accents, and a word of it is enough when only one preset has it
+(`rouge`). A number is the number of the preset on the player. When the name fits several presets or none, the
+action fails and says which presets there are. In a group, the music plays for the whole group.
+
+### Choosing an input
+
+`media_player.select_source` takes the exact name of an input (the `source_list` attribute), but also the name
+without its case or accents, a word of it (`wingo` for *Wingo TV*) and a common way to say it: `vinyl` or
+`turntable` for *Phono*, `optical`, `hdmi`, `tv` (an HDMI ARC input), `analog` or `aux`, `bluetooth`, `cd`, `dvd`.
+When a name fits several inputs (`tv` with two TV inputs), the action fails and lists them: use the exact name.
+
 ## Searching
 
 `media_player.search_media` returns what a name matches, best match first (artists, albums, songs, saved

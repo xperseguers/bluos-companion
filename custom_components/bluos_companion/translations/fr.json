@@ -201,6 +201,20 @@
           "description": "Activé pour couper, désactivé pour rétablir."
         }
       }
+    },
+    "play_preset": {
+      "name": "Lancer un préréglage",
+      "description": "Lance un préréglage d'un lecteur, donné par son numéro (1, 2...) ou par son nom, compris sans tenir compte des majuscules ni des accents, ou à partir d'un mot (\"rouge\" pour Rouge FM). Dans un groupe, la musique joue pour tout le groupe.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur sur lequel lancer le préréglage."
+        },
+        "preset": {
+          "name": "Préréglage",
+          "description": "Le numéro ou le nom du préréglage."
+        }
+      }
     }
   }
 }

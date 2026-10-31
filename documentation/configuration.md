@@ -60,7 +60,8 @@ is still recommended.
 `source_list` holds the inputs the player reports. A player with a built-in amplifier (a NAD with a BluOS
 module, for example) lists the inputs of the amplifier (TV, Phono, CD...) and its own. A standalone
 streamer lists only its own (Bluetooth, HDMI ARC...). When a name exists twice (the Bluetooth of the module
-and the Bluetooth of the amplifier), the module's one is called *Bluetooth (BluOS)*.
+and the Bluetooth of the amplifier), the module's one is called *Bluetooth (BluOS)*. An input can be chosen by its
+exact name, or by a word or a common name such as *vinyl* for Phono, see [Developer tools](developer-tools.md).
 
 The power of the amplifier (and its speaker outputs) are separate switches, see above.
 

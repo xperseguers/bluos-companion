@@ -201,6 +201,20 @@
           "description": "On to mute, off to unmute."
         }
       }
+    },
+    "play_preset": {
+      "name": "Play a preset",
+      "description": "Starts a preset of a player, given by its number (1, 2...) or by its name, which is understood without its case or accents, or from a word of it (\"rouge\" for Rouge FM). In a group, the music plays for the whole group.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player to start the preset on."
+        },
+        "preset": {
+          "name": "Preset",
+          "description": "The number or the name of the preset."
+        }
+      }
     }
   }
 }

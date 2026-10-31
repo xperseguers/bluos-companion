@@ -201,6 +201,20 @@
           "description": "Ein zum Stummschalten, aus zum Aufheben."
         }
       }
+    },
+    "play_preset": {
+      "name": "Preset abspielen",
+      "description": "Startet ein Preset eines Players, angegeben durch seine Nummer (1, 2...) oder seinen Namen, der ohne Groß- und Kleinschreibung und Akzente verstanden wird, oder durch ein Wort daraus (\"rouge\" für Rouge FM). In einer Gruppe spielt die Musik für die ganze Gruppe.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, auf dem das Preset gestartet wird."
+        },
+        "preset": {
+          "name": "Preset",
+          "description": "Die Nummer oder der Name des Presets."
+        }
+      }
     }
   }
 }

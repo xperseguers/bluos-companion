@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
+from functools import partial
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
@@ -15,6 +17,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import BluOSClient, BluOSError, Source, Status, SyncStatus, VolumeState
 from .amplifier import BluOSAmplifier
 from .cover_check import CoverCheck, async_check_covers
+from .names import match_inputs, match_presets, normalize
 from .settings import BluOSSettingsCoordinator
 from .const import (
     CONF_MAX_VOLUME,
@@ -120,16 +123,50 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         )
 
     async def async_select_source(self, name: str) -> None:
-        """Switch to an input of the player or of the amplifier it is built in."""
+        """Switch to an input of the player or of the amplifier it is built in.
+
+        The exact name is best, but a name without its case or accents, a word of it
+        ("wingo") or a common way to say it ("vinyl" for Phono) is understood too.
+        """
+        inputs: dict[str, tuple[set[str], Callable[[], Awaitable[None]]]] = {}
         for source in self.sources:
-            if self._input_name(source) == name:
-                await self.client.async_select_source(source.type_index)
-                return
+            words = set(normalize(f"{source.name} {source.type_index.rsplit('-', 1)[0]}").split())
+            inputs[self._input_name(source)] = (
+                words,
+                partial(self.client.async_select_source, source.type_index),
+            )
         for external in self.sync.external_sources if self.sync else ():
-            if external.name == name:
-                await self.client.async_select_external_source(external.id)
-                return
-        raise HomeAssistantError(f"Unknown source: {name}")
+            inputs[external.name] = (
+                set(normalize(external.name).split()),
+                partial(self.client.async_select_external_source, external.id),
+            )
+        found = match_inputs(name, {key: words for key, (words, _) in inputs.items()})
+        if not found:
+            raise HomeAssistantError(f"Unknown source: {name}")
+        if len(found) > 1:
+            raise HomeAssistantError(f"Source {name} is ambiguous: {', '.join(found)}")
+        await inputs[found[0]][1]()
+
+    async def async_play_preset(self, preset: str) -> None:
+        """Start a preset of the player, given by its number or by its name."""
+        try:
+            presets = await self.client.async_get_presets()
+        except BluOSError as err:
+            raise HomeAssistantError(f"BluOS player error: {err}") from err
+        chosen = [item for item in presets if str(item.id) == preset.strip()]
+        if not chosen:
+            names = {item.name: item for item in presets}
+            found = match_presets(preset, list(names))
+            if len(found) > 1:
+                raise HomeAssistantError(f"Preset {preset} is ambiguous: {', '.join(found)}")
+            chosen = [names[found[0]]] if found else []
+        if not chosen:
+            available = ", ".join(f"{item.id} {item.name}" for item in presets) or "none"
+            raise HomeAssistantError(f"Unknown preset: {preset} (presets: {available})")
+        try:
+            await self.client.async_load_preset(chosen[0].id)
+        except BluOSError as err:
+            raise HomeAssistantError(f"BluOS player error: {err}") from err
 
     def group_primary(self) -> BluOSCoordinator:
         """Return the player that leads the group (itself if alone or leading).

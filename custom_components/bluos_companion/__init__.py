@@ -81,6 +81,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             call.data["replace"],
         )
 
+    async def play_preset(call: ServiceCall) -> None:
+        """Start a preset of a player, by its number or its name."""
+        await loaded_entry(call.data["entity_id"]).runtime_data.async_play_preset(
+            call.data["preset"]
+        )
+
     async def mute_group(call: ServiceCall) -> None:
         """Mute or unmute all the players of the group of a player."""
         await loaded_entry(call.data["entity_id"]).runtime_data.async_mute_group(call.data["mute"])
@@ -114,6 +120,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             }
         ),
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "play_preset",
+        play_preset,
+        schema=vol.Schema(
+            {
+                vol.Required("entity_id"): cv.entity_id,
+                vol.Required("preset"): vol.All(vol.Any(int, str), vol.Coerce(str)),
+            }
+        ),
     )
     hass.services.async_register(
         DOMAIN,

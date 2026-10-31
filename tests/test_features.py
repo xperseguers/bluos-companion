@@ -1007,3 +1007,66 @@ async def test_mute_group_reports_a_player_error(
             {"entity_id": "media_player.sejour", "mute": True},
             blocking=True,
         )
+
+
+@pytest.mark.parametrize(
+    ("wanted", "call"),
+    [
+        ("vinyl", ("/ExternalSource", {"id": "5"})),
+        ("PHONO", ("/ExternalSource", {"id": "5"})),
+        ("bt", ("/Play", {"inputTypeIndex": "bluetooth-1"})),
+        ("bluetooth", ("/Play", {"inputTypeIndex": "bluetooth-1"})),
+    ],
+)
+async def test_select_source_understands_common_names(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    wanted: str,
+    call: tuple[str, dict[str, str]],
+) -> None:
+    """An input is found without its exact name, a common word is enough."""
+    respond(player_api, f"{BASE}/SyncStatus", text=GROUPED_SYNC_STATUS)
+    respond(player_api, f"{BASE}/ExternalSource", text="<ok/>")
+    await _refresh(hass, init_integration, player_api, status_xml(syncStat="2"))
+    player_api.mock_calls.clear()
+
+    await hass.services.async_call(
+        MEDIA_PLAYER_DOMAIN,
+        SERVICE_SELECT_SOURCE,
+        {ATTR_ENTITY_ID: ENTITY_ID, ATTR_INPUT_SOURCE: wanted},
+        blocking=True,
+    )
+
+    assert calls(player_api) == [call]
+
+
+@pytest.mark.parametrize(
+    ("preset", "preset_id"),
+    [("2", "2"), (2, "2"), ("Rouge", "2"), ("rouge fm", "2"), ("rts la premiere", "1"), (" 1 ", "1")],
+)
+async def test_play_preset(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    preset: str | int,
+    preset_id: str,
+) -> None:
+    """A preset starts by its number or by its name."""
+    player_api.mock_calls.clear()
+    await hass.services.async_call(
+        DOMAIN, "play_preset", {"entity_id": ENTITY_ID, "preset": preset}, blocking=True
+    )
+    assert calls(player_api) == [("/Presets", {}), ("/Preset", {"id": preset_id})]
+
+
+async def test_play_preset_that_does_not_exist(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """The error lists the presets there are, and nothing is started."""
+    player_api.mock_calls.clear()
+    with pytest.raises(HomeAssistantError, match="Unknown preset: jazz.*2 Rouge FM"):
+        await hass.services.async_call(
+            DOMAIN, "play_preset", {"entity_id": ENTITY_ID, "preset": "jazz"}, blocking=True
+        )
+    assert calls(player_api) == [("/Presets", {})]
