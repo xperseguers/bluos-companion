@@ -51,6 +51,12 @@
     },
     "import_playlists": {
       "service": "mdi:playlist-plus"
+    },
+    "backup_favourites": {
+      "service": "mdi:heart-multiple"
+    },
+    "restore_favourites": {
+      "service": "mdi:heart-plus"
     }
   }
 }

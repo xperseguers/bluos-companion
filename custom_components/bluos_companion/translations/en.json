@@ -46,7 +46,7 @@
         "data": {
           "hidden_services": "Hidden services",
           "max_volume": "Maximum volume",
-          "backup_playlists": "Back up the playlists of this player"
+          "backup_playlists": "Back up the playlists and favourites of this player"
         }
       }
     }
@@ -243,6 +243,20 @@
         "library_path": {
           "name": "Folder of the music on the player",
           "description": "Where the same folder is for the player, for example /var/mnt/nas-Share/Music/. Found by itself if empty."
+        }
+      }
+    },
+    "backup_favourites": {
+      "name": "Save the favourites as a file now",
+      "description": "Writes the favourite albums, artists and songs of the library as a file (favourites.json) in the bluos_companion folder of the Home Assistant configuration. This also happens before every Home Assistant backup, which then contains it."
+    },
+    "restore_favourites": {
+      "name": "Restore the favourites from the file",
+      "description": "Adds the favourites of the file that the player does not have yet. Nothing is removed. A song the library of the player does not know is not added, and the result lists it.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player to add the favourites to."
         }
       }
     }

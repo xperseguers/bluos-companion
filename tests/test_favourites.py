@@ -2,13 +2,29 @@
 
 from __future__ import annotations
 
+import json
+from datetime import datetime
+from pathlib import Path
+
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_homeassistant_custom_component.test_util.aiohttp import (
+    AiohttpClientMocker,
+    AiohttpClientMockResponse,
+)
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
+from yarl import URL
 
 from custom_components.bluos_companion.api import BluOSClient, Favourite, Favourites
+from custom_components.bluos_companion.const import DOMAIN
+from custom_components.bluos_companion.favourites_backup import (
+    async_backup_favourites,
+    describe,
+    parse,
+    render,
+)
 
 from .conftest import BASE, browse_url, calls, respond
 
@@ -67,9 +83,11 @@ async def test_the_favourites_are_read(client: BluOSClient, favourites_api: Aioh
     favourites = await client.async_get_favourites()
 
     assert favourites == Favourites(
-        albums=frozenset({("Patrick Fiori", "Promesse")}),
-        artists=frozenset({"Marine"}),
-        songs=frozenset({FILE}),
+        (
+            Favourite("album", "Patrick Fiori", "Promesse"),
+            Favourite("artist", "Marine"),
+            Favourite("song", title="Dalida", file=FILE),
+        )
     )
     assert Favourite("album", "Patrick Fiori", "Promesse") in favourites
     assert Favourite("album", "Patrick Fiori", "Other") not in favourites
@@ -195,3 +213,177 @@ async def test_the_panel_must_say_what_to_favour(
     )
     assert not (await client.receive_json())["success"]
     assert calls(favourites_api) == []
+
+
+# ---- backup and restore of the favourites ----
+
+ITEMS = (
+    Favourite("album", "Patrick Fiori", "Promesse"),
+    Favourite("artist", "Marine"),
+    Favourite("song", "Marine", "Cœur maladroit", FILE, "Dalida"),
+)
+
+
+@pytest.fixture
+def config_dir(hass: HomeAssistant, tmp_path: Path) -> Path:
+    """Use a temporary configuration folder, return the favourites file."""
+    hass.config.config_dir = str(tmp_path)
+    return tmp_path / "bluos_companion" / "favourites.json"
+
+
+def test_render_and_parse_round_trip() -> None:
+    """The file keeps what identifies each favourite and what is useful to read it."""
+    text = render(ITEMS, "Séjour", datetime(2026, 10, 31, 12, 0))
+    data = json.loads(text)
+
+    assert data["player"] == "Séjour"
+    assert data["albums"] == [{"artist": "Patrick Fiori", "album": "Promesse"}]
+    assert data["artists"] == ["Marine"]
+    assert data["songs"][0]["title"] == "Dalida"
+    assert "Cœur maladroit" in text  # not escaped
+    assert parse(text) == ITEMS
+
+
+def test_parse_leaves_out_what_is_not_understood() -> None:
+    """A file edited by hand keeps its good entries."""
+    text = json.dumps(
+        {
+            "albums": [{"artist": "A", "album": "B"}, {"artist": "no album"}, "text"],
+            "artists": ["Marine", "", 3],
+            "songs": [{"file": "/a.m4a"}, {"title": "no file"}],
+        }
+    )
+    assert parse(text) == (
+        Favourite("album", "A", "B"),
+        Favourite("artist", "Marine"),
+        Favourite("song", file="/a.m4a"),
+    )
+
+
+@pytest.mark.parametrize("text", ["not json", "[1, 2]"])
+def test_parse_refuses_a_file_that_is_not_one(text: str) -> None:
+    """The error says the file is not valid."""
+    with pytest.raises(HomeAssistantError, match="not valid"):
+        parse(text)
+
+
+def test_describe() -> None:
+    """Each kind has a short name for the user."""
+    assert [describe(item) for item in ITEMS] == [
+        "Patrick Fiori - Promesse",
+        "Marine",
+        "Marine - Dalida",
+    ]
+    assert describe(Favourite("song", file="/a.m4a")) == "/a.m4a"
+
+
+async def test_backup_writes_the_file(
+    hass: HomeAssistant, init_integration: MockConfigEntry, favourites_api: AiohttpClientMocker, config_dir: Path
+) -> None:
+    """The favourites of the library are saved with how many of each kind."""
+    assert await async_backup_favourites(hass) == {"albums": 1, "artists": 1, "songs": 1}
+    assert [item.kind for item in parse(config_dir.read_text(encoding="utf-8"))] == [
+        "album",
+        "artist",
+        "song",
+    ]
+
+
+async def test_backup_keeps_the_previous_file_when_the_player_has_none(
+    hass: HomeAssistant, init_integration: MockConfigEntry, favourites_api: AiohttpClientMocker, config_dir: Path
+) -> None:
+    """A player that lost its favourites does not erase the backup."""
+    await async_backup_favourites(hass)
+    before = config_dir.read_text(encoding="utf-8")
+    for kind in ("Albums", "Artists", "Songs"):
+        respond(favourites_api, f"{BASE}/{kind}?service=LocalMusic&category=FAVOURITES", text=f"<{kind.lower()}/>")
+
+    assert await async_backup_favourites(hass) == {}
+    assert config_dir.read_text(encoding="utf-8") == before
+
+
+async def test_backup_follows_the_option_of_the_player(
+    hass: HomeAssistant, init_integration: MockConfigEntry, favourites_api: AiohttpClientMocker, config_dir: Path
+) -> None:
+    """A player left out of the backup is not read."""
+    hass.config_entries.async_update_entry(init_integration, options={"backup_playlists": False})
+
+    assert await async_backup_favourites(hass) == {}
+    assert not config_dir.exists()
+
+
+class FavouritesPlayer:
+    """A player whose favourites change when it is asked: only songs of its library are kept."""
+
+    def __init__(self, api: AiohttpClientMocker, favourites: list[Favourite], library: set[str]) -> None:
+        self.favourites = favourites
+        self.library = library
+        for kind in ("Albums", "Artists", "Songs"):
+            respond(api, f"{BASE}/{kind}", side_effect=self._list)
+        respond(api, f"{BASE}/AddFavourite", side_effect=self._add)
+
+    async def _list(self, method: str, url: URL, data: object) -> AiohttpClientMockResponse:
+        kind = url.path.strip("/")
+        body = ""
+        for item in self.favourites:
+            if kind == "Albums" and item.kind == "album":
+                body += f"<album><alb>{item.album}</alb><art>{item.artist}</art></album>"
+            elif kind == "Artists" and item.kind == "artist":
+                body += f"<art>{item.artist}</art>"
+            elif kind == "Songs" and item.kind == "song":
+                body += f"<song><title>{item.title}</title><fn>{item.file}</fn></song>"
+        return AiohttpClientMockResponse(method, url, text=f"<{kind.lower()}>{body}</{kind.lower()}>")
+
+    async def _add(self, method: str, url: URL, data: object) -> AiohttpClientMockResponse:
+        query = dict(url.query)
+        if "fn" in query:
+            item = Favourite("song", file=query["fn"])
+            if item.file not in self.library:
+                return AiohttpClientMockResponse(method, url, text="<favourite>added</favourite>")
+        elif "album" in query:
+            item = Favourite("album", query["artist"], query["album"])
+        else:
+            item = Favourite("artist", query["artist"])
+        self.favourites.append(item)
+        return AiohttpClientMockResponse(method, url, text="<favourite>added</favourite>")
+
+
+async def test_restore_adds_what_the_player_does_not_have(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    config_dir: Path,
+) -> None:
+    """Only the missing favourites are added, the ones the library does not have are listed."""
+    config_dir.parent.mkdir(parents=True, exist_ok=True)
+    gone = Favourite("song", "X", "Y", "/gone/a.m4a", "Gone")
+    config_dir.write_text(render((*ITEMS, gone), "Séjour", datetime(2026, 10, 31)), encoding="utf-8")
+    player = FavouritesPlayer(player_api, [ITEMS[0]], library={FILE})
+    player_api.mock_calls.clear()
+
+    result = await hass.services.async_call(
+        DOMAIN, "restore_favourites", {"entity_id": "media_player.sejour"}, blocking=True, return_response=True
+    )
+
+    assert result == {"added": 2, "already": 1, "not_found": ["X - Gone"]}
+    assert {item.key for item in player.favourites} == {item.key for item in ITEMS}
+    added = [query for path, query in calls(player_api) if path == "/AddFavourite"]
+    assert len(added) == 3  # the album that was there is not sent again
+
+
+async def test_restore_without_a_file_says_so(
+    hass: HomeAssistant, init_integration: MockConfigEntry, config_dir: Path
+) -> None:
+    """The error names the file that is expected."""
+    with pytest.raises(HomeAssistantError, match="favourites.json"):
+        await hass.services.async_call(
+            DOMAIN, "restore_favourites", {"entity_id": "media_player.sejour"}, blocking=True
+        )
+
+
+async def test_the_backup_service_returns_the_count(
+    hass: HomeAssistant, init_integration: MockConfigEntry, favourites_api: AiohttpClientMocker, config_dir: Path
+) -> None:
+    """The action tells how many favourites were saved."""
+    result = await hass.services.async_call(DOMAIN, "backup_favourites", blocking=True, return_response=True)
+    assert result == {"favourites": {"albums": 1, "artists": 1, "songs": 1}}

@@ -23,9 +23,9 @@ backup carries along.
   [Read more](documentation/cards.md)
 - **Voice and AI**: "play Adele on Kitchen" through Assist or an AI agent, with tolerance for typos.
   [Read more](documentation/voice-and-ai.md)
-- **Playlist backup, restore and import** as text files, included in every Home Assistant backup, so that the
-  playlists survive a reset of the player or a move of your music share, and playlists exported from Apple Music
-  can be brought to the player.
+- **Playlist and favourites backup, restore and import** as text files, included in every Home Assistant backup,
+  so that the playlists and favourites survive a reset of the player or a move of your music share, and playlists
+  exported from Apple Music can be brought to the player.
   [Read more](documentation/backup-and-restore.md)
 - **A normal media player** for every player: play, pause, seek, volume, shuffle, repeat, cover art,
   inputs, grouping, a sleep timer and the media browser. [Read more](documentation/configuration.md)
@@ -72,7 +72,7 @@ folder of your Home Assistant configuration (next to `configuration.yaml`) and r
 | [The sidebar player](documentation/panel.md) | home, library, search, queue, groups, kiosk use |
 | [Dashboard cards](documentation/cards.md) | the presets card and the player card, with their options |
 | [Configuration](documentation/configuration.md) | options of a player, entities, services |
-| [Playlist backup, restore and import](documentation/backup-and-restore.md) | text files, restoring, importing from Apple Music, moving your music share |
+| [Playlist and favourites backup, restore and import](documentation/backup-and-restore.md) | text files, restoring, importing from Apple Music, moving your music share |
 | [Voice and AI](documentation/voice-and-ai.md) | sentences, typos, volume, AI agents |
 | [Developer tools and automations](documentation/developer-tools.md) | actions, attributes, examples |
 | [Troubleshooting](documentation/troubleshooting.md) | if something does not work |

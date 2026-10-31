@@ -46,7 +46,7 @@
         "data": {
           "hidden_services": "Ausgeblendete Dienste",
           "max_volume": "Maximale Lautstärke",
-          "backup_playlists": "Wiedergabelisten dieses Players sichern"
+          "backup_playlists": "Wiedergabelisten und Favoriten dieses Players sichern"
         }
       }
     }
@@ -243,6 +243,20 @@
         "library_path": {
           "name": "Ordner der Musik auf dem Player",
           "description": "Wo derselbe Ordner für den Player liegt, zum Beispiel /var/mnt/nas-Freigabe/Music/. Wird selbst gefunden, wenn leer."
+        }
+      }
+    },
+    "backup_favourites": {
+      "name": "Favoriten jetzt als Datei speichern",
+      "description": "Schreibt die favorisierten Alben, Künstler und Titel der Bibliothek in eine Datei (favourites.json) im Ordner bluos_companion der Home-Assistant-Konfiguration. Das geschieht auch vor jeder Home-Assistant-Sicherung, die sie dann enthält."
+    },
+    "restore_favourites": {
+      "name": "Favoriten aus der Datei wiederherstellen",
+      "description": "Fügt die Favoriten der Datei hinzu, die der Player noch nicht hat. Nichts wird entfernt. Ein Titel, den die Bibliothek des Players nicht kennt, wird nicht hinzugefügt, das Ergebnis listet ihn auf.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, dem die Favoriten hinzugefügt werden."
         }
       }
     }

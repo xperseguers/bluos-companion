@@ -224,6 +224,18 @@ class Favourite:
     artist: str = ""
     album: str = ""
     file: str = ""
+    title: str = ""
+
+    @property
+    def key(self) -> tuple[str, ...]:
+        """Return what tells it from the others: an album, an artist or a file."""
+        match self.kind:
+            case "album":
+                return ("album", self.artist, self.album)
+            case "artist":
+                return ("artist", self.artist)
+            case _:
+                return ("song", self.file)
 
     @property
     def params(self) -> dict[str, str]:
@@ -259,20 +271,12 @@ class Favourite:
 class Favourites:
     """The favourite albums, artists and songs of the library (the players share them)."""
 
-    albums: frozenset[tuple[str, str]]
-    artists: frozenset[str]
-    songs: frozenset[str]
+    items: tuple[Favourite, ...]
 
     def __contains__(self, favourite: object) -> bool:
-        if not isinstance(favourite, Favourite):
-            return False
-        match favourite.kind:
-            case "album":
-                return (favourite.artist, favourite.album) in self.albums
-            case "artist":
-                return favourite.artist in self.artists
-            case _:
-                return favourite.file in self.songs
+        return isinstance(favourite, Favourite) and any(
+            item.key == favourite.key for item in self.items
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -613,11 +617,24 @@ class BluOSClient:
         artists = await self._get_xml("/Artists", params)
         songs = await self._get_xml("/Songs", params)
         return Favourites(
-            albums=frozenset(
-                (album.findtext("art", ""), album.findtext("alb", "")) for album in albums.iter("album")
-            ),
-            artists=frozenset(artist.text for artist in artists.iter("art") if artist.text),
-            songs=frozenset(fn for song in songs.iter("song") if (fn := song.findtext("fn"))),
+            (
+                *(
+                    Favourite("album", album.findtext("art", ""), album.findtext("alb", ""))
+                    for album in albums.iter("album")
+                ),
+                *(Favourite("artist", artist.text) for artist in artists.iter("art") if artist.text),
+                *(
+                    Favourite(
+                        "song",
+                        song.findtext("art", ""),
+                        song.findtext("alb", ""),
+                        fn,
+                        song.findtext("title", ""),
+                    )
+                    for song in songs.iter("song")
+                    if (fn := song.findtext("fn"))
+                ),
+            )
         )
 
     async def async_set_favourite(self, favourite: Favourite, on: bool) -> None:

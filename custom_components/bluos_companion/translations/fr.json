@@ -46,7 +46,7 @@
         "data": {
           "hidden_services": "Services masqués",
           "max_volume": "Volume maximal",
-          "backup_playlists": "Sauvegarder les listes de lecture de ce lecteur"
+          "backup_playlists": "Sauvegarder les listes de lecture et les favoris de ce lecteur"
         }
       }
     }
@@ -243,6 +243,20 @@
         "library_path": {
           "name": "Dossier de la musique sur le lecteur",
           "description": "L'emplacement de ce même dossier pour le lecteur, par exemple /var/mnt/nas-Partage/Music/. Trouvé tout seul si vide."
+        }
+      }
+    },
+    "backup_favourites": {
+      "name": "Enregistrer les favoris dans un fichier maintenant",
+      "description": "Écrit les albums, artistes et chansons favoris de la bibliothèque dans un fichier (favourites.json) du dossier bluos_companion de la configuration de Home Assistant. Cela se fait aussi avant chaque sauvegarde de Home Assistant, qui le contient alors."
+    },
+    "restore_favourites": {
+      "name": "Restaurer les favoris depuis le fichier",
+      "description": "Ajoute les favoris du fichier que le lecteur n'a pas encore. Rien n'est supprimé. Une chanson que la bibliothèque du lecteur ne connaît pas n'est pas ajoutée, et le résultat la liste.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur auquel ajouter les favoris."
         }
       }
     }

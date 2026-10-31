@@ -1,4 +1,4 @@
-# Playlist backup, restore and import
+# Playlist and favourites backup, restore and import
 
 The playlists you saved on a BluOS player live on that player. If it is reset or replaced, or if you move
 your music to another server, they are lost. BluOS Companion keeps a **text copy** of them that Home
@@ -70,6 +70,21 @@ playlists stop working. With the text files you do not have to recreate them:
    `/var/mnt/192.168.1.20-Music/` by `/var/mnt/192.168.1.50-Music/`). Any text editor will do.
 4. Run **Restore playlists**, with `replace: true` for the playlists that still exist on the player.
 
+## Favourites
+
+The favourite **albums, artists and songs** of your library (the ones you mark in the BluOS app or with *Add to
+favourites* in the sidebar player) live on the players too, and the players share them. They are saved the same
+way, in one file, `bluos_companion/favourites.json`, before every Home Assistant backup or whenever you run
+**BluOS Companion: Save the favourites as a file now**. The first player that answers is read: a player that
+reports no favourite at all does not erase the previous file. The option *Back up the playlists and favourites of
+this player* of each player says whether it is a source.
+
+To bring them back, run **BluOS Companion: Restore the favourites from the file** for a player. It **only adds**:
+favourites the player has already are left alone and nothing is ever removed. The player keeps only the songs its
+library knows, so the result tells how many favourites were `added`, how many were `already` there, and lists the
+ones that are `not_found` (for example after you moved your music: change the beginning of the song files in the
+`.json` file, like for the playlists, and run it again).
+
 ## Importing playlists from Apple Music
 
 If you build your playlists in **Apple Music** (or iTunes) and your music is on the share the player reads, you
@@ -111,7 +126,8 @@ data:
 
 - Only the entries the player can find are saved. Old playlists may hold entries for files that were moved or
   deleted; the player does not list them, so they cannot be saved (nor can they be played).
-- Only the **saved playlists** of the players are covered, not the queue, the presets or the favourites.
+- Only the **saved playlists** and the **favourites of the library** are covered, not the queue, the presets or the
+  favourites of the streaming services (TuneIn, Deezer...).
 - The import reads `.m3u8` files with the folders `Artist/Album/File` of Apple Music and iTunes. Another way to organise
   the music works if you give `source_path` and `library_path`.
 - The files contain the names of your tracks and the paths of your music: treat them like any file of your

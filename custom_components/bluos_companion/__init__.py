@@ -28,6 +28,7 @@ from .panel import (
     async_register_static_path,
     async_remove_panel,
 )
+from .favourites_backup import async_backup_favourites, async_restore_favourites
 from .playlist_backup import async_backup_playlists, async_restore_playlists
 from .playlist_import import async_import_playlists
 from .websocket_api import async_setup_websocket_api
@@ -82,6 +83,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             call.data["replace"],
         )
 
+    async def backup_favourites(call: ServiceCall) -> dict[str, dict[str, int]]:
+        """Save the favourites as a file, as before every Home Assistant backup."""
+        return {"favourites": await async_backup_favourites(hass)}
+
+    async def restore_favourites(call: ServiceCall) -> dict[str, object]:
+        """Add the favourites of the file that a player does not have."""
+        return await async_restore_favourites(hass, loaded_entry(call.data["entity_id"]))
+
     async def import_playlists(call: ServiceCall) -> dict[str, object]:
         """Bring playlists exported from another music player to a player."""
         return await async_import_playlists(
@@ -131,6 +140,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 vol.Optional("replace", default=False): bool,
             }
         ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "backup_favourites",
+        backup_favourites,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "restore_favourites",
+        restore_favourites,
+        schema=vol.Schema({vol.Required("entity_id"): cv.entity_id}),
         supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
