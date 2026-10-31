@@ -14,6 +14,7 @@ REQUEST_TIMEOUT = 20
 MAX_BROWSE_PAGES = 8
 MAX_EMPTY_BROWSE_PAGES = 60
 MAX_PLAYLIST_PAGES = 2000
+LIBRARY_ALBUMS_KEY = "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic"
 HOME_ROWS = ("mostUsed", "recent-stations", "recent")
 UI_HEADERS = {"x-sovi-schema-version": "35", "x-sovi-ui-schema-version": "7"}
 MAX_QUEUE_LENGTH = 500
@@ -32,6 +33,7 @@ class PlayerInfo:
     mac: str
     model: str
     brand: str
+    version: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -376,6 +378,7 @@ class BluOSClient:
             mac=mac,
             model=root.get("modelName", ""),
             brand=root.get("brand", ""),
+            version=root.get("version", ""),
         )
 
     async def async_get_sync_status(self) -> SyncStatus:
@@ -590,6 +593,18 @@ class BluOSClient:
             Album.from_names(album.findtext("alb", ""), album.findtext("art", ""))
             for album in root.iter("album")
         ]
+
+    async def async_get_library_albums(self) -> list[Album]:
+        """Return every album of the library, section by section (A, B, ... #)."""
+        albums: dict[Album, None] = {}
+        for section in await self.async_browse(LIBRARY_ALBUMS_KEY):
+            root = await self._get_xml(
+                "/Albums", {"service": "LocalMusic", "section": section.title}
+            )
+            for album in root.iter("album"):
+                if title := album.findtext("title"):
+                    albums.setdefault(Album.from_names(title, album.findtext("art", "")), None)
+        return list(albums)
 
     async def async_get_tracks(self, album_key: str) -> list[Track]:
         """Return the tracks of an album."""

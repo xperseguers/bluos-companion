@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import voluptuous as vol
@@ -16,7 +17,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
-from .api import BluOSClient
+from .api import BluOSClient, BluOSError
 from .const import CONF_PORT, DOMAIN, ICONS_URL
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .http import BluOSArtworkView
@@ -41,6 +42,9 @@ PLATFORMS = [
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Serve the browse icons and the artwork proxy."""
     await hass.http.async_register_static_paths(
@@ -55,9 +59,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         """Save the playlists as text files, as before every Home Assistant backup."""
         return {"playlists": await async_backup_playlists(hass)}
 
-    async def restore_playlists(call: ServiceCall) -> dict[str, object]:
-        """Rebuild playlists on a player from the text files."""
-        entity = er.async_get(hass).async_get(call.data["entity_id"])
+    def loaded_entry(entity_id: str) -> BluOSConfigEntry:
+        """Return the config entry of the player an entity belongs to."""
+        entity = er.async_get(hass).async_get(entity_id)
         entry = (
             hass.config_entries.async_get_entry(entity.config_entry_id)
             if entity and entity.config_entry_id
@@ -65,9 +69,27 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         )
         if entry is None or entry.domain != DOMAIN or entry.state is not ConfigEntryState.LOADED:
             raise HomeAssistantError("Choose a BluOS Companion player")
+        return entry
+
+    async def restore_playlists(call: ServiceCall) -> dict[str, object]:
+        """Rebuild playlists on a player from the text files."""
         return await async_restore_playlists(
-            hass, entry, call.data.get("playlists"), call.data["replace"]
+            hass,
+            loaded_entry(call.data["entity_id"]),
+            call.data.get("playlists"),
+            call.data["replace"],
         )
+
+    async def check_covers(call: ServiceCall) -> dict[str, object]:
+        """List the albums whose cover is too large for the player to show."""
+        check = await loaded_entry(call.data["entity_id"]).runtime_data.async_check_covers()
+        return {
+            "checked": check.checked,
+            "unreadable_covers": check.errors,
+            "too_large": [
+                {"artist": album.artist, "album": album.title} for album in check.too_large
+            ],
+        }
 
     hass.services.async_register(
         DOMAIN,
@@ -88,6 +110,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         ),
         supports_response=SupportsResponse.OPTIONAL,
     )
+    hass.services.async_register(
+        DOMAIN,
+        "check_covers",
+        check_covers,
+        schema=vol.Schema({vol.Required("entity_id"): cv.entity_id}),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
     return True
 
 
@@ -99,6 +128,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> boo
     coordinator = BluOSCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
+    await _async_register_device(hass, entry, client)
     # Not every player has settings, and none is needed to play: never block the setup
     await coordinator.settings.async_refresh()
 
@@ -108,6 +138,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> boo
         hass, coordinator.async_long_poll(), "bluos_companion_long_poll"
     )
     return True
+
+
+async def _async_register_device(
+    hass: HomeAssistant, entry: BluOSConfigEntry, client: BluOSClient
+) -> None:
+    """Describe the device with what the player reports (brand, model, firmware, MAC)."""
+    try:
+        info = await client.async_get_player_info()
+    except BluOSError as err:
+        _LOGGER.debug("Cannot read the identity of %s: %s", entry.title, err)
+        return
+    mac = dr.format_mac(info.mac)
+    dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, entry.unique_id or entry.entry_id)},
+        connections={(dr.CONNECTION_NETWORK_MAC, mac)},
+        name=entry.title,
+        manufacturer=info.brand or None,
+        model=info.model or None,
+        sw_version=info.version or None,
+        configuration_url=f"http://{entry.data[CONF_HOST]}",
+    )
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> bool:

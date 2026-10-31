@@ -28,12 +28,22 @@ class BluOSButtonDescription(ButtonEntityDescription):
     press_fn: Callable[[BluOSCoordinator], Awaitable[None]]
 
 
+async def _start_cover_check(coordinator: BluOSCoordinator) -> None:
+    coordinator.async_start_cover_check()
+
+
 BUTTONS = (
     BluOSButtonDescription(
         key="reindex",
         translation_key="reindex",
         entity_category=EntityCategory.CONFIG,
         press_fn=lambda coordinator: coordinator.async_reindex(),
+    ),
+    BluOSButtonDescription(
+        key="check_covers",
+        translation_key="check_covers",
+        entity_category=EntityCategory.CONFIG,
+        press_fn=_start_cover_check,
     ),
     BluOSButtonDescription(
         key="restart",

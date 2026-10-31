@@ -19,7 +19,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.translation import async_get_translations
 
-from .api import Album, BluOSError, Node
+from .api import LIBRARY_ALBUMS_KEY, Album, BluOSError, Node
 from .const import DOMAIN, ICONS_URL
 from .coordinator import BluOSConfigEntry
 from .covers import async_playlist_covers
@@ -34,7 +34,7 @@ STATION_PATH = re.compile(
 
 LIBRARY = {
     "artists": "LocalMusic:bySection:Artist/%2Flibrary%2Fv1%2FArtists%3Fservice=LocalMusic",
-    "albums": "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic",
+    "albums": LIBRARY_ALBUMS_KEY,
     "songs": "LocalMusic:bySection:Song/%2Flibrary%2Fv1%2FSongs%3Fall=1&service=LocalMusic",
     "genres": "LocalMusic:GG/Genres",
     "playlists": "BluOS:",

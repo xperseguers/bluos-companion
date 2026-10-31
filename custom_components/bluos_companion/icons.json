@@ -8,11 +8,17 @@
     "button": {
       "reindex": {
         "default": "mdi:database-refresh"
+      },
+      "check_covers": {
+        "default": "mdi:image-search"
       }
     },
     "sensor": {
       "library_tracks": {
         "default": "mdi:music-box-multiple"
+      },
+      "covers_too_large": {
+        "default": "mdi:image-broken-variant"
       }
     }
   },
@@ -22,6 +28,9 @@
     },
     "restore_playlists": {
       "service": "mdi:backup-restore"
+    },
+    "check_covers": {
+      "service": "mdi:image-search"
     }
   }
 }

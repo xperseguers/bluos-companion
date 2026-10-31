@@ -68,11 +68,17 @@
     "button": {
       "reindex": {
         "name": "Reindex music library"
+      },
+      "check_covers": {
+        "name": "Check album covers"
       }
     },
     "sensor": {
       "library_tracks": {
         "name": "Tracks in library"
+      },
+      "covers_too_large": {
+        "name": "Covers too large"
       }
     }
   },
@@ -154,6 +160,16 @@
         "replace": {
           "name": "Replace existing playlists",
           "description": "Replace a playlist that has the same name. Off by default."
+        }
+      }
+    },
+    "check_covers": {
+      "name": "Check the album covers",
+      "description": "Reads the cover of every album of the music library and lists those that are heavier than the player accepts (600 KB): the player shows a placeholder for them. It takes a minute or two for a big library. The sensor Covers too large keeps the count of the last check.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player whose library is checked."
         }
       }
     }

@@ -16,3 +16,12 @@ restore_playlists:
       default: false
       selector:
         boolean:
+
+check_covers:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player

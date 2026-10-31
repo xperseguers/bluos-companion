@@ -68,11 +68,17 @@
     "button": {
       "reindex": {
         "name": "Musikbibliothek neu indizieren"
+      },
+      "check_covers": {
+        "name": "Albumcover prüfen"
       }
     },
     "sensor": {
       "library_tracks": {
         "name": "Titel in der Bibliothek"
+      },
+      "covers_too_large": {
+        "name": "Zu große Cover"
       }
     }
   },
@@ -154,6 +160,16 @@
         "replace": {
           "name": "Vorhandene Wiedergabelisten ersetzen",
           "description": "Ersetzt eine Wiedergabeliste mit gleichem Namen. Standardmäßig aus."
+        }
+      }
+    },
+    "check_covers": {
+      "name": "Albumcover prüfen",
+      "description": "Liest das Cover jedes Albums der Musikbibliothek und listet die auf, die schwerer sind als der Player akzeptiert (600 KB): Der Player zeigt dafür ein Ersatzbild. Bei einer großen Bibliothek dauert das ein bis zwei Minuten. Der Sensor Zu große Cover behält die Anzahl der letzten Prüfung.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, dessen Bibliothek geprüft wird."
         }
       }
     }

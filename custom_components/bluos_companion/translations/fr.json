@@ -68,11 +68,17 @@
     "button": {
       "reindex": {
         "name": "Réindexer la bibliothèque musicale"
+      },
+      "check_covers": {
+        "name": "Vérifier les pochettes"
       }
     },
     "sensor": {
       "library_tracks": {
         "name": "Pistes dans la bibliothèque"
+      },
+      "covers_too_large": {
+        "name": "Pochettes trop lourdes"
       }
     }
   },
@@ -154,6 +160,16 @@
         "replace": {
           "name": "Remplacer les listes existantes",
           "description": "Remplace une liste portant le même nom. Désactivé par défaut."
+        }
+      }
+    },
+    "check_covers": {
+      "name": "Vérifier les pochettes des albums",
+      "description": "Lit la pochette de chaque album de la bibliothèque musicale et liste celles qui sont plus lourdes que ce que le lecteur accepte (600 Ko) : le lecteur affiche une image de remplacement. Cela prend une à deux minutes pour une grande bibliothèque. Le capteur Pochettes trop lourdes garde le nombre du dernier contrôle.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur dont la bibliothèque est vérifiée."
         }
       }
     }

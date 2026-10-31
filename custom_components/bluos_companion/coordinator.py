@@ -13,6 +13,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import BluOSClient, BluOSError, Source, Status, SyncStatus
+from .cover_check import CoverCheck, async_check_covers
 from .settings import BluOSSettingsCoordinator
 from .const import (
     CONF_MAX_VOLUME,
@@ -47,6 +48,8 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         self._sync_stat: str | None = None
         # Cover (player path) of the first track of a playlist, with the time it was read.
         self.playlist_covers: dict[str, tuple[float, str | None]] = {}
+        self.cover_check: CoverCheck | None = None
+        self.checking_covers = False
 
     @property
     def max_volume(self) -> int:
@@ -103,16 +106,56 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
                 return
         raise HomeAssistantError(f"Unknown source: {name}")
 
+    def _library_owner(self) -> BluOSCoordinator:
+        """Return the player that holds the library: a player grouped under another one has none."""
+        if self.sync is not None and self.sync.master is not None:
+            primary = self._coordinator_of(self.sync.master.host)
+            if primary is None:
+                raise HomeAssistantError("The primary player of the group is not configured")
+            return primary
+        return self
+
+    def _begin_cover_check(self) -> None:
+        if self.checking_covers:
+            raise HomeAssistantError("The covers are already being checked")
+        self.checking_covers = True
+        self.async_update_listeners()
+
+    async def _async_run_cover_check(self) -> CoverCheck:
+        try:
+            try:
+                self.cover_check = await async_check_covers(self._library_owner().client)
+            except BluOSError as err:
+                raise HomeAssistantError(f"BluOS player error: {err}") from err
+        finally:
+            self.checking_covers = False
+            self.async_update_listeners()
+        return self.cover_check
+
+    async def async_check_covers(self) -> CoverCheck:
+        """Look for the covers the player does not show because they are too large."""
+        self._begin_cover_check()
+        return await self._async_run_cover_check()
+
+    def async_start_cover_check(self) -> None:
+        """Check the covers in the background, the sensor shows the result."""
+        self._begin_cover_check()
+        self.config_entry.async_create_background_task(
+            self.hass, self._async_log_cover_check(), f"{DOMAIN} cover check"
+        )
+
+    async def _async_log_cover_check(self) -> None:
+        try:
+            await self._async_run_cover_check()
+        except HomeAssistantError as err:
+            _LOGGER.warning("Checking the covers of %s failed: %s", self.config_entry.title, err)
+
     async def async_reindex(self) -> None:
         """Start reading the library and follow the scan closely until it is over.
 
         A player grouped under another one does not read the library: the primary does.
         """
-        primary = self
-        if self.sync is not None and self.sync.master is not None:
-            primary = self._coordinator_of(self.sync.master.host)
-            if primary is None:
-                raise HomeAssistantError("The primary player of the group is not configured")
+        primary = self._library_owner()
         await primary.client.async_reindex()
         for coordinator in {self, primary}:
             coordinator.config_entry.async_create_background_task(

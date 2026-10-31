@@ -95,8 +95,6 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.unique_id or entry.entry_id)},
             name=entry.title,
-            manufacturer="BluOS",
-            configuration_url=f"http://{entry.data[CONF_HOST]}",
         )
         self._position_updated_at: datetime | None = None
 

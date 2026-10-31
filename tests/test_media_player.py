@@ -27,6 +27,7 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.const import (
     ATTR_ENTITY_ID,
+    CONF_HOST,
     SERVICE_MEDIA_NEXT_TRACK,
     SERVICE_MEDIA_PAUSE,
     SERVICE_MEDIA_PLAY,
@@ -41,6 +42,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
@@ -354,3 +356,15 @@ async def test_set_volume_is_limited_to_the_maximum(
         blocking=True,
     )
     assert calls(player_api) == [("/Volume", {"level": "40"})]
+
+
+async def test_device_describes_the_player(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """The device carries what the player reports, and a link to its web page."""
+    (device,) = dr.async_entries_for_config_entry(
+        dr.async_get(hass), init_integration.entry_id
+    )
+    assert (device.manufacturer, device.model) == ("NAD", "C368")
+    assert device.configuration_url == f"http://{init_integration.data[CONF_HOST]}"
+    assert (dr.CONNECTION_NETWORK_MAC, init_integration.unique_id) in device.connections
