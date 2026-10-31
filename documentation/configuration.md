@@ -69,7 +69,8 @@ Switching an amplifier on or off is not possible with this integration.
 Use the standard `media_player.join` and `media_player.unjoin` actions, or the group screen of the sidebar
 player. The group is shown in the `group_members` attribute (the primary player first). Only the primary
 player of a group can add or remove players: the integration takes care of that. The volume of each
-player of a group and the volume of the group are available in the sidebar player.
+player of a group and the volume of the group are available in the sidebar player. The media player of a secondary
+player shows **its own** volume and mute, not the group's.
 
 Starting music on any player of a group (the sidebar player, `media_player.play_media`, voice or AI) plays it for
 the **whole group**, whether you name the leader or a member. To play on one player alone, ungroup it first.

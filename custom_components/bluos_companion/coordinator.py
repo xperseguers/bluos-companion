@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import BluOSClient, BluOSError, Source, Status, SyncStatus
+from .api import BluOSClient, BluOSError, Source, Status, SyncStatus, VolumeState
 from .amplifier import BluOSAmplifier
 from .cover_check import CoverCheck, async_check_covers
 from .settings import BluOSSettingsCoordinator
@@ -25,6 +25,7 @@ from .const import (
     LONG_POLL_TIMEOUT,
     MIN_POLL_INTERVAL,
     RETRY_INTERVAL,
+    VOLUME_IDLE_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,8 +52,29 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         self.playlist_covers: dict[str, tuple[float, str | None]] = {}
         self.cover_check: CoverCheck | None = None
         self.checking_covers = False
+        # Own volume and mute of a secondary player, whose /Status carries the group's
+        self.own_volume: VolumeState | None = None
         # The amplifier the player is built into, if it answers on its control port
         self.amplifier: BluOSAmplifier | None = None
+
+    @property
+    def is_secondary(self) -> bool:
+        """Return whether the player follows another one."""
+        return self.sync is not None and self.sync.master is not None
+
+    @property
+    def volume_level(self) -> int:
+        """Return the own volume of the player (0..100, -1 if fixed), not the group's."""
+        if self.is_secondary and self.own_volume is not None:
+            return self.own_volume.level
+        return self.data.volume
+
+    @property
+    def is_muted(self) -> bool:
+        """Return whether the player itself is muted, not the group."""
+        if self.is_secondary and self.own_volume is not None:
+            return self.own_volume.muted
+        return self.data.muted
 
     @property
     def max_volume(self) -> int:
@@ -208,6 +230,31 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
             _LOGGER.debug("Could not list the inputs: %s", err)
 
     async def async_long_poll(self) -> None:
+        """Push status and own volume changes as the player reports them."""
+        await asyncio.gather(self._async_poll_status(), self._async_poll_volume())
+
+    async def _async_poll_volume(self) -> None:
+        """Follow the own volume and mute of a secondary player, whose /Status shows the group's."""
+        while True:
+            if not self.is_secondary:
+                if self.own_volume is not None:
+                    self.own_volume = None
+                    self.async_update_listeners()
+                await asyncio.sleep(VOLUME_IDLE_INTERVAL)
+                continue
+            etag = self.own_volume.etag if self.own_volume else None
+            try:
+                volume = await self.client.async_poll_volume(etag, LONG_POLL_TIMEOUT)
+            except BluOSError as err:
+                _LOGGER.debug("Volume poll failed: %s", err)
+                await asyncio.sleep(RETRY_INTERVAL)
+                continue
+            if volume != self.own_volume:
+                self.own_volume = volume
+                self.async_update_listeners()
+            await asyncio.sleep(MIN_POLL_INTERVAL)
+
+    async def _async_poll_status(self) -> None:
         """Push status changes as the player reports them."""
         while True:
             etag = self.data.etag if self.data else None

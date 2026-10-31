@@ -110,13 +110,13 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
     @property
     def volume_level(self) -> float | None:
         """Return the volume, None when the player has a fixed volume."""
-        volume = self.coordinator.data.volume
+        volume = self.coordinator.volume_level
         return volume / 100 if volume >= 0 else None
 
     @property
     def is_volume_muted(self) -> bool:
         """Return whether the player is muted."""
-        return self.coordinator.data.muted
+        return self.coordinator.is_muted
 
     @property
     def shuffle(self) -> bool:

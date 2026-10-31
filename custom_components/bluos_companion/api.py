@@ -92,6 +92,15 @@ class ExternalSource:
 
 
 @dataclass(frozen=True, slots=True)
+class VolumeState:
+    """The own volume (0..100, -1 if fixed) and mute state of a player."""
+
+    level: int
+    muted: bool
+    etag: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class SyncStatus:
     """Group and input information of a player."""
 
@@ -766,13 +775,25 @@ class BluOSClient:
         """Set the volume, 0..100."""
         await self.async_command("/Volume", {"level": str(level)})
 
-    async def async_get_volume(self) -> tuple[int, bool]:
-        """Return the own volume of the player (0..100, -1 if fixed) and its mute state.
+    async def async_poll_volume(
+        self, etag: str | None = None, long_poll_timeout: int | None = None
+    ) -> VolumeState:
+        """Return the own volume and mute state of the player, optionally waiting for a change.
 
-        In a group, /Status of a secondary player reports the volume of the group.
+        In a group, /Status of a secondary player reports the volume and mute state of the group.
         """
-        root = await self._get_xml("/Volume")
-        return _int(root.text, -1), root.get("mute") == "1"
+        params: dict[str, str] = {}
+        timeout: float = REQUEST_TIMEOUT
+        if etag is not None and long_poll_timeout is not None:
+            params = {"timeout": str(long_poll_timeout), "etag": etag}
+            timeout = long_poll_timeout + REQUEST_TIMEOUT
+        root = await self._get_xml("/Volume", params, timeout)
+        return VolumeState(_int(root.text, -1), root.get("mute") == "1", root.get("etag"))
+
+    async def async_get_volume(self) -> tuple[int, bool]:
+        """Return the own volume of the player (0..100, -1 if fixed) and its mute state."""
+        volume = await self.async_poll_volume()
+        return volume.level, volume.muted
 
     async def async_step_volume(self, delta_db: int, group: bool = False) -> None:
         """Change the volume by a number of dB, of the whole group if asked."""

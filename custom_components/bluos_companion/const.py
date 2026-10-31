@@ -11,6 +11,8 @@ DEFAULT_PORT = 11000
 LONG_POLL_TIMEOUT = 100
 MIN_POLL_INTERVAL = 1
 RETRY_INTERVAL = 15
+# How often a player that is not a secondary looks whether it became one
+VOLUME_IDLE_INTERVAL = 5
 # While the player reads its library: how often the scan is looked at, and how long to wait for it to start
 INDEXING_POLL_INTERVAL = 1
 INDEXING_START_TIMEOUT = 30

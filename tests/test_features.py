@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 from unittest.mock import AsyncMock, patch
 
+import aiohttp
 import pytest
 from homeassistant.components.media_player import (
     ATTR_GROUP_MEMBERS,
@@ -904,3 +906,66 @@ async def test_library_tracks_keep_the_last_count(
         await _refresh(hass, init_integration, player_api, status_xml(indexing=counter))
         state = hass.states.get(entity_id)
         assert (state.state, state.attributes["indexing"]) == (expected_state, expected_progress)
+
+
+VOLUME_SLEEP = "custom_components.bluos_companion.coordinator.asyncio.sleep"
+
+
+async def test_volume_poll_state(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """The own volume, mute and etag of a player are read, waiting for a change if asked."""
+    aioclient_mock.get(
+        f"{BASE}/Volume", text='<volume db="-40" mute="1" etag="v1">18</volume>'
+    )
+
+    assert await client.async_get_volume() == (18, True)
+    state = await client.async_poll_volume("v1", 100)
+    assert (state.level, state.muted, state.etag) == (18, True, "v1")
+    assert calls(aioclient_mock) == [
+        ("/Volume", {}),
+        ("/Volume", {"timeout": "100", "etag": "v1"}),
+    ]
+
+
+async def test_a_secondary_shows_its_own_volume_and_mute(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """/Status of a secondary carries the group's volume and mute, the entity shows its own."""
+    _group(init_integration, pulse)
+    respond(player_api, f"{OTHER_BASE}/Volume", text='<volume db="-40" mute="1" etag="v1">18</volume>')
+    # The status of the group: volume 25, not muted
+    assert hass.states.get("media_player.pulse").attributes["volume_level"] == 0.25
+
+    with patch(VOLUME_SLEEP, AsyncMock(side_effect=asyncio.CancelledError)):
+        with pytest.raises(asyncio.CancelledError):
+            await pulse.runtime_data._async_poll_volume()  # noqa: SLF001
+    await hass.async_block_till_done()
+
+    state = hass.states.get("media_player.pulse")
+    assert state.attributes["volume_level"] == 0.18
+    assert state.attributes["is_volume_muted"] is True
+
+    # Back alone, it shows what /Status says again
+    pulse.runtime_data.sync = SyncStatus("G", None, (), None)
+    with patch(VOLUME_SLEEP, AsyncMock(side_effect=asyncio.CancelledError)):
+        with pytest.raises(asyncio.CancelledError):
+            await pulse.runtime_data._async_poll_volume()  # noqa: SLF001
+    await hass.async_block_till_done()
+    state = hass.states.get("media_player.pulse")
+    assert state.attributes["volume_level"] == 0.25
+    assert state.attributes["is_volume_muted"] is False
+
+
+async def test_the_primary_is_not_affected(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    pulse: MockConfigEntry,
+) -> None:
+    """The primary keeps the volume of /Status."""
+    _group(init_integration, pulse)
+    coordinator = init_integration.runtime_data
+    assert (coordinator.volume_level, coordinator.is_muted) == (25, False)

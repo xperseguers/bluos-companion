@@ -30,7 +30,7 @@ async def test_long_poll_pushes_changes(
 
     with patch(SLEEP, AsyncMock(side_effect=asyncio.CancelledError)):
         with pytest.raises(asyncio.CancelledError):
-            await coordinator.async_long_poll()
+            await coordinator._async_poll_status()  # noqa: SLF001
 
     assert calls(player_api) == [
         ("/Status", {"timeout": str(LONG_POLL_TIMEOUT), "etag": "e1"})
@@ -50,7 +50,7 @@ async def test_long_poll_marks_unavailable_on_error(
 
     with patch(SLEEP, AsyncMock(side_effect=asyncio.CancelledError)) as sleep:
         with pytest.raises(asyncio.CancelledError):
-            await coordinator.async_long_poll()
+            await coordinator._async_poll_status()  # noqa: SLF001
 
     assert coordinator.last_update_success is False
     sleep.assert_awaited_once_with(15)
