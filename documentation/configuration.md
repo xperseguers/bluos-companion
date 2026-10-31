@@ -62,7 +62,7 @@ module, for example) lists the inputs of the amplifier (TV, Phono, CD...) and it
 streamer lists only its own (Bluetooth, HDMI ARC...). When a name exists twice (the Bluetooth of the module
 and the Bluetooth of the amplifier), the module's one is called *Bluetooth (BluOS)*.
 
-Switching an amplifier on or off is not possible with this integration.
+The power of the amplifier (and its speaker outputs) are separate switches, see above.
 
 ### Groups
 
