@@ -79,6 +79,14 @@ folder of your Home Assistant configuration (next to `configuration.yaml`) and r
 | [How it was tested](documentation/how-it-was-tested.md) | tested devices, automated tests, what is not tested |
 | [Development](documentation/development.md) | run it, test it, contribute |
 
+## Support the project
+
+BluOS Companion is free and developed in spare time. If it is useful to you, you can support its development with
+[GitHub Sponsors](https://github.com/sponsors/xperseguers) or a [PayPal donation](https://www.paypal.me/xperseguers/10).
+Reporting what works (and what does not) on your player, with its model and firmware, in an
+[issue](https://github.com/xperseguers/bluos-companion/issues) helps just as much: only a few devices could be
+tested, see [How it was tested](documentation/how-it-was-tested.md).
+
 ## License
 
 Apache License 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). Copyright 2026 Xavier Perseguers.
