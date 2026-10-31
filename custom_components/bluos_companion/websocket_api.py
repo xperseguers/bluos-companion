@@ -127,7 +127,7 @@ def _snapshot(
         "preset_name": status.preset_name,
         "max_volume": coordinator.max_volume,
         # None for a player that is not built into an amplifier we can switch
-        "power": coordinator.amplifier.data if coordinator.amplifier else None,
+        "power": coordinator.amplifier.data.power if coordinator.amplifier else None,
         "sources": coordinator.source_names,
         "source": coordinator.active_source,
         "group": {
@@ -258,7 +258,7 @@ async def ws_control(
     elif msg["action"] == "power":
         if coordinator.amplifier is None:
             raise HomeAssistantError("This player has no amplifier to switch")
-        await coordinator.amplifier.async_set_power(bool(value))
+        await coordinator.amplifier.async_set("power", bool(value))
     else:
         await _async_call(
             CONTROLS[msg["action"]](

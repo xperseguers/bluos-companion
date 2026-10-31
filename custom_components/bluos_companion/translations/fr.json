@@ -82,6 +82,12 @@
       }
     },
     "switch": {
+      "amplifier_speaker_a": {
+        "name": "Enceintes A"
+      },
+      "amplifier_speaker_b": {
+        "name": "Enceintes B"
+      },
       "amplifier_power": {
         "name": "Alimentation de l'amplificateur"
       }

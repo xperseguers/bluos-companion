@@ -24,6 +24,12 @@
     "switch": {
       "amplifier_power": {
         "default": "mdi:power"
+      },
+      "amplifier_speaker_a": {
+        "default": "mdi:speaker"
+      },
+      "amplifier_speaker_b": {
+        "default": "mdi:speaker"
       }
     }
   },

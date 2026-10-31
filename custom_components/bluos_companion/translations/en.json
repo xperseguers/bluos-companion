@@ -82,6 +82,12 @@
       }
     },
     "switch": {
+      "amplifier_speaker_a": {
+        "name": "Speaker A"
+      },
+      "amplifier_speaker_b": {
+        "name": "Speaker B"
+      },
       "amplifier_power": {
         "name": "Amplifier power"
       }

@@ -31,12 +31,15 @@ is still recommended.
   [voice and AI](voice-and-ai.md)). It shows the title, artist, album, cover and position.
 - A **sleep timer** select entity (off, 15, 30, 45, 60 or 90 minutes).
 - An **Amplifier power** switch, for a player built into an amplifier that accepts network control (the NAD
-  C368 with its BluOS module, for example): on, or off for standby. Nothing to configure, the amplifier is
-  looked for at the address of the player when the integration starts, and a player that is not built into
-  one has no such switch. Switching on takes about six seconds. The player itself stays reachable while the
-  amplifier is in standby, and starting playback wakes the amplifier by itself. The volume, mute and inputs
-  are those of the player and need no other integration. The switch replaces the old Home Assistant
-  *NAD* integration for this purpose: you can remove that one if you only used it to switch the amplifier.
+  C368 with its BluOS module, for example): on, or off for standby. A **Speaker A** and a **Speaker B** switch
+  (configuration entities) turn the speaker outputs on and off, only for the outputs the amplifier reports.
+  There is nothing to configure: the amplifier is looked for at the address of the player when the integration
+  starts, and a player that is not built into one has no such switch. Switching on takes about six seconds.
+  The player itself stays reachable while the amplifier is in standby, and starting playback wakes the
+  amplifier by itself. Volume, mute and inputs are not duplicated on purpose: the amplifier and its BluOS
+  module share them, so the player's own controls are the amplifier's. The switches replace the old Home
+  Assistant *NAD* integration: you can remove that one if you only used it to switch the amplifier (a volume
+  window in dB that you set there is not reproduced, use the *Maximum volume* option).
 - A **Tracks in library** sensor: the player only counts its tracks while it reads the library, so the sensor keeps
   the last count (empty until a first reindex) and shows the running count in its `indexing` attribute during a scan. The scan is followed closely only when started
   with the reindex button below; a scan started elsewhere (the BluOS app) is checked every 100 seconds or so and may be
