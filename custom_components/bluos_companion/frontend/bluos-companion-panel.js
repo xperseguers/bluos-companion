@@ -321,6 +321,22 @@ const STYLE = `
   .list-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .list-controls button { border-radius: 20px; padding: 6px 14px; gap: 8px; font: inherit; border: 1px solid var(--divider-color); background: var(--card-background-color); }
   .list-controls select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
+  .shortcuts { display: flex; gap: 8px; overflow-x: auto; padding: 2px; }
+  .shortcut {
+    flex: 0 0 auto;
+    width: 88px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 4px;
+    border-radius: 12px;
+    font: inherit;
+    font-size: 13px;
+    text-align: center;
+    --mdc-icon-size: 40px;
+  }
+  .shortcut img { width: 56px; height: 56px; border-radius: 12px; }
   .info-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .info-row { display: flex; justify-content: space-between; gap: 16px; }
   .info-row span:first-child { color: var(--secondary-text-color); }
@@ -2130,6 +2146,53 @@ class BluOSCompanionPanel extends HTMLElement {
     this._renderBrowse();
   }
 
+  // A card with a row of tiles to scroll sideways, and View all when there is more behind
+  _rowCard(title, items, viewAll) {
+    const head = el("div", { class: "lsec-head" }, el("h3", { onclick: viewAll }, title));
+    const scroller = el("div", { class: "hscroll" }, ...items.map((item) => this._tile(item)));
+    const scrollBy = (direction) => scroller.scrollBy({ left: direction * scroller.clientWidth * 0.8, behavior: "smooth" });
+    head.append(
+      el("button", { class: "arrow", onclick: () => scrollBy(-1) }, icon("mdi:chevron-left")),
+      el("button", { class: "arrow", onclick: () => scrollBy(1) }, icon("mdi:chevron-right")),
+    );
+    if (viewAll) head.append(el("button", { class: "viewall", onclick: viewAll }, this._t("view_all")));
+    return el("section", { class: "lsec" }, head, scroller);
+  }
+
+  // The start page: rows to scroll (the presets, what was played...) and a row of shortcuts into the library
+  _renderHome() {
+    const root = el("div", { class: "landing" });
+    for (const group of this._groups[0] && this._groups[0].kind ? this._groups : []) {
+      if (!group.items.length) continue;
+      if (group.kind === "library") {
+        root.append(
+          el(
+            "div",
+            { class: "shortcuts" },
+            ...group.items.map((item) =>
+              el(
+                "button",
+                { class: "shortcut", onclick: () => this._open(item) },
+                item.image ? el("img", { src: item.image, alt: "" }) : icon("mdi:folder-music"),
+                el("span", {}, item.title),
+              ),
+            ),
+          ),
+        );
+        continue;
+      }
+      const view = group.view_all;
+      const viewAll = view
+        ? () => {
+            if (view.sort) this._remember(ALBUM_SORT_KEY, view.sort);
+            this._open({ title: view.title, browse_key: view.key, type: "link" });
+          }
+        : null;
+      root.append(this._rowCard(group.title, group.items, viewAll));
+    }
+    this._grid.append(root);
+  }
+
   // A few albums (a row to scroll), a few songs or artists, and View all for the whole lists
   _renderLanding(level) {
     if (this._landing === null) {
@@ -2153,24 +2216,14 @@ class BluOSCompanionPanel extends HTMLElement {
         root.append(card);
         continue;
       }
-      const head = el("div", { class: "lsec-head" }, el("h3", { onclick: open }, section.title));
       if (section.kind === "albums") {
-        const scroller = el("div", { class: "hscroll" });
-        this._appendItems(section.items, level, scroller);
-        const grid = scroller.querySelector(".grid");
-        if (grid) scroller.replaceChildren(...grid.children);
-        const scrollBy = (direction) => scroller.scrollBy({ left: direction * scroller.clientWidth * 0.8, behavior: "smooth" });
-        head.append(
-          el("button", { class: "arrow", onclick: () => scrollBy(-1) }, icon("mdi:chevron-left")),
-          el("button", { class: "arrow", onclick: () => scrollBy(1) }, icon("mdi:chevron-right")),
-        );
-        head.append(el("button", { class: "viewall", onclick: open }, this._t("view_all")));
-        card.append(head, scroller);
-      } else {
-        head.append(el("button", { class: "viewall", onclick: open }, this._t("view_all")));
-        card.append(head);
-        this._appendItems(section.items, level, card);
+        root.append(this._rowCard(section.title, section.items, open));
+        continue;
       }
+      const head = el("div", { class: "lsec-head" }, el("h3", { onclick: open }, section.title));
+      head.append(el("button", { class: "viewall", onclick: open }, this._t("view_all")));
+      card.append(head);
+      this._appendItems(section.items, level, card);
       root.append(card);
     }
     this._grid.append(root);
@@ -2597,7 +2650,9 @@ class BluOSCompanionPanel extends HTMLElement {
       if (albums) this._grid.append(this._listControls(level));
       // The other sorts need the albums of the whole library (if the player does not give them, the letters stay)
       const sort = level && level.key === ALBUMS_KEY && this._albumsData !== false ? this._preference(ALBUM_SORT_KEY, ALBUM_SORTS, "az") : "az";
-      if (this._isLandingLevel(level)) {
+      if (!level && this._groups[0] && this._groups[0].kind) {
+        this._renderHome();
+      } else if (this._isLandingLevel(level)) {
         this._renderLanding(level);
       } else if (letters && sort !== "az") {
         const data = this._albumsData;
