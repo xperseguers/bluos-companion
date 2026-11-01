@@ -12,13 +12,17 @@ It only shows BluOS Companion players, not the other media players of Home Assis
 
 Always visible, for the player you chose:
 
-- the cover, the title and the artist. **Tap the title** to go to the album or the artist page of the
-  playing track (for tracks of your library)
-- previous / play-pause / next, shuffle and repeat, volume and mute
-- the **player button**: it shows the player (or the group, "Kitchen + Living room"). It opens the list
-  of players, to choose where the music plays and to group players
-- a button for the **queue**, a button for the **full-screen view**, and a button to **move the
-  playback** to another player (only shown while the player is playing)
+- the cover, the title and the artist. **Tap them** to open the full-screen view
+- previous / play-pause / next, the **time played and left** (with a slider to move in the track), a button for the
+  **queue**
+- the **volume**, as a ring that shows the level: tap it and the bar turns into a slider with mute, **−** and **+**,
+  then comes back by itself after a few seconds
+- a **⋮ menu** with the **player** (it shows the player, or the group "Kitchen + Living room", and opens the list
+  of players, to choose where the music plays and to group them), **move playback** (only while the player is
+  playing) and the **input** and **sleep timer** of the player
+
+On a phone the bar is more compact: cover, title, play-pause, volume and the ⋮ menu (which also has the queue), and a
+thin line along its top edge shows the progress.
 
 ## Home page
 
@@ -40,17 +44,16 @@ Presets belong to a player: a player without presets has no presets row.
 - **Albums and artists** open on a page with **Play now, Shuffle, Add next, Add last** (the
   actions the player offers). Every tile has a **⋮** menu with the same actions, and a play button on albums.
 - **Favourites**: albums, artists and songs of your library also offer **Add to favourites** (or **Remove from
-  favourites** when they are one), on their page and in their **⋮** menu. For the **track that is playing**, tap
-  its title in the bar: next to *go to the album* and *go to the artist* you find the same action, so there is no
-  extra button on the screen. The favourites are the player's own, you
+  favourites** when they are one), on their page and in their **⋮** menu. For the **track that is playing**, use
+  the heart in the full-screen view. The favourites are the player's own, you
   find them under **Favourites** in the library, in the BluOS app and on every player (they are shared). Removing
   from the *Favourites* list of the BluOS app works as well.
 - **Playlists** open to their tracks. Tap a track to play it and carry on with the rest of the playlist.
   Entries the player cannot find anymore (moved files) are not listed.
 - **Search** (the field at the top): searches the source you are in, the library from the home page.
   Results are grouped (artists, albums, songs...).
-- Tap a track in the bar, in a queue row's ⋮ menu or in a song result's ⋮ menu to jump to its **album page** or
-  **artist page**.
+- Use the ⋮ menu next to the title in the full-screen view, in a queue row's ⋮ menu or in a song result's ⋮ menu
+  to jump to its **album page** or **artist page**.
 
 ![An album page](images/panel-album.jpg)
 
@@ -59,20 +62,21 @@ Presets belong to a player: a player without presets has no presets row.
 ## The queue
 
 The queue button opens the tracks of the current queue, the playing one highlighted. Tap a track to
-play it; use ⋮ to move it up or down; the cross removes it. **Clear** empties the queue and **Save as
-playlist** keeps it under a name.
+play it; use ⋮ to move it up or down; the cross removes it. **Shuffle** and **Repeat** (off, all, one track) are
+here, since they belong to a queue, not to a single track. **Clear** empties the queue and **Save** keeps it as a
+playlist under a name.
 
 ![The queue](images/panel-queue.jpg)
 
 ## Players, groups and moving music
 
-- The **player button** lists the players, with what each one plays and its group. Choosing one makes it
+- The **player** row of the ⋮ menu lists the players, with what each one plays and its group. Choosing one makes it
   the target of everything you do in the panel.
 - **Group players**: switch players on or off in the group of the current one. Each member has its own
   volume (slider, − and +), and the group has a volume (− and +, in steps that keep the balance) and a
   mute. **Ungroup all** dissolves the group.
-- **Move playback** sends what a player is playing (queue and position) to another player, which starts
-  it right away while the first pauses. It is only offered for a player that is playing.
+- **Move playback** (in the ⋮ menu) sends what a player is playing (queue and position) to another player, which
+  starts it right away while the first pauses. It is only offered for a player that is playing.
 
 ![Choosing the player](images/panel-players.jpg)
 
@@ -80,8 +84,13 @@ playlist** keeps it under a name.
 
 ## Full-screen view
 
-For a wall tablet: a big cover, the transport buttons, the position and the volume, plus the **input** of the
-player (Bluetooth, TV...) and the **sleep timer**.
+Tap the cover or the title in the bar. The background is the cover itself, blurred. From top to bottom: a big
+cover, the title and the artist with a **heart** (add to or remove from the favourites, for tracks of your library)
+and a **⋮** menu (favourite, go to the album, go to the artist), the position and the time left, previous /
+play-pause / next, and a bottom row with the **volume ring** and the **queue** button. The queue replaces the cover, with
+shuffle, repeat, clear and save, and the title and the controls stay in place. On a phone a ⋮ menu in the top corner,
+and on a tablet an icon next to the queue button, give the **player**, **move playback**, the **input** (Bluetooth,
+TV...) and the **sleep timer**.
 
 ![The full-screen view](images/panel-fullscreen.jpg)
 
