@@ -96,6 +96,7 @@ const STYLE = `
     --secondary-background-color: rgba(255, 255, 255, 0.15);
   }
   dialog.now.has-art input[type="range"] { accent-color: #fff; }
+  dialog.now.has-art button.on { color: #fff; }
   dialog.now.has-art button:focus-visible { outline: 2px solid #fff; }
   dialog.now.has-art select { background: rgba(255, 255, 255, 0.18); color: #fff; border: none; }
   dialog.now.has-art select option { color: initial; }
@@ -118,8 +119,10 @@ const STYLE = `
     border-radius: 12px;
     background: var(--secondary-background-color);
   }
-  .now .title { font-size: 24px; font-weight: 500; text-align: center; }
-  .now .sub { color: var(--secondary-text-color); text-align: center; }
+  .now .meta { display: flex; align-items: center; gap: 4px; max-width: 640px; width: 100%; }
+  .now .meta .text { flex: 1; min-width: 0; }
+  .now .title { font-size: 24px; font-weight: 500; }
+  .now .sub { color: var(--secondary-text-color); }
   .now .line { align-self: stretch; display: flex; align-items: center; justify-content: center; gap: 8px; max-width: 640px; width: 100%; margin: 0 auto; }
   .now .line input[type="range"] { flex: 1; min-width: 0; }
   .now .big { --mdc-icon-size: 40px; }
@@ -583,6 +586,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   async _jump(kind, names) {
+    if (this._nowDialog.open) this._nowDialog.close();
     const found = await this._call({
       type: "bluos_companion/locate",
       entry_id: this._playerId,
@@ -1229,6 +1233,16 @@ class BluOSCompanionPanel extends HTMLElement {
       max: 100,
       onchange: (event) => this._control("volume", Number(event.target.value)),
     });
+    now.favourite = el(
+      "button",
+      { title: this._t("favourite_add"), onclick: () => this._toggleNowFavourite() },
+      icon("mdi:heart-outline"),
+    );
+    now.dots = el(
+      "button",
+      { title: this._t("more"), onclick: () => this._showPlaying() },
+      icon("mdi:dots-horizontal"),
+    );
     now.volumeRow = el("div", { class: "line" }, now.mute, now.volume, this._stepButton(-1, "phone-only"), this._stepButton(1, "phone-only"));
     now.source = el("select", { onchange: (event) => this._control("source", event.target.value) });
     now.sleep = el("select", { onchange: (event) => this._control("sleep", Number(event.target.value)) });
@@ -1263,8 +1277,13 @@ class BluOSCompanionPanel extends HTMLElement {
         el("button", { class: "phone-only", title: this._t("more"), onclick: () => this._showMore() }, icon("mdi:dots-vertical")),
       ),
       (now.artBox = el("div", { class: "art-box" }, now.art)),
-      now.title,
-      now.sub,
+      (now.meta = el(
+        "div",
+        { class: "meta" },
+        el("div", { class: "text" }, now.title, now.sub),
+        now.favourite,
+        now.dots,
+      )),
       now.progress,
       now.controls,
       now.volumeRow,
@@ -1288,6 +1307,7 @@ class BluOSCompanionPanel extends HTMLElement {
     now.move.hidden = !this._canMove(player);
     now.bg.style.backgroundImage = player.image ? `url("${player.image}")` : "";
     this._nowDialog.classList.toggle("has-art", Boolean(player.image));
+    this._refreshNowFavourite(player);
     now.title.textContent = player.title || player.name;
     now.sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
     if (player.image) {
@@ -1315,6 +1335,41 @@ class BluOSCompanionPanel extends HTMLElement {
     now.sleep.replaceChildren(...this._sleepOptions(player));
     now.sleep.value = player.sleep;
     this._tickNow();
+  }
+
+  // Whether the playing track is a favourite takes a request, made when the track changes
+  _refreshNowFavourite(player) {
+    const key = [player.entry_id, player.service, player.title, player.artist, player.album].join("|");
+    if (this._nowFavouriteKey !== key) {
+      this._nowFavouriteKey = key;
+      this._nowFavourite = null;
+      this._renderNowFavourite();
+      if (player.service === "LocalMusic" && player.title) {
+        this._call({ type: "bluos_companion/playing_favourite", entry_id: this._playerId }).then((result) => {
+          if (this._nowFavouriteKey !== key) return;
+          this._nowFavourite = result || null;
+          this._renderNowFavourite();
+        });
+      }
+    }
+  }
+
+  _renderNowFavourite() {
+    const button = this._now.favourite;
+    const favourite = this._nowFavourite;
+    button.disabled = !favourite;
+    button.classList.toggle("on", Boolean(favourite && favourite.on));
+    button.title = this._t(favourite && favourite.on ? "favourite_remove" : "favourite_add");
+    button.firstChild.setAttribute("icon", favourite && favourite.on ? "mdi:heart" : "mdi:heart-outline");
+  }
+
+  async _toggleNowFavourite() {
+    const favourite = this._nowFavourite;
+    const player = this._player;
+    if (!favourite || !player) return;
+    await this._runAction({ favourite: favourite.favourite, on: favourite.on }, player.title);
+    this._nowFavourite = { ...favourite, on: !favourite.on };
+    this._renderNowFavourite();
   }
 
   _tickNow() {
