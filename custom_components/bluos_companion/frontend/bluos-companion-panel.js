@@ -1361,7 +1361,7 @@ class BluOSCompanionPanel extends HTMLElement {
       "div",
       { class: "line bottom" },
       now.volRing,
-      el("button", { class: "settings-button", title: this._t("more"), onclick: () => this._showSettings() }, icon("mdi:tune-variant")),
+      el("button", { class: "settings-button", title: this._t("more"), onclick: () => this._showMore() }, icon("mdi:tune-variant")),
       now.queueButton,
     );
     now.queueModes = this._queueModeButtons();
@@ -1396,16 +1396,6 @@ class BluOSCompanionPanel extends HTMLElement {
         { class: "top" },
         el("button", { onclick: () => this._nowDialog.close() }, icon("mdi:close")),
         now.player,
-        (now.move = el(
-          "button",
-          {
-            onclick: () => {
-              this._nowDialog.close();
-              this._showMove();
-            },
-          },
-          icon("mdi:transfer-right"),
-        )),
         el("button", { class: "phone-only", title: this._t("more"), onclick: () => this._showMore() }, icon("mdi:dots-vertical")),
       ),
       (now.artBox = el("div", { class: "art-box" }, now.art)),
@@ -1439,7 +1429,6 @@ class BluOSCompanionPanel extends HTMLElement {
     if (!this._nowOpen || !player) return;
     const playing = ACTIVE_STATES.includes(player.state);
     now.player.textContent = this._groupName(player) || player.name;
-    now.move.hidden = !this._canMove(player);
     if (imageKey(player.image) !== now.imageKey) {
       now.imageKey = imageKey(player.image);
       now.bg.style.backgroundImage = player.image ? `url("${player.image}")` : "";
@@ -1588,38 +1577,26 @@ class BluOSCompanionPanel extends HTMLElement {
     return rows;
   }
 
-  _showSettings() {
-    const player = this._player;
-    if (!player) return;
-    this._dialogMode = "more";
-    this._dialog.replaceChildren(el("h2", {}, this._t("more")), el("div", { class: "list more-list" }, ...this._settingRows(player)));
-    if (!this._dialog.open) this._dialog.showModal();
-  }
-
-  // What the compact bar and the full screen view on a phone leave out
+  // What the bars leave out: the queue, the player, moving the playback, the input and the sleep timer
   _showMore() {
     const player = this._player;
     if (!player) return;
-    const leave = () => {
-      this._dialog.close();
-      if (this._nowDialog.open) this._nowDialog.close();
-    };
     const row = (name, iconName, onclick, on = false) =>
       el("button", { class: `action${on ? " on" : ""}`, onclick }, icon(iconName), name);
     const list = el(
       "div",
       { class: "list more-list" },
-      row(this._t("queue"), "mdi:playlist-music", () => {
-        if (this._nowDialog.open) {
-          this._dialog.close();
-          this._setNowQueue(true);
-          return;
-        }
-        leave();
-        if (!this._inQueue) this._toggleQueue();
-      }),
       row(this._groupName(player) || player.name, "mdi:speaker-multiple", () => this._showPlayers()),
     );
+    // The full screen view has its own queue button
+    if (!this._nowDialog.open) {
+      list.prepend(
+        row(this._t("queue"), "mdi:playlist-music", () => {
+          this._dialog.close();
+          if (!this._inQueue) this._toggleQueue();
+        }),
+      );
+    }
     if (this._canMove(player)) list.append(row(this._t("move_playback"), "mdi:transfer-right", () => this._showMove()));
     list.append(...this._settingRows(player));
     this._dialogMode = "more";
