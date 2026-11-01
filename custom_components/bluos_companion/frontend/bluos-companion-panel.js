@@ -705,11 +705,13 @@ class BluOSCompanionPanel extends HTMLElement {
 
   async _jump(kind, names) {
     if (this._nowDialog.open) this._nowDialog.close();
+    // The album is found with the artist of the album, which is not always the one of the track
+    const artist = kind === "album" ? names.albumArtist || names.artist : names.artist;
     const found = await this._call({
       type: "bluos_companion/locate",
       entry_id: this._playerId,
       ...(names.album ? { album: names.album } : {}),
-      ...(names.artist ? { artist: names.artist } : {}),
+      ...(artist ? { artist } : {}),
     });
     if (!found) return;
     const level = (page) => ({ title: page.title, key: page.browse_key, contextKey: page.context_key });
@@ -780,7 +782,7 @@ class BluOSCompanionPanel extends HTMLElement {
       ...ordered.map((action) => this._actionButton(action, title, close)),
       ...extra,
       ...this._gotoButtons(names),
-      info
+      info && this._infoRows(info).length
         ? el("button", { class: "action", onclick: () => this._showInfo(options) }, icon("mdi:information-outline"), this._t("info"))
         : null,
     );
@@ -789,15 +791,18 @@ class BluOSCompanionPanel extends HTMLElement {
     return list;
   }
 
-  // What the panel knows of an item, from the lists
-  _showInfo(options) {
-    const info = options.info;
-    const rows = [
+  _infoRows(info) {
+    return [
       [this._t("info_artist"), info.artist],
       [this._t("info_album"), info.album],
       [this._t("info_duration"), info.duration ? formatTime(info.duration) : null],
       [this._t("info_tracks"), info.tracks ? String(info.tracks) : null],
     ].filter(([, value]) => value);
+  }
+
+  // What the panel knows of an item, from the lists
+  _showInfo(options) {
+    const rows = this._infoRows(options.info);
     this._dialog.replaceChildren(
       el("h2", {}, options.title),
       el(
@@ -838,12 +843,19 @@ class BluOSCompanionPanel extends HTMLElement {
   async _showActions(item) {
     const actions = item.context_key ? await this._actions(item.context_key) : [];
     const level = this._stack[this._stack.length - 1];
-    // Songs read "Artist \u2022 Album"; on the page of an album they are the album's
-    let [artist, album] = item.type === "track" ? (item.subtitle || "").split(" \u2022 ") : [];
-    if (item.type === "track" && !album && level && level.type === "album") [artist, album] = [level.subtitle, level.title];
+    // A song of a list reads "Artist \u2022 Album", or "Artist \u2022 Album artist \u2022 Album" in the results of a
+    // search; the key of its menu has the album and the artist of the album, which find the album page
+    const parts = item.type === "track" ? (item.subtitle || "").split(" \u2022 ") : [];
+    const keyed = new URLSearchParams((item.context_key || "").split("?")[1] || "");
+    let artist = parts.length ? parts[0] : null;
+    let album = parts.length > 1 ? parts[parts.length - 1] : null;
+    let albumArtist = keyed.get("album") ? keyed.get("artist") : null;
+    if (keyed.get("album")) album = keyed.get("album");
+    if (item.type === "track" && !album && level && level.type === "album") [artist, album, albumArtist] = [level.subtitle, level.title, level.subtitle];
     if (item.type === "album") artist = item.subtitle;
     const names = {};
     if (item.type === "track" && album) names.album = album;
+    if (albumArtist) names.albumArtist = albumArtist;
     if (artist) names.artist = artist;
     const onAlbum = Boolean(level && level.type === "album");
     this._itemMenu({
