@@ -137,6 +137,8 @@ const STYLE = `
   .now .sub { color: var(--secondary-text-color); }
   .now .line { align-self: stretch; display: flex; align-items: center; justify-content: center; gap: 8px; max-width: 640px; width: 100%; margin: 0 auto; }
   .now .line input[type="range"] { flex: 1; min-width: 0; }
+  .now .time { min-width: 3.2em; font-variant-numeric: tabular-nums; }
+  .now .time:last-child { text-align: right; }
   .now .big { --mdc-icon-size: 40px; }
   .now select { font: inherit; padding: 8px; border-radius: 8px; max-width: 45%; }
   dialog .group-row { display: flex; flex-direction: column; gap: 4px; }
@@ -1272,8 +1274,8 @@ class BluOSCompanionPanel extends HTMLElement {
     now.art = el("div", { class: "art" });
     now.title = el("div", { class: "title" });
     now.sub = el("div", { class: "sub" });
-    now.elapsed = el("span");
-    now.total = el("span");
+    now.elapsed = el("span", { class: "time" });
+    now.total = el("span", { class: "time" });
     now.seek = el("input", {
       type: "range",
       min: 0,
@@ -1281,8 +1283,9 @@ class BluOSCompanionPanel extends HTMLElement {
       step: 1,
       value: 0,
       onchange: (event) => this._control("seek", Number(event.target.value)),
-      oninput: () => {
+      oninput: (event) => {
         this._nowSeeking = true;
+        this._showNowTimes(Number(event.target.value));
       },
     });
     now.progress = el("div", { class: "line" }, now.elapsed, now.seek, now.total);
@@ -1450,8 +1453,15 @@ class BluOSCompanionPanel extends HTMLElement {
     if (ACTIVE_STATES.includes(player.state)) position += (Date.now() - this._receivedAt) / 1000;
     position = Math.min(position, player.duration);
     now.seek.value = position;
-    now.elapsed.textContent = formatTime(position);
-    now.total.textContent = formatTime(player.duration);
+    this._showNowTimes(position);
+  }
+
+  // The time played and the time left of the track
+  _showNowTimes(position) {
+    const player = this._player;
+    if (!player || !(player.duration > 0)) return;
+    this._now.elapsed.textContent = formatTime(position);
+    this._now.total.textContent = `\u2212${formatTime(player.duration - position)}`;
   }
 
   _isPhone() {
