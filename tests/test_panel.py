@@ -1218,7 +1218,8 @@ async def test_albums_of_the_library_come_with_their_year_and_tracks(
     assert result["recent"] == [["Abbey Road", "The Beatles"]]
 
 
-def test_a_cover_of_a_list_is_asked_at_its_size(hass: HomeAssistant) -> None:
+@pytest.mark.usefixtures("init_integration")
+async def test_a_cover_of_a_list_is_asked_at_its_size(hass: HomeAssistant) -> None:
     """The covers of the lists are asked of the player at the width they show, the others as they are."""
     from custom_components.bluos_companion.http import THUMB_WIDTH, async_artwork_url
 
