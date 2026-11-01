@@ -13,6 +13,8 @@ from .const import CARD_ELEMENT, PANEL_ELEMENT, PANEL_PATH, PANEL_URL
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 MODULE = f"{PANEL_ELEMENT}.js"
 CARD_MODULES = (f"{CARD_ELEMENT}.js", "bluos-companion-player-card.js")
+# The cards load this one themselves, with their own version
+CARD_SHARED = ("bluos-companion-card-controls.js",)
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
@@ -34,8 +36,9 @@ async def async_register_panel(hass: HomeAssistant) -> None:
 
 def async_register_card(hass: HomeAssistant) -> None:
     """Load the dashboard cards in the frontend, so they show in the card picker."""
+    # One version for all, as a changed shared file must reload the cards
+    version = max(int((FRONTEND_DIR / module).stat().st_mtime) for module in (*CARD_MODULES, *CARD_SHARED))
     for module in CARD_MODULES:
-        version = int((FRONTEND_DIR / module).stat().st_mtime)
         frontend.add_extra_js_url(hass, f"{PANEL_URL}/{module}?v={version}")
 
 

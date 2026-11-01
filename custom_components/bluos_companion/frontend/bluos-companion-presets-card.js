@@ -1,7 +1,12 @@
 /* BluOS Companion presets card: the presets of a player as a grid of artworks, with
- * input selection, volume and play / pause. Plain JavaScript, no build step. */
+ * volume, input selection, power and play / pause. Plain JavaScript, no build step. */
 
-const CARD_STYLE = `
+// The shared controls come with the version of this file, so that a changed file is not cached
+const { createControls, CONTROLS_STYLE } = await import(
+  new URL(`./bluos-companion-card-controls.js${new URL(import.meta.url).search}`, import.meta.url)
+);
+
+const CARD_STYLE = CONTROLS_STYLE + `
   [hidden] { display: none !important; }
   ha-card { overflow: hidden; }
   .grid { display: grid; gap: 8px; padding: 12px; }
@@ -31,29 +36,7 @@ const CARD_STYLE = `
     overflow-wrap: anywhere;
   }
   .message { padding: 16px; color: var(--secondary-text-color); text-align: center; }
-  footer { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
-  .row { display: flex; align-items: center; gap: 8px; min-height: 40px; }
-  .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  select {
-    font: inherit;
-    max-width: 45%;
-    border: none;
-    background: none;
-    color: var(--primary-text-color);
-  }
-  button.icon {
-    border: none;
-    background: none;
-    color: var(--primary-text-color);
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 50%;
-    display: inline-flex;
-    --mdc-icon-size: 24px;
-  }
-  button.icon:disabled { opacity: 0.4; cursor: default; }
-  button.icon.on { color: var(--primary-color); }
-  input[type="range"] { flex: 1; accent-color: var(--primary-color); min-width: 0; }
+  footer { padding: 4px 12px 12px; }
 `;
 
 const ACTIVE_STATES = ["play", "stream"];
@@ -111,7 +94,15 @@ class BluOSCompanionPresetsCard extends HTMLElement {
         this._render();
         if (this.isConnected) this._subscribe();
       });
+    } else if (this._controls && this._usesOtherEntities()) {
+      this._renderFooter();
     }
+  }
+
+  // The volume, the input or the power can be those of another entity: follow its states
+  _usesOtherEntities() {
+    const { volume_entity: volume, source_entity: source, power_entity: power } = this._config;
+    return Boolean(volume || source || power);
   }
 
   // The texts come from the integration, in the language of the user (English if unknown).
@@ -174,6 +165,10 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     this._render();
   }
 
+  _notify(message) {
+    this.dispatchEvent(new CustomEvent("hass-notification", { detail: { message }, bubbles: true, composed: true }));
+  }
+
   _call(message) {
     return this._hass.connection.sendMessagePromise({ entry_id: this._player.entry_id, ...message }).catch((err) => {
       this.dispatchEvent(
@@ -197,45 +192,16 @@ class BluOSCompanionPresetsCard extends HTMLElement {
   _build() {
     this._grid = el("div", { class: "grid" });
     this._message = el("div", { class: "message" });
-    this._name = el("span", { class: "name" });
-    this._source = el("select", { onchange: (event) => this._control("source", event.target.value) });
-    this._mute = el("button", { class: "icon", onclick: () => this._control("mute", !this._player.muted) }, icon("mdi:volume-high"));
-    this._volume = el("input", {
-      type: "range",
-      min: 0,
-      max: 100,
-      onchange: (event) => this._control("volume", Number(event.target.value)),
-    });
     this._toggle = el(
       "button",
       {
-        class: "icon",
+        class: "ctl",
         onclick: () => this._control(ACTIVE_STATES.includes(this._player.state) ? "pause" : "play"),
       },
       icon("mdi:play"),
     );
-    // Switching an amplifier on takes a few seconds: the button waits for the answer
-    this._power = el(
-      "button",
-      {
-        class: "icon",
-        onclick: async () => {
-          this._power.disabled = true;
-          try {
-            await this._control("power", !this._player.power);
-          } finally {
-            this._power.disabled = false;
-          }
-        },
-      },
-      icon("mdi:power"),
-    );
-    this._footer = el(
-      "footer",
-      {},
-      el("div", { class: "row" }, icon("mdi:speaker"), this._name, this._source, this._power),
-      el("div", { class: "row" }, this._mute, this._volume, this._toggle),
-    );
+    this._controls = createControls(this, [this._toggle]);
+    this._footer = el("footer", {}, this._controls.row, this._controls.dialog);
     this.shadowRoot.replaceChildren(
       el("style", {}, CARD_STYLE),
       el("ha-card", {}, this._grid, this._message, this._footer),
@@ -257,29 +223,19 @@ class BluOSCompanionPresetsCard extends HTMLElement {
         : "";
     this._message.hidden = !this._message.textContent;
 
-    this._footer.hidden = !player || this._config.show_footer === false;
-    if (!player) return;
-    this._name.textContent = player.name;
-    this._source.hidden = !player.sources.length;
-    this._source.replaceChildren(
-      el("option", { value: "" }, this._t("input")),
-      ...player.sources.map((name) => {
-        const option = el("option", { value: name }, name);
-        option.selected = name === player.source;
-        return option;
-      }),
-    );
-    this._source.firstChild.disabled = true;
-    this._source.firstChild.hidden = true;
-    this._source.value = player.source || "";
-    this._power.hidden = !(this._config.show_power === true && typeof player.power === "boolean");
-    this._power.title = this._t("power");
-    this._power.classList.toggle("on", player.power === true);
-    this._mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
-    this._volume.disabled = player.volume < 0;
-    this._volume.max = player.max_volume;
-    this._volume.value = Math.max(player.volume, 0);
+    this._renderFooter();
+  }
+
+  _renderFooter() {
+    const player = this._player;
+    if (!player) {
+      this._footer.hidden = true;
+      return;
+    }
+    this._toggle.hidden = this._config.show_playback === false;
     this._toggle.firstChild.setAttribute("icon", ACTIVE_STATES.includes(player.state) ? "mdi:pause" : "mdi:play");
+    const visible = this._controls.update();
+    this._footer.hidden = this._config.show_footer === false || !visible;
   }
 
   // The stream URL of a station is the URL of its preset (or its start); the name is the
@@ -341,15 +297,31 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
     return text;
   }
 
+  _schema() {
+    return [
+      { name: "entity", required: true, selector: { entity: { domain: "media_player", integration: "bluos_companion" } } },
+      { name: "columns", selector: { number: { min: 1, max: 8, mode: "box" } } },
+      { name: "show_footer", selector: { boolean: {} } },
+      { name: "show_volume", selector: { boolean: {} } },
+      { name: "show_playback", selector: { boolean: {} } },
+      { name: "show_input", selector: { boolean: {} } },
+      { name: "show_power", selector: { boolean: {} } },
+      {
+        type: "expandable",
+        name: "other_entities",
+        title: this._t("editor_other_entities"),
+        schema: [
+          { name: "volume_entity", selector: { entity: { domain: "media_player" } } },
+          { name: "source_entity", selector: { entity: { domain: "media_player" } } },
+          { name: "power_entity", selector: { entity: { domain: ["media_player", "switch", "input_boolean"] } } },
+        ],
+      },
+    ];
+  }
+
   _render() {
     if (!this._form) {
       this._form = document.createElement("ha-form");
-      this._form.schema = [
-        { name: "entity", required: true, selector: { entity: { domain: "media_player", integration: "bluos_companion" } } },
-        { name: "columns", selector: { number: { min: 1, max: 8, mode: "box" } } },
-        { name: "show_footer", selector: { boolean: {} } },
-        { name: "show_power", selector: { boolean: {} } },
-      ];
       this._form.addEventListener("value-changed", (event) => {
         this.dispatchEvent(
           new CustomEvent("config-changed", { detail: { config: event.detail.value }, bubbles: true, composed: true }),
@@ -361,11 +333,26 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
       entity: "editor_player",
       columns: "editor_columns",
       show_footer: "editor_show_footer",
+      show_volume: "editor_show_volume",
+      show_playback: "editor_show_playback",
+      show_input: "editor_show_input",
       show_power: "editor_show_power",
+      volume_entity: "editor_volume_entity",
+      source_entity: "editor_source_entity",
+      power_entity: "editor_power_entity",
     };
     this._form.computeLabel = (schema) => this._t(labels[schema.name] || schema.name);
+    this._form.schema = this._schema();
     this._form.hass = this._hass;
-    this._form.data = { columns: 3, show_footer: true, show_power: false, ...this._config };
+    this._form.data = {
+      columns: 3,
+      show_footer: true,
+      show_volume: true,
+      show_playback: true,
+      show_input: true,
+      show_power: false,
+      ...this._config,
+    };
   }
 }
 

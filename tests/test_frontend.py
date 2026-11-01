@@ -25,6 +25,8 @@ def test_properties_do_not_hide_methods(script: Path) -> None:
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is not installed")
 @pytest.mark.parametrize("script", SCRIPTS, ids=lambda path: path.name)
-def test_scripts_have_no_syntax_error(script: Path) -> None:
-    """Every script parses."""
-    subprocess.run(["node", "--check", str(script)], check=True, capture_output=True)
+def test_scripts_have_no_syntax_error(script: Path, tmp_path: Path) -> None:
+    """Every script parses as a module (the browser loads them that way)."""
+    module = tmp_path / f"{script.stem}.mjs"
+    module.write_text(script.read_text())
+    subprocess.run(["node", "--check", str(module)], check=True, capture_output=True)
