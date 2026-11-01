@@ -1172,3 +1172,42 @@ async def test_landing_gives_the_first_entries_of_each_list_of_a_genre(
     assert [item["title"] for item in sections[2]["items"]] == ["Abbey Road"]
     assert sections[3]["items"] == []
     assert sections[2]["browse_key"] == "LocalMusic:bySection:Album/albums"
+
+
+async def test_albums_of_the_library_come_with_their_year_and_tracks(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """Every album of the library is listed with its year and number of tracks."""
+    respond(
+        player_api,
+        browse_url("LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic"),
+        text='<browse type="sections"><item browseKey="s" text="A" text2="1" type="section"/></browse>',
+    )
+    respond(
+        player_api,
+        f"{BASE}/Albums?service=LocalMusic&section=A",
+        text='<albums id="7"><sections><section name="A"><album tracks="12" date="2001"><title>Abbey Road</title><art>The Beatles</art></album></section></sections></albums>',
+    )
+    respond(
+        player_api,
+        f"{BASE}/Albums?service=LocalMusic&recent=1",
+        text="<albums><album><alb>Abbey Road</alb><art>The Beatles</art></album></albums>",
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/albums", "entry_id": init_integration.entry_id}
+    )
+    result = (await client.receive_json())["result"]
+
+    [album] = result["albums"]
+    assert (album["title"], album["subtitle"], album["year"], album["tracks"]) == (
+        "Abbey Road",
+        "The Beatles",
+        2001,
+        12,
+    )
+    assert album["browse_key"].startswith("LocalMusic:MG/LocalMusic-Album?")
+    assert result["recent"] == [["Abbey Road", "The Beatles"]]

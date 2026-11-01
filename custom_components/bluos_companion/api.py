@@ -193,11 +193,15 @@ class Album:
     title: str
     artist: str
     query: str
+    year: int | None = None
+    tracks: int | None = None
 
     @classmethod
-    def from_names(cls, title: str, artist: str) -> Album:
+    def from_names(
+        cls, title: str, artist: str, year: int | None = None, tracks: int | None = None
+    ) -> Album:
         """Build an album from its title and artist."""
-        return cls(title, artist, urlencode({"album": title, "artist": artist}))
+        return cls(title, artist, urlencode({"album": title, "artist": artist}), year, tracks)
 
     @property
     def browse_key(self) -> str:
@@ -432,6 +436,8 @@ class BluOSClient:
         self._session = session
         self._host = host
         self.base_url = f"http://{host}:{port}"
+        # The albums of the library, kept while the library does not change
+        self._albums_cache: tuple[str, list[Album]] | None = None
 
     async def _get(
         self,
@@ -741,16 +747,35 @@ class BluOSClient:
         ]
 
     async def async_get_library_albums(self) -> list[Album]:
-        """Return every album of the library, section by section (A, B, ... #)."""
+        """Return every album of the library, section by section (A, B, ... #).
+
+        The albums come with their year and number of tracks. The answer is kept
+        while the library does not change (the player numbers its versions).
+        """
         albums: dict[Album, None] = {}
-        for section in await self.async_browse(LIBRARY_ALBUMS_KEY):
+        for index, section in enumerate(await self.async_browse(LIBRARY_ALBUMS_KEY)):
             root = await self._get_xml(
                 "/Albums", {"service": "LocalMusic", "section": section.title}
             )
+            if index == 0:
+                version = root.get("id")
+                if version and self._albums_cache and self._albums_cache[0] == version:
+                    return list(self._albums_cache[1])
             for album in root.iter("album"):
                 if title := album.findtext("title"):
-                    albums.setdefault(Album.from_names(title, album.findtext("art", "")), None)
-        return list(albums)
+                    found = Album.from_names(
+                        title,
+                        album.findtext("art", ""),
+                        _int(album.get("date")) or None,
+                        _int(album.get("tracks")) or None,
+                    )
+                    albums.setdefault(found, None)
+            if index == 0 and version:
+                self._albums_cache = (version, [])
+        result = list(albums)
+        if self._albums_cache is not None:
+            self._albums_cache = (self._albums_cache[0], result)
+        return result
 
     async def async_get_tracks(self, album_key: str) -> list[Track]:
         """Return the tracks of an album."""

@@ -61,6 +61,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_browse)
     websocket_api.async_register_command(hass, ws_search)
     websocket_api.async_register_command(hass, ws_landing)
+    websocket_api.async_register_command(hass, ws_albums)
     websocket_api.async_register_command(hass, ws_actions)
     websocket_api.async_register_command(hass, ws_group)
     websocket_api.async_register_command(hass, ws_translations)
@@ -411,6 +412,41 @@ async def ws_landing(
             }
         )
     connection.send_result(msg["id"], {"sections": sections})
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "bluos_companion/albums", vol.Required("entry_id"): str}
+)
+@websocket_api.async_response
+async def ws_albums(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return every album of the library, with its year and track count, to sort and group them."""
+    entry_id = msg["entry_id"]
+    client = _coordinator(hass, entry_id).client
+    albums = await _async_call(client.async_get_library_albums())
+    recent = await _async_call(client.async_get_recent_albums())
+    connection.send_result(
+        msg["id"],
+        {
+            "albums": [
+                {
+                    "type": "album",
+                    "title": album.title,
+                    "subtitle": album.artist,
+                    "year": album.year,
+                    "tracks": album.tracks,
+                    "image": async_artwork_url(hass, entry_id, album.image),
+                    "browse_key": album.browse_key,
+                    "play_path": album.play_path,
+                    "context_key": album.context_key,
+                }
+                for album in albums
+            ],
+            # The latest albums, newest first, by their title and artist
+            "recent": [[album.title, album.artist] for album in recent],
+        },
+    )
 
 
 @websocket_api.websocket_command(

@@ -287,6 +287,9 @@ const STYLE = `
   .lsec .lrow:last-child { border-bottom: none; }
   .hscroll { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 2px 8px; }
   .hscroll .tile { flex: 0 0 150px; scroll-snap-align: start; }
+  .list-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .list-controls button { border-radius: 20px; padding: 6px 14px; gap: 8px; font: inherit; border: 1px solid var(--divider-color); background: var(--card-background-color); }
+  .list-controls select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
   .info-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .info-row { display: flex; justify-content: space-between; gap: 16px; }
   .info-row span:first-child { color: var(--secondary-text-color); }
@@ -500,6 +503,10 @@ const REPEAT_CYCLE = { 2: 0, 0: 1, 1: 2 }; // off -> queue -> track -> off
 const ACTIVE_STATES = ["play", "stream"];
 const INITIALS_FROM = 40; // a list this long gets a bar of first letters
 const STORAGE_KEY = "bluos_companion_player";
+const DISPLAY_KEY = "bluos_companion_display"; // the lists of albums: list or grid
+const ALBUM_SORT_KEY = "bluos_companion_album_sort";
+const ALBUMS_KEY = "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic"; // all the albums
+const ALBUM_SORTS = ["az", "recent", "year", "decade", "artist", "artist_year"];
 const DEFAULT_SEARCH_KEY = "LocalMusic:Search"; // the library, used at the root
 
 // The signed URL of an image changes with every state update: compare what it points to
@@ -947,6 +954,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (token !== this._browseToken) return;
     this._groups = groups;
     this._landing = null;
+    if (level && level.key === ALBUMS_KEY) this._albumsData = null; // the library may have changed
     this._renderBrowse();
     this._main.scrollTop = 0;
     this._loadPlaylistCovers();
@@ -1950,7 +1958,7 @@ class BluOSCompanionPanel extends HTMLElement {
     let rows = null;
     let grid = null;
     for (const item of items) {
-      if (ROW_TYPES.includes(item.type)) {
+      if (ROW_TYPES.includes(item.type) || (item.type === "album" && this._albumRows)) {
         grid = null;
         if (!rows) target.append((rows = el("div", { class: "rows" })));
         rows.append(this._row(item, album));
@@ -1970,7 +1978,12 @@ class BluOSCompanionPanel extends HTMLElement {
       const found = /^(\d+)\.\s+(.*)$/.exec(title);
       if (found) [, number, title] = found;
     }
-    const withCover = !album && item.type === "track";
+    // An album also says how many tracks it has
+    const subtitle =
+      item.type === "album" && item.tracks
+        ? [item.subtitle, this._t("tracks_count", { count: item.tracks })].filter(Boolean).join(" \u2022 ")
+        : item.subtitle;
+    const withCover = !album && (item.type === "track" || item.type === "album");
     return el(
       "div",
       { class: "lrow", onclick: () => (item.browse_key ? this._open(item) : this._play(item)) },
@@ -1984,7 +1997,7 @@ class BluOSCompanionPanel extends HTMLElement {
         "div",
         { class: "text" },
         el("div", { class: "title", title }, title),
-        item.subtitle ? el("div", { class: "sub" }, item.subtitle) : null,
+        subtitle ? el("div", { class: "sub" }, subtitle) : null,
       ),
       item.duration ? el("div", { class: "time" }, formatTime(item.duration)) : null,
       item.context_key
@@ -2138,6 +2151,111 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   // A long list given in alphabetical order gets its letters too
+  _preference(key, allowed, fallback) {
+    let value = null;
+    try {
+      value = localStorage.getItem(key);
+    } catch (err) {
+      // a browser that refuses storage keeps the default
+    }
+    return allowed.includes(value) ? value : fallback;
+  }
+
+  _remember(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (err) {
+      // not kept, that is all
+    }
+  }
+
+  // Whether the page lists albums to browse (and so offers the display and the sort), not the albums of a search
+  _isAlbumList(level) {
+    if (!level || level.search || level.queue || level.type === "album" || !this._groups) return false;
+    const letters = this._sectionItems();
+    if (letters) return letters.some((item) => item.browse_key && item.browse_key.startsWith("LocalMusic:S:Album/"));
+    return this._groups.length === 1 && !this._isLandingLevel(level) && this._groups[0].items.some((item) => item.type === "album");
+  }
+
+  // Display (list or grid) and, for the whole library, the sort of a list of albums
+  _listControls(level) {
+    const display = this._preference(DISPLAY_KEY, ["list", "grid"], "list");
+    const controls = el(
+      "div",
+      { class: "list-controls" },
+      el(
+        "button",
+        {
+          onclick: () => {
+            this._remember(DISPLAY_KEY, display === "list" ? "grid" : "list");
+            this._redraw();
+          },
+        },
+        icon(display === "list" ? "mdi:view-list" : "mdi:view-grid"),
+        this._t("display_label", { mode: this._t(display === "list" ? "display_list" : "display_grid") }),
+      ),
+    );
+    if (level.key === ALBUMS_KEY) {
+      const sort = this._preference(ALBUM_SORT_KEY, ALBUM_SORTS, "az");
+      const select = el(
+        "select",
+        {
+          onchange: (event) => {
+            this._remember(ALBUM_SORT_KEY, event.target.value);
+            this._redraw();
+          },
+        },
+        ...ALBUM_SORTS.map((name) => el("option", { value: name }, this._t(`sort_${name}`))),
+      );
+      select.value = sort;
+      controls.append(select);
+    }
+    return controls;
+  }
+
+  _redraw() {
+    this._clearSectioned();
+    this._renderBrowse();
+  }
+
+  // The albums of the library sorted and grouped: by year, decade, artist...
+  _albumSections(sort, data) {
+    const plain = (text) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const byTitle = (a, b) => plain(a.title).localeCompare(plain(b.title));
+    const byYear = (a, b) => (a.year || 9999) - (b.year || 9999) || byTitle(a, b);
+    const decade = (year) => (year ? `${Math.floor(year / 10) * 10}s` : this._t("unknown_year"));
+    const groups = new Map();
+    const add = (title, strip, item) => {
+      if (!groups.has(title)) groups.set(title, { title, strip, items: [] });
+      groups.get(title).items.push(item);
+    };
+    if (sort === "recent") {
+      const known = new Map(data.albums.map((album) => [`${album.title}\u0000${album.subtitle}`, album]));
+      for (const [title, artist] of data.recent) {
+        const album = known.get(`${title}\u0000${artist}`);
+        if (album) add(this._t("sort_recent"), this._t("sort_recent"), album);
+      }
+    } else if (sort === "year" || sort === "decade") {
+      for (const album of [...data.albums].sort(byYear)) {
+        const label = decade(album.year);
+        add(sort === "year" ? String(album.year || this._t("unknown_year")) : label, label, album);
+      }
+    } else {
+      const artists = [...data.albums].sort((a, b) => plain(a.subtitle).localeCompare(plain(b.subtitle)) || (sort === "artist_year" ? byYear(a, b) : byTitle(a, b)));
+      for (const album of artists) add(album.subtitle || "?", this._initial(album.subtitle || "?"), album);
+    }
+    return [...groups.values()].map((group) => ({ ...group, count: group.items.length }));
+  }
+
+  async _loadAlbumsData() {
+    if (this._albumsLoading || !this._player) return;
+    this._albumsLoading = true;
+    const result = await this._call({ type: "bluos_companion/albums", entry_id: this._player.entry_id });
+    this._albumsLoading = false;
+    this._albumsData = result ? { entry: this._player.entry_id, ...result } : false;
+    this._redraw();
+  }
+
   _isLettered() {
     if (!this._groups || this._groups.length !== 1) return false;
     const items = this._groups[0].items;
@@ -2162,7 +2280,7 @@ class BluOSCompanionPanel extends HTMLElement {
 
   // The estimated height of the entries of a letter that is not loaded yet, so that the page has its final length
   _estimate(view, section) {
-    if (section.key && section.key.startsWith("LocalMusic:S:Album/")) {
+    if (section.key && section.key.startsWith("LocalMusic:S:Album/") && !this._albumRows) {
       const width = Math.max(150, this._main.clientWidth - 70);
       const columns = Math.max(1, Math.floor((width + 16) / 166));
       const tile = view.itemHeight || (width - (columns - 1) * 16) / columns + 70;
@@ -2203,8 +2321,14 @@ class BluOSCompanionPanel extends HTMLElement {
         view.observer.observe(section.wrap);
       }
     }
-    this._azStrip.replaceChildren(...view.sections.map((section, index) => el("div", { "data-index": index }, section.title)));
-    this._azStrip.hidden = false;
+    // The strip has one entry for the sections that share a label (the albums of a decade, the artists of a letter)
+    view.strips = [];
+    view.sections.forEach((section, index) => {
+      const label = section.strip || section.title;
+      if (!view.strips.length || view.strips[view.strips.length - 1].label !== label) view.strips.push({ label, index });
+    });
+    this._azStrip.replaceChildren(...view.strips.map((entry) => el("div", {}, entry.label)));
+    this._azStrip.hidden = view.strips.length < 2;
     this._main.classList.add("with-az");
     // A scrollbar that takes room (a mouse) must not lie under the strip
     this._browseBox.style.setProperty("--scrollbar", `${this._main.offsetWidth - this._main.clientWidth}px`);
@@ -2216,7 +2340,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._appendItems(section.items, view.level, section.body);
     section.body.style.minHeight = "";
     // A grid has no fixed height: what a loaded one measures serves for the estimate of the others
-    if (section.key && section.key.startsWith("LocalMusic:S:Album/") && section.items.length) {
+    if (section.key && section.key.startsWith("LocalMusic:S:Album/") && section.items.length && !this._albumRows) {
       const grid = section.body.querySelector(".grid");
       const rows = grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 1;
       if (grid) view.itemHeight = grid.offsetHeight / Math.ceil(section.items.length / rows) - 16;
@@ -2258,8 +2382,8 @@ class BluOSCompanionPanel extends HTMLElement {
     const view = this._sectionedView;
     if (!view) return;
     const rect = this._azStrip.getBoundingClientRect();
-    const index = Math.min(view.sections.length - 1, Math.max(0, Math.floor(((event.clientY - rect.top) / rect.height) * view.sections.length)));
-    const section = view.sections[index];
+    const entry = Math.min(view.strips.length - 1, Math.max(0, Math.floor(((event.clientY - rect.top) / rect.height) * view.strips.length)));
+    const section = view.sections[view.strips[entry].index];
     const delta = section.wrap.getBoundingClientRect().top - this._main.getBoundingClientRect().top;
     this._main.scrollTop += delta - 8;
     // The way back would hide the letter that was jumped to: it comes back with the next scroll up
@@ -2290,13 +2414,15 @@ class BluOSCompanionPanel extends HTMLElement {
       view.sections.forEach((section, index) => {
         if (section.wrap.getBoundingClientRect().top <= top) current = index;
       });
-      [...this._azStrip.children].forEach((node, index) => node.classList.toggle("current", index === current));
+      const lit = view.strips.reduce((found, entry, position) => (entry.index <= current ? position : found), 0);
+      [...this._azStrip.children].forEach((node, index) => node.classList.toggle("current", index === lit));
     });
   }
 
   _renderBrowse() {
     if (!this._built) return;
     this._albumActions = null;
+    this._albumRows = false;
     this._renderCrumbs();
     this._buttons.queue.classList.toggle("on", this._inQueue);
     // A list of letters already on screen stays, with what it has loaded
@@ -2320,8 +2446,20 @@ class BluOSCompanionPanel extends HTMLElement {
       const level = this._stack[this._stack.length - 1];
       if (level && level.type === "album") this._grid.append(this._albumHead(level));
       const letters = this._sectionItems();
+      const albums = this._isAlbumList(level);
+      this._albumRows = albums && this._preference(DISPLAY_KEY, ["list", "grid"], "list") === "list";
+      if (albums) this._grid.append(this._listControls(level));
+      // The other sorts need the albums of the whole library (if the player does not give them, the letters stay)
+      const sort = level && level.key === ALBUMS_KEY && this._albumsData !== false ? this._preference(ALBUM_SORT_KEY, ALBUM_SORTS, "az") : "az";
       if (this._isLandingLevel(level)) {
         this._renderLanding(level);
+      } else if (letters && sort !== "az") {
+        const data = this._albumsData;
+        if (data && data.entry === this._player.entry_id) this._buildSectioned("local", this._albumSections(sort, data), level);
+        else {
+          this._message.textContent = "\u2026";
+          this._loadAlbumsData();
+        }
       } else if (letters) {
         this._buildSectioned(
           "server",
