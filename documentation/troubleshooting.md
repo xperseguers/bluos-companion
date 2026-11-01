@@ -85,7 +85,7 @@ player → Reload). A streamer plugged into an amplifier has no such switch: it 
 
 ## Volume cannot go higher
 
-The **maximum volume** option of the player (Configure) limits Home Assistant, including the sliders, voice
+The **maximum volume** option of the player (the gear icon of the player in Settings → Devices & services) limits Home Assistant, including the sliders, voice
 commands and automations. Raise it, or use the BluOS app or the remote.
 
 ## Voice or AI finds nothing

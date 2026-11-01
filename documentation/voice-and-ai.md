@@ -100,8 +100,8 @@ Volume commands are different: they apply to the player you name, each player of
 ## Volume
 
 The volume commands go through the normal Home Assistant volume of the player, so the
-**maximum volume** option of the player (Settings → Devices & services → BluOS Companion →
-Configure) applies to voice and AI commands as well. The volume of the BluOS app and of the
+**maximum volume** option of the player (Settings → Devices & services → BluOS Companion, then the gear
+icon of the player) applies to voice and AI commands as well. The volume of the BluOS app and of the
 remote is not limited.
 
 ## AI conversation agents
