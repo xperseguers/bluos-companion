@@ -123,7 +123,9 @@ const STYLE = `
   dialog.now.queue-open .queue-box { display: flex; }
   dialog.now.queue-open .art-box { display: none; }
   .now .queue-list { flex: 1; min-height: 0; overflow-y: auto; }
-  .now .queue-box .actions { margin: 0 0 8px; flex: none; }
+  .now .queue-box .actions { margin: 0 0 8px; flex: none; display: grid; grid-template-columns: 1fr 1fr; }
+  .now .queue-box .actions button { width: 100%; justify-content: flex-start; padding: 6px 14px; }
+  .now .line.bottom button.on { background: rgba(127, 127, 127, 0.3); }
   .now .line.bottom { justify-content: flex-end; }
   dialog.now.has-art .qrow { background: rgba(255, 255, 255, 0.12); border-color: transparent; }
   dialog.now.has-art .qrow.current { background: rgba(255, 255, 255, 0.28); }
@@ -371,7 +373,7 @@ const STYLE = `
     .mini-bar { display: block; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--divider-color); }
     .mini-bar div { height: 100%; width: 0; background: var(--primary-color); }
     footer.vol-open .mini-bar { display: none; }
-    .now .line.settings { display: none; }
+    .now .settings-button { display: none; }
     .now .top button.phone-only { display: inline-flex; }
   }
 `;
@@ -1311,18 +1313,13 @@ class BluOSCompanionPanel extends HTMLElement {
       icon("mdi:dots-horizontal"),
     );
     now.volumeRow = el("div", { class: "line" }, now.mute, now.volume, this._stepButton(-1, "phone-only"), this._stepButton(1, "phone-only"));
-    now.source = el("select", { onchange: (event) => this._control("source", event.target.value) });
-    now.sleep = el("select", { onchange: (event) => this._control("sleep", Number(event.target.value)) });
-    now.settings = el(
-      "div",
-      { class: "line settings" },
-      icon("mdi:import"),
-      now.source,
-      icon("mdi:sleep"),
-      now.sleep,
-    );
     now.queueButton = el("button", { title: this._t("queue"), onclick: () => this._setNowQueue(!this._nowQueueOpen) }, icon("mdi:playlist-music"));
-    now.bottom = el("div", { class: "line bottom" }, now.queueButton);
+    now.bottom = el(
+      "div",
+      { class: "line bottom" },
+      el("button", { class: "settings-button", title: this._t("more"), onclick: () => this._showSettings() }, icon("mdi:tune-variant")),
+      now.queueButton,
+    );
     now.queueModes = this._queueModeButtons();
     now.queueActions = el("div", { class: "actions" }, ...this._queueActionButtons(now.queueModes));
     now.queueList = el("div", { class: "queue-list" });
@@ -1369,7 +1366,6 @@ class BluOSCompanionPanel extends HTMLElement {
       now.progress,
       now.controls,
       now.volumeRow,
-      now.settings,
       now.bottom,
     );
   }
@@ -1408,13 +1404,6 @@ class BluOSCompanionPanel extends HTMLElement {
     now.seek.disabled = !player.can_seek;
     now.seek.max = player.duration || 0;
     this._nowSeeking = false;
-    if (document.activeElement !== now.source && this.shadowRoot.activeElement !== now.source) {
-      now.source.replaceChildren(...this._sourceOptions(player));
-      now.source.value = player.source || "";
-    }
-    now.source.hidden = !player.sources.length;
-    now.sleep.replaceChildren(...this._sleepOptions(player));
-    now.sleep.value = player.sleep;
     this._tickNow();
   }
 
@@ -1513,6 +1502,28 @@ class BluOSCompanionPanel extends HTMLElement {
     );
   }
 
+  // The input and the sleep timer, as the fields of a popup
+  _settingRows(player) {
+    const rows = [];
+    if (player.sources.length) {
+      const source = el("select", { onchange: (event) => this._control("source", event.target.value) }, ...this._sourceOptions(player));
+      source.value = player.source || "";
+      rows.push(el("label", {}, this._t("input"), source));
+    }
+    const sleep = el("select", { onchange: (event) => this._control("sleep", Number(event.target.value)) }, ...this._sleepOptions(player));
+    sleep.value = player.sleep;
+    rows.push(el("label", {}, this._t("sleep_timer"), sleep));
+    return rows;
+  }
+
+  _showSettings() {
+    const player = this._player;
+    if (!player) return;
+    this._dialogMode = "more";
+    this._dialog.replaceChildren(el("h2", {}, this._t("more")), el("div", { class: "list more-list" }, ...this._settingRows(player)));
+    if (!this._dialog.open) this._dialog.showModal();
+  }
+
   // What the compact bar and the full screen view on a phone leave out
   _showMore() {
     const player = this._player;
@@ -1538,14 +1549,7 @@ class BluOSCompanionPanel extends HTMLElement {
       row(this._groupName(player) || player.name, "mdi:speaker-multiple", () => this._showPlayers()),
     );
     if (this._canMove(player)) list.append(row(this._t("move_playback"), "mdi:transfer-right", () => this._showMove()));
-    if (player.sources.length) {
-      const source = el("select", { onchange: (event) => this._control("source", event.target.value) }, ...this._sourceOptions(player));
-      source.value = player.source || "";
-      list.append(el("label", {}, this._t("input"), source));
-    }
-    const sleep = el("select", { onchange: (event) => this._control("sleep", Number(event.target.value)) }, ...this._sleepOptions(player));
-    sleep.value = player.sleep;
-    list.append(el("label", {}, this._t("sleep_timer"), sleep));
+    list.append(...this._settingRows(player));
     this._dialogMode = "more";
     this._dialog.replaceChildren(el("h2", {}, this._t("more")), list);
     if (!this._dialog.open) this._dialog.showModal();
