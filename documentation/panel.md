@@ -26,23 +26,38 @@ thin line along its top edge shows the progress.
 
 ## Home page
 
-From top to bottom: your **presets**, your **saved playlists** (with the cover of their first track), the
-**library** (Artists, Albums, Songs, Genres...), **recently played**, **recent stations**, **recently added**
-albums and your **sources** (services such as TuneIn or Deezer, and inputs such as Bluetooth). The titles
-come from the player, in your language. Services you do not use can be hidden, see
-[Configuration](configuration.md).
+From top to bottom: a row of **shortcuts** into the library (Artists, Albums, Songs, Genres, Composers,
+Favourites), then rows you scroll sideways, each with **View all** when there is more behind: your **presets**,
+**recently played**, your **saved playlists** (with the cover of their first track), **recent stations**,
+**recently added** albums (View all opens the albums by most recent) and your **sources** (services such as TuneIn or
+Deezer, and inputs such as Bluetooth). The titles come from the player, in your language. Services you do not use can
+be hidden, see [Configuration](configuration.md).
 
 Presets belong to a player: a player without presets has no presets row.
 
 ## Browsing
 
-- **Library**: artists, albums, songs and composers come with an **A–Z bar** (`# A B … Z`). Inside a
-  letter the bar stays at the top, to jump to another letter. Long lists without letters (genres) get a bar of first
-  letters. Very long lists are cut and offer **Show more**.
+- **Library**: artists, albums, songs, composers and genres are flat lists grouped by letter, with an **A–Z index**
+  at the right edge (on a phone a narrow strip you can drag your finger along). A letter **jumps** to its section and
+  you scroll on to the neighbours; the entries of a letter load when you get near it. Letters far away are given back,
+  so a big library stays light.
+- **Albums** come as a **list** (cover, title, artist, number of tracks) or a **grid**: the **Display** button
+  switches, and the choice is remembered. The list of all the albums can be sorted **A → Z**, by **Recent**, **Year**,
+  **Decade**, **Artist, then title** or **Artist, then year**, with the letters, years or artists as headers (cards
+  of the grid on a wide screen).
+- **An artist, a composer or a genre** opens on a page with a few albums (a row to scroll), a few songs and, for a
+  genre, a few artists, each with **View all** for the whole list.
+- **The ⋮ menu** is the same for every item (albums, songs, artists, genres): Favourite, what the player offers
+  (Play now, Shuffle, Add next, Add last...), go to the album and the artist, and **Info**. A song found by a search
+  that has a different artist on its album offers both artists. Lists the player cuts after a few pages offer
+  **Show more**.
+- **The way back** (arrow, home button) stays at the top while you scroll up and hides while you scroll down; the
+  title of the header goes home.
 - **Going back**: the arrow goes up one level. From the second level on, a **home** button next to it takes you
   straight back to the start page.
-- **Albums and artists** open on a page with **Play now, Shuffle, Add next, Add last** (the
-  actions the player offers). Every tile has a **⋮** menu with the same actions, and a play button on albums.
+- **An album** opens on a page with its cover, the artist, the number of tracks and **Play all** and **Shuffle**
+  (Add next, Add last and Favourite behind a ⋮), then its tracks as numbered rows. Every tile has a **⋮** menu and a
+  play button on albums.
 - **Favourites**: albums, artists and songs of your library also offer **Add to favourites** (or **Remove from
   favourites** when they are one), on their page and in their **⋮** menu. For the **track that is playing**, use
   the heart in the full-screen view. The favourites are the player's own, you
