@@ -348,6 +348,10 @@ const STYLE = `
   input[type="range"] { accent-color: var(--primary-color); }
   .phone-only { display: none; }
   .mini-bar { display: none; }
+  footer .volume { display: none; }
+  footer.vol-open > *:not(.volume) { display: none; }
+  footer.vol-open .volume { display: flex; flex: 1; gap: 8px; }
+  footer .volume input { flex: 1; min-width: 0; }
   .vol-ring, .vol-ring:hover:not(:disabled) {
     position: relative;
     flex: none;
@@ -385,11 +389,7 @@ const STYLE = `
     .info { flex: 1 1 0; }
     .controls button { display: none; }
     .controls button.keep { display: inline-flex; }
-    footer .progress, footer .player-pill { display: none; }
-    footer .volume { display: none; }
-    footer.vol-open > *:not(.volume) { display: none; }
-    footer.vol-open .volume { display: flex; flex: 1; gap: 8px; }
-    footer .volume input { flex: 1; min-width: 0; }
+    footer .progress { display: none; }
     .mini-bar { display: block; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--divider-color); }
     .mini-bar div { height: 100%; width: 0; background: var(--primary-color); }
     footer.vol-open .mini-bar { display: none; }
@@ -1160,14 +1160,10 @@ class BluOSCompanionPanel extends HTMLElement {
     this._track = el("div", { class: "track" });
     this._artist = el("div", { class: "artist" });
     this._buttons = {
-      shuffle: el("button", { onclick: () => this._control("shuffle", !this._player.shuffle) }, icon("mdi:shuffle")),
       previous: el("button", { onclick: () => this._control("previous") }, icon("mdi:skip-previous")),
       toggle: el("button", { class: "keep", onclick: () => this._togglePlayback() }, icon("mdi:play")),
       next: el("button", { onclick: () => this._control("next") }, icon("mdi:skip-next")),
       queue: el("button", { onclick: () => this._toggleQueue() }, icon("mdi:playlist-music")),
-      expand: el("button", { onclick: () => this._showNow() }, icon("mdi:fullscreen")),
-      move: el("button", { title: this._t("move_playback"), onclick: () => this._showMove() }, icon("mdi:transfer-right")),
-      repeat: el("button", { onclick: () => this._control("repeat", REPEAT_CYCLE[this._player.repeat]) }, icon("mdi:repeat")),
       mute: el("button", { onclick: () => this._control("mute", !this._player.muted) }, icon("mdi:volume-high")),
     };
     this._volume = el("input", {
@@ -1177,8 +1173,8 @@ class BluOSCompanionPanel extends HTMLElement {
       oninput: () => this._armVolumeTimer(),
       onchange: (event) => this._control("volume", Number(event.target.value)),
     });
-    this._volButton = el("button", { class: "vol-ring phone-only", title: this._t("volume"), onclick: () => this._openVolume() }, icon("mdi:volume-high"));
-    this._moreButton = el("button", { class: "phone-only", title: this._t("more"), onclick: () => this._showMore() }, icon("mdi:dots-vertical"));
+    this._volButton = el("button", { class: "vol-ring", title: this._t("volume"), onclick: () => this._openVolume() }, icon("mdi:volume-high"));
+    this._moreButton = el("button", { title: this._t("more"), onclick: () => this._showMore() }, icon("mdi:dots-vertical"));
     this._miniFill = el("div");
     this._miniBar = el("div", { class: "mini-bar" }, this._miniFill);
     this._seek = el("input", {
@@ -1202,18 +1198,14 @@ class BluOSCompanionPanel extends HTMLElement {
       {},
       this._cover,
       this._miniBar,
-      el("div", { class: "info", onclick: () => (this._isPhone() ? this._showNow() : this._showPlaying()) }, this._track, this._artist),
+      el("div", { class: "info", onclick: () => this._showNow() }, this._track, this._artist),
       el(
         "div",
         { class: "controls" },
-        this._buttons.shuffle,
         this._buttons.previous,
         this._buttons.toggle,
         this._buttons.next,
-        this._buttons.repeat,
         this._buttons.queue,
-        this._buttons.expand,
-        this._buttons.move,
       ),
       this._volButton,
       el(
@@ -1221,12 +1213,11 @@ class BluOSCompanionPanel extends HTMLElement {
         { class: "volume" },
         this._buttons.mute,
         this._volume,
-        this._stepButton(-1, "phone-only"),
-        this._stepButton(1, "phone-only"),
-        el("button", { class: "phone-only", title: this._t("close"), onclick: () => this._closeVolume() }, icon("mdi:close")),
+        this._stepButton(-1),
+        this._stepButton(1),
+        el("button", { title: this._t("close"), onclick: () => this._closeVolume() }, icon("mdi:close")),
       ),
       this._moreButton,
-      this._playerButton,
       this._progress,
     );
     this._footer = footer;
@@ -1588,8 +1579,8 @@ class BluOSCompanionPanel extends HTMLElement {
       { class: "list more-list" },
       row(this._groupName(player) || player.name, "mdi:speaker-multiple", () => this._showPlayers()),
     );
-    // The full screen view has its own queue button
-    if (!this._nowDialog.open) {
+    // The queue has its own button in the bar (tablet, desktop) and in the full screen view
+    if (!this._nowDialog.open && this._isPhone()) {
       list.prepend(
         row(this._t("queue"), "mdi:playlist-music", () => {
           this._dialog.close();
@@ -1953,14 +1944,11 @@ class BluOSCompanionPanel extends HTMLElement {
       );
     }
     this._buttons.toggle.firstChild.setAttribute("icon", playing ? "mdi:pause" : "mdi:play");
-    this._buttons.shuffle.classList.toggle("on", player.shuffle);
     for (const modes of [this._queueModes, this._now.queueModes]) {
       modes.shuffle.classList.toggle("on", player.shuffle);
       modes.repeat.classList.toggle("on", player.repeat !== 2);
       modes.repeat.firstChild.setAttribute("icon", player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat");
     }
-    this._buttons.repeat.classList.toggle("on", player.repeat !== 2);
-    this._buttons.repeat.firstChild.setAttribute("icon", player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat");
     this._buttons.mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
     this._volButton.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
     this._volButton.style.setProperty("--level", player.max_volume ? Math.round((Math.max(player.volume, 0) / player.max_volume) * 100) : 0);
@@ -1969,7 +1957,6 @@ class BluOSCompanionPanel extends HTMLElement {
     this._volume.max = player.max_volume;
     this._volume.value = Math.max(player.volume, 0);
     this._buttons.next.disabled = this._buttons.previous.disabled = !player.available;
-    this._buttons.move.hidden = !this._canMove(player);
     this._progress.hidden = !(player.duration > 0);
     if (!(player.duration > 0)) this._miniFill.style.width = "0";
     this._seek.disabled = !player.can_seek;
