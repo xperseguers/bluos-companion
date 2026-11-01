@@ -119,7 +119,7 @@ const STYLE = `
     border-radius: 12px;
     background: var(--secondary-background-color);
   }
-  .now .queue-box { display: none; flex: 1; min-height: 0; align-self: stretch; flex-direction: column; max-width: 640px; width: 100%; margin: 0 auto; }
+  .now .queue-box { display: none; flex: 1; min-height: 0; align-self: stretch; flex-direction: column; max-width: 640px; width: 100%; margin: 0 auto 20px; }
   dialog.now.queue-open .queue-box { display: flex; }
   dialog.now.queue-open .art-box { display: none; }
   .now .queue-list { flex: 1; min-height: 0; overflow-y: auto; }
