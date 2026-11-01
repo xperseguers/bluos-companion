@@ -37,7 +37,8 @@ integration runs it first, and **waits until it has finished** before the player
 - It does **not** run while the player is already playing (the amplifier is then on), so changing track is not slowed
   down.
 - The script receives the player as `player` (its `media_player` entity). If it fails, or takes more than a minute,
-  the error is shown and nothing is played. While it runs, the button you tapped waits for the answer.
+  the error is shown and nothing is played. Until the script has finished, nothing seems to happen: give it only what
+  it needs.
 - Everybody who can use the sidebar player or the cards starts it, administrator or not: only an administrator
   chooses which script runs.
 - Use a script whose entity id is the name of the script (`script.onkyo_for_the_node` for the script
