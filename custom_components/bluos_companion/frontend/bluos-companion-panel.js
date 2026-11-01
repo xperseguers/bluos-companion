@@ -119,6 +119,16 @@ const STYLE = `
     border-radius: 12px;
     background: var(--secondary-background-color);
   }
+  .now .queue-box { display: none; flex: 1; min-height: 0; align-self: stretch; flex-direction: column; max-width: 640px; width: 100%; margin: 0 auto; }
+  dialog.now.queue-open .queue-box { display: flex; }
+  dialog.now.queue-open .art-box { display: none; }
+  .now .queue-list { flex: 1; min-height: 0; overflow-y: auto; }
+  .now .queue-box .actions { margin: 0 0 8px; flex: none; }
+  .now .line.bottom { justify-content: flex-end; }
+  dialog.now.has-art .qrow { background: rgba(255, 255, 255, 0.12); border-color: transparent; }
+  dialog.now.has-art .qrow.current { background: rgba(255, 255, 255, 0.28); }
+  dialog.now.has-art .actions button { background: rgba(255, 255, 255, 0.12); border-color: transparent; }
+  dialog.now.has-art .actions button.on { background: rgba(255, 255, 255, 0.3); }
   .now .meta { display: flex; align-items: center; gap: 4px; max-width: 640px; width: 100%; }
   .now .meta .text { flex: 1; min-width: 0; }
   .now .title { font-size: 24px; font-weight: 500; }
@@ -371,6 +381,11 @@ const ACTIVE_STATES = ["play", "stream"];
 const INITIALS_FROM = 40; // a list this long gets a bar of first letters
 const STORAGE_KEY = "bluos_companion_player";
 const DEFAULT_SEARCH_KEY = "LocalMusic:Search"; // the library, used at the root
+
+// The signed URL of an image changes with every state update: compare what it points to
+function imageKey(url) {
+  return url ? url.replace(/[?&]authSig=[^&]*/, "") : "";
+}
 
 function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -823,14 +838,53 @@ class BluOSCompanionPanel extends HTMLElement {
 
   _refreshQueue() {
     const player = this._player;
-    if (this._inQueue && player && `${player.queue_id}/${player.queue_position}` !== this._queueKey) {
-      this._loadQueue();
-    }
+    if (!player || `${player.queue_id}/${player.queue_position}` === this._queueKey) return;
+    if (this._nowQueueOpen) this._loadNowQueue();
+    else if (this._inQueue) this._loadQueue();
   }
 
   async _queueAction(action, extra = {}) {
     await this._call({ type: "bluos_companion/queue_action", entry_id: this._playerId, action, ...extra });
-    await this._loadQueue();
+    await (this._nowQueueOpen ? this._loadNowQueue() : this._loadQueue());
+  }
+
+  // The queue inside the full screen view
+  _setNowQueue(open) {
+    this._nowQueueOpen = open;
+    this._nowDialog.classList.toggle("queue-open", open);
+    this._now.queueButton.classList.toggle("on", open);
+    if (open) {
+      this._nowQueueScroll = true;
+      this._loadNowQueue();
+    }
+  }
+
+  async _loadNowQueue() {
+    const player = this._player;
+    if (!player) return;
+    const token = (this._nowQueueToken = (this._nowQueueToken || 0) + 1);
+    const result = await this._call({ type: "bluos_companion/queue", entry_id: player.entry_id });
+    if (token !== this._nowQueueToken || !this._nowQueueOpen) return;
+    this._queue = result ? result.items : [];
+    this._queueKey = `${player.queue_id}/${player.queue_position}`;
+    this._renderNowQueue();
+  }
+
+  _renderNowQueue() {
+    const now = this._now;
+    const queue = this._queue || [];
+    const current = this._player ? this._player.queue_position : null;
+    now.queueActions.hidden = !queue.length;
+    now.queueList.replaceChildren(
+      ...(queue.length
+        ? queue.map((item, index) => this._queueRow(item, index, queue.length, current))
+        : [el("div", { class: "message" }, this._t("queue_empty"))]),
+    );
+    if (this._nowQueueScroll) {
+      this._nowQueueScroll = false;
+      const row = now.queueList.querySelector(".current");
+      if (row) row.scrollIntoView({ block: "center" });
+    }
   }
 
   _confirmClear() {
@@ -918,6 +972,23 @@ class BluOSCompanionPanel extends HTMLElement {
     );
   }
 
+  _queueModeButtons() {
+    return {
+      shuffle: el("button", { class: "action", onclick: () => this._control("shuffle", !this._player.shuffle) }, icon("mdi:shuffle"), this._t("shuffle")),
+      repeat: el("button", { class: "action", onclick: () => this._control("repeat", REPEAT_CYCLE[this._player.repeat]) }, icon("mdi:repeat"), this._t("repeat")),
+    };
+  }
+
+  // The buttons above the queue, in the page of the queue and in the full screen view
+  _queueActionButtons(modes) {
+    return [
+      modes.shuffle,
+      modes.repeat,
+      el("button", { class: "action", onclick: () => this._confirmClear() }, icon("mdi:delete-sweep"), this._t("clear")),
+      el("button", { class: "action", onclick: () => this._askSaveName() }, icon("mdi:content-save"), this._t("save_as_playlist")),
+    ];
+  }
+
   _renderQueue() {
     const player = this._player;
     const current = player ? player.queue_position : null;
@@ -925,10 +996,7 @@ class BluOSCompanionPanel extends HTMLElement {
       ...(this._queue || []).map((item, index) => this._queueRow(item, index, this._queue.length, current)),
     );
     this._message.textContent = this._queue && !this._queue.length ? this._t("queue_empty") : "";
-    this._actionRow.replaceChildren(
-      el("button", { class: "action", onclick: () => this._confirmClear() }, icon("mdi:delete-sweep"), this._t("clear")),
-      el("button", { class: "action", onclick: () => this._askSaveName() }, icon("mdi:content-save"), this._t("save_as_playlist")),
-    );
+    this._actionRow.replaceChildren(...this._queueActionButtons(this._queueModes));
     this._actionRow.hidden = !(this._queue && this._queue.length);
   }
 
@@ -1043,6 +1111,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._crumbs = el("div", { class: "crumbs" });
     this._actionRow = el("div", { class: "actions" });
     this._actionRow.hidden = true;
+    this._queueModes = this._queueModeButtons();
     this._buildNow();
     this._dialogMode = null;
     this._dialog = el("dialog", {
@@ -1220,11 +1289,9 @@ class BluOSCompanionPanel extends HTMLElement {
     now.controls = el(
       "div",
       { class: "line" },
-      control("shuffle", "mdi:shuffle", () => this._control("shuffle", !this._player.shuffle)),
       control("previous", "mdi:skip-previous", () => this._control("previous"), true),
       control("toggle", "mdi:play", () => this._togglePlayback(), true),
       control("next", "mdi:skip-next", () => this._control("next"), true),
-      control("repeat", "mdi:repeat", () => this._control("repeat", REPEAT_CYCLE[this._player.repeat])),
     );
     now.mute = el("button", { onclick: () => this._control("mute", !this._player.muted) }, icon("mdi:volume-high"));
     now.volume = el("input", {
@@ -1254,9 +1321,23 @@ class BluOSCompanionPanel extends HTMLElement {
       icon("mdi:sleep"),
       now.sleep,
     );
+    now.queueButton = el("button", { title: this._t("queue"), onclick: () => this._setNowQueue(!this._nowQueueOpen) }, icon("mdi:playlist-music"));
+    now.bottom = el("div", { class: "line bottom" }, now.queueButton);
+    now.queueModes = this._queueModeButtons();
+    now.queueActions = el("div", { class: "actions" }, ...this._queueActionButtons(now.queueModes));
+    now.queueList = el("div", { class: "queue-list" });
+    now.queueBox = el("div", { class: "queue-box" }, now.queueActions, now.queueList);
     this._nowDialog = el(
       "dialog",
-      { class: "now", tabindex: "-1", autofocus: "", onclose: () => (this._nowOpen = false) },
+      {
+        class: "now",
+        tabindex: "-1",
+        autofocus: "",
+        onclose: () => {
+          this._nowOpen = false;
+          this._setNowQueue(false);
+        },
+      },
       (now.bg = el("div", { class: "bg" })),
       el("div", { class: "veil" }),
       el(
@@ -1277,6 +1358,7 @@ class BluOSCompanionPanel extends HTMLElement {
         el("button", { class: "phone-only", title: this._t("more"), onclick: () => this._showMore() }, icon("mdi:dots-vertical")),
       ),
       (now.artBox = el("div", { class: "art-box" }, now.art)),
+      now.queueBox,
       (now.meta = el(
         "div",
         { class: "meta" },
@@ -1288,6 +1370,7 @@ class BluOSCompanionPanel extends HTMLElement {
       now.controls,
       now.volumeRow,
       now.settings,
+      now.bottom,
     );
   }
 
@@ -1305,20 +1388,18 @@ class BluOSCompanionPanel extends HTMLElement {
     const playing = ACTIVE_STATES.includes(player.state);
     now.player.textContent = this._groupName(player) || player.name;
     now.move.hidden = !this._canMove(player);
-    now.bg.style.backgroundImage = player.image ? `url("${player.image}")` : "";
+    if (imageKey(player.image) !== now.imageKey) {
+      now.imageKey = imageKey(player.image);
+      now.bg.style.backgroundImage = player.image ? `url("${player.image}")` : "";
+      now.art.replaceWith(
+        (now.art = player.image ? el("img", { class: "art", src: player.image, alt: "" }) : el("div", { class: "art" })),
+      );
+    }
     this._nowDialog.classList.toggle("has-art", Boolean(player.image));
     this._refreshNowFavourite(player);
     now.title.textContent = player.title || player.name;
     now.sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
-    if (player.image) {
-      now.art.replaceWith((now.art = el("img", { class: "art", src: player.image, alt: "" })));
-    } else if (now.art.tagName === "IMG") {
-      now.art.replaceWith((now.art = el("div", { class: "art" })));
-    }
     now.toggle.firstChild.setAttribute("icon", playing ? "mdi:pause" : "mdi:play");
-    now.shuffle.classList.toggle("on", player.shuffle);
-    now.repeat.classList.toggle("on", player.repeat !== 2);
-    now.repeat.firstChild.setAttribute("icon", player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat");
     now.mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
     now.volume.disabled = player.volume < 0;
     now.volume.max = player.max_volume;
@@ -1445,17 +1526,14 @@ class BluOSCompanionPanel extends HTMLElement {
     const list = el(
       "div",
       { class: "list more-list" },
-      row(this._t("shuffle"), "mdi:shuffle", () => {
-        this._dialog.close();
-        this._control("shuffle", !player.shuffle);
-      }, player.shuffle),
-      row(this._t("repeat"), player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat", () => {
-        this._dialog.close();
-        this._control("repeat", REPEAT_CYCLE[player.repeat]);
-      }, player.repeat !== 2),
       row(this._t("queue"), "mdi:playlist-music", () => {
+        if (this._nowDialog.open) {
+          this._dialog.close();
+          this._setNowQueue(true);
+          return;
+        }
         leave();
-        this._toggleQueue();
+        if (!this._inQueue) this._toggleQueue();
       }),
       row(this._groupName(player) || player.name, "mdi:speaker-multiple", () => this._showPlayers()),
     );
@@ -1815,13 +1893,19 @@ class BluOSCompanionPanel extends HTMLElement {
     const playing = ACTIVE_STATES.includes(player.state);
     this._track.textContent = player.title || player.name;
     this._artist.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
-    if (player.image) {
-      this._cover.replaceWith((this._cover = el("img", { class: "cover", src: player.image, alt: "" })));
-    } else if (this._cover.tagName === "IMG") {
-      this._cover.replaceWith((this._cover = el("div", { class: "cover" })));
+    if (imageKey(player.image) !== this._coverKey) {
+      this._coverKey = imageKey(player.image);
+      this._cover.replaceWith(
+        (this._cover = player.image ? el("img", { class: "cover", src: player.image, alt: "" }) : el("div", { class: "cover" })),
+      );
     }
     this._buttons.toggle.firstChild.setAttribute("icon", playing ? "mdi:pause" : "mdi:play");
     this._buttons.shuffle.classList.toggle("on", player.shuffle);
+    for (const modes of [this._queueModes, this._now.queueModes]) {
+      modes.shuffle.classList.toggle("on", player.shuffle);
+      modes.repeat.classList.toggle("on", player.repeat !== 2);
+      modes.repeat.firstChild.setAttribute("icon", player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat");
+    }
     this._buttons.repeat.classList.toggle("on", player.repeat !== 2);
     this._buttons.repeat.firstChild.setAttribute("icon", player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat");
     this._buttons.mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
