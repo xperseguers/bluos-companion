@@ -1136,6 +1136,11 @@ async def test_landing_gives_the_first_entries_of_each_list_of_a_genre(
         )
     respond(
         player_api,
+        browse_url("LocalMusic:bySection:Composer/composers"),
+        text='<browse type="sections"><item browseKey="c0" text="#" text2="0" type="section"/></browse>',
+    )
+    respond(
+        player_api,
         browse_url("LocalMusic:S:Album/albums&limit=12&section=A"),
         text='<browse><item browseKey="a1" text="Abbey Road" text2="The Beatles" type="album"/></browse>',
     )

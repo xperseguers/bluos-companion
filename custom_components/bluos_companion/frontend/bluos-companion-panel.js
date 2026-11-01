@@ -284,6 +284,7 @@ const STYLE = `
   .lsec-head button.arrow { padding: 4px; --mdc-icon-size: 22px; background: rgba(127, 127, 127, 0.15); }
   .lsec .rows { margin-bottom: 0; border-top: none; }
   .lsec .lrow.link { height: 48px; }
+  .lsec .lrow:last-child { border-bottom: none; }
   .hscroll { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 8px; }
   .hscroll .tile { flex: 0 0 150px; scroll-snap-align: start; }
   .info-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
@@ -2097,9 +2098,10 @@ class BluOSCompanionPanel extends HTMLElement {
     const root = el("div", { class: "landing" });
     for (const section of this._landing) {
       const open = () => this._open({ title: section.title, browse_key: section.browse_key, type: "link" });
-      if (!section.items.length && section.kind !== "composers") continue;
+      // Nothing in a list: no card for it (and composers, if there are some, are one row to open)
+      if (!section.items.length) continue;
       const card = el("section", { class: "lsec" });
-      if (!section.items.length) {
+      if (section.kind === "composers") {
         card.append(
           el("div", { class: "lrow link", onclick: open }, el("div", { class: "text" }, el("div", { class: "title" }, section.title)), el("span", { class: "chev" }, icon("mdi:chevron-right"))),
         );

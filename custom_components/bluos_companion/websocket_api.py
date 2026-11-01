@@ -341,7 +341,7 @@ async def ws_search(
 
 # What the landing page of an artist, a composer or a genre shows of each of its lists
 LANDING_KINDS = {"Album": "albums", "Song": "songs", "Artist": "artists", "Composer": "composers"}
-LANDING_SIZES = {"albums": 12, "songs": 5, "artists": 5}
+LANDING_SIZES = {"albums": 12, "songs": 5, "artists": 5, "composers": 1}  # one composer says there are some
 
 
 def _landing_kind(key: str) -> str | None:
@@ -391,8 +391,6 @@ async def ws_landing(
     previews = await asyncio.gather(
         *(
             _landing_preview(client, node.browse_key or "", LANDING_SIZES[kind])
-            if kind in LANDING_SIZES
-            else asyncio.sleep(0, [])
             for kind, node in links
         ),
         return_exceptions=True,
