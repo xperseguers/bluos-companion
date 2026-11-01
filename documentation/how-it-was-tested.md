@@ -54,7 +54,7 @@ afterwards:
 - the favourites of the streaming services and favourite playlists, and the import of playlists exported in another
   format than `.m3u8` or from a library that is not organised as artist / album / file (the paths of Windows are
   covered by automated tests only)
-- the accounts of music services (Deezer, Tidal...) and Amazon Music
+- the accounts of music services (Deezer, Tidal...)
 - selecting the HDMI ARC input or using the sleep timer of the NODE
 - the sidebar player in browsers and tablets other than the ones used during development, and live use on Home
   Assistant versions other than 2026.10
