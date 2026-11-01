@@ -6,6 +6,9 @@ CONF_PORT = "port"
 CONF_HIDDEN_SERVICES = "hidden_services"
 CONF_MAX_VOLUME = "max_volume"
 CONF_BACKUP_PLAYLISTS = "backup_playlists"
+CONF_BEFORE_PLAYBACK = "before_playback_script"
+# How long the script run before a new playback may take (an amplifier takes a few seconds to wake up)
+BEFORE_PLAYBACK_TIMEOUT = 60
 DEFAULT_PORT = 11000
 
 LONG_POLL_TIMEOUT = 100

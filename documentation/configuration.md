@@ -23,6 +23,62 @@ is still recommended.
 | **Hidden services** | Hide, in the sidebar player, the sources you do not use (a music service you have no account for, Radio...). They stay available in the BluOS app. |
 | **Maximum volume** | The highest volume (10 to 100) that Home Assistant will set: the sidebar player, the cards, voice and AI commands and the `media_player` services are limited. The BluOS app and the remote are not. Useful for a wall tablet that everybody can reach. |
 | **Back up the playlists of this player** | Whether this player is a source of the playlist backup, see [Playlist backup and restore](backup-and-restore.md). When two players have the same playlist, the one added first is saved. |
+| **Script to run before something starts playing** | An optional script that Home Assistant runs, and waits for, before something new plays and while the player is not playing yet. See below. |
+
+### A script before something plays
+
+A player that feeds an amplifier which is not a BluOS device (a standalone streamer plugged into an Onkyo, for
+instance) cannot switch it on nor choose its input. Choose a Home Assistant **script** in this option and the
+integration runs it first, and **waits until it has finished** before the player is asked to play.
+
+- It applies to anything that starts playing: a preset, an album or a song from the sidebar player or the cards, a
+  track of the queue, the play button, the `bluos_companion.play_preset` service and `media_player.play_media` /
+  `media_player.media_play`. Adding to the queue without playing does not run it.
+- It does **not** run while the player is already playing (the amplifier is then on), so changing track is not slowed
+  down.
+- The script receives the player as `player` (its `media_player` entity). If it fails, or takes more than a minute,
+  the error is shown and nothing is played. While it runs, the button you tapped waits for the answer.
+- Everybody who can use the sidebar player or the cards starts it, administrator or not: only an administrator
+  chooses which script runs.
+- Use a script whose entity id is the name of the script (`script.onkyo_for_the_node` for the script
+  `onkyo_for_the_node`), as the integration calls it as a service.
+
+An example for an Onkyo (the entity `media_player.onkyo` comes from the Onkyo integration): switch the amplifier on
+and wait a few seconds if it is off, then choose the input if it is not the one the streamer is plugged into, and
+stop. Use the name of the input as the source list of your amplifier shows it.
+
+```yaml
+script:
+  onkyo_for_the_node:
+    alias: Onkyo for the NODE
+    sequence:
+      # 1. On, and a moment for it to wake up
+      - if:
+          - condition: state
+            entity_id: media_player.onkyo
+            state: "off"
+        then:
+          - action: media_player.turn_on
+            target:
+              entity_id: media_player.onkyo
+          - wait_template: "{{ is_state('media_player.onkyo', 'on') }}"
+            timeout: "00:00:20"
+          - delay: "00:00:03"
+      # 2. On the right input
+      - if:
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: media_player.onkyo
+                attribute: source
+                state: "NET"
+        then:
+          - action: media_player.select_source
+            target:
+              entity_id: media_player.onkyo
+            data:
+              source: "NET"
+```
 
 ## What each player gives Home Assistant
 

@@ -405,6 +405,13 @@ def _genre_context_key(item: ET.Element) -> str | None:
     return f"LocalMusic:CM/LocalMusic-Genre?{browse_key.split('?', 1)[1]}"
 
 
+def starts_playback(path: str) -> bool:
+    """Return whether a play path starts something (adding to the queue, without playing, does not)."""
+    if path.startswith("/Add?"):
+        return "playnow=1" in path
+    return path.startswith(("/Preset?", "/Load?", "/Play?"))
+
+
 def _is_playlist_path(path: str | None) -> bool:
     return bool(path) and "service=BluOS" in path and "playlist=" in path
 

@@ -18,6 +18,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.selector import (
     BooleanSelector,
+    EntitySelector,
+    EntitySelectorConfig,
     SelectOptionDict,
     NumberSelector,
     NumberSelectorConfig,
@@ -31,6 +33,7 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from .api import BluOSClient, BluOSError, PlayerInfo
 from .const import (
     CONF_BACKUP_PLAYLISTS,
+    CONF_BEFORE_PLAYBACK,
     CONF_HIDDEN_SERVICES,
     CONF_MAX_VOLUME,
     CONF_PORT,
@@ -251,6 +254,10 @@ class BluOSOptionsFlow(OptionsFlow):
                         CONF_BACKUP_PLAYLISTS,
                         default=options.get(CONF_BACKUP_PLAYLISTS, True),
                     ): BooleanSelector(),
+                    vol.Optional(
+                        CONF_BEFORE_PLAYBACK,
+                        description={"suggested_value": options.get(CONF_BEFORE_PLAYBACK)},
+                    ): EntitySelector(EntitySelectorConfig(domain="script")),
                 }
             ),
         )

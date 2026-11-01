@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import BluOSClient, BluOSError, Source, Status, SyncStatus, VolumeState
@@ -20,6 +21,8 @@ from .cover_check import CoverCheck, async_check_covers
 from .names import match_inputs, match_presets, normalize
 from .settings import BluOSSettingsCoordinator
 from .const import (
+    BEFORE_PLAYBACK_TIMEOUT,
+    CONF_BEFORE_PLAYBACK,
     CONF_MAX_VOLUME,
     DOMAIN,
     EXTERNAL_SOURCE_URL,
@@ -147,6 +150,32 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
             raise HomeAssistantError(f"Source {name} is ambiguous: {', '.join(found)}")
         await inputs[found[0]][1]()
 
+    async def async_prepare_playback(self) -> None:
+        """Run the script chosen in the options, and wait for it, before something new plays.
+
+        It is for what the player cannot do by itself, such as switching on the amplifier it feeds. It is
+        skipped when the player plays already (the amplifier is on), so that changing track costs nothing.
+        """
+        script = self.config_entry.options.get(CONF_BEFORE_PLAYBACK)
+        if not script or self.data.state in ("play", "stream"):
+            return
+        entity_id = er.async_get(self.hass).async_get_entity_id(
+            "media_player", DOMAIN, self.config_entry.unique_id
+        )
+        try:
+            async with asyncio.timeout(BEFORE_PLAYBACK_TIMEOUT):
+                # Calling the script as a service waits until it has finished
+                await self.hass.services.async_call(
+                    "script",
+                    script.split(".", 1)[-1],
+                    {"player": entity_id or self.config_entry.title},
+                    blocking=True,
+                )
+        except TimeoutError as err:
+            raise HomeAssistantError(f"The script {script} took too long") from err
+        except HomeAssistantError as err:
+            raise HomeAssistantError(f"The script {script} failed: {err}") from err
+
     async def async_play_preset(self, preset: str) -> None:
         """Start a preset of the player, given by its number or by its name."""
         try:
@@ -163,6 +192,7 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         if not chosen:
             available = ", ".join(f"{item.id} {item.name}" for item in presets) or "none"
             raise HomeAssistantError(f"Unknown preset: {preset} (presets: {available})")
+        await self.async_prepare_playback()
         try:
             await self.client.async_load_preset(chosen[0].id)
         except BluOSError as err:

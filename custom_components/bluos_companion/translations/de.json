@@ -46,7 +46,11 @@
         "data": {
           "hidden_services": "Ausgeblendete Dienste",
           "max_volume": "Maximale Lautstärke",
-          "backup_playlists": "Wiedergabelisten und Favoriten dieses Players sichern"
+          "backup_playlists": "Wiedergabelisten und Favoriten dieses Players sichern",
+          "before_playback_script": "Skript vor dem Start einer Wiedergabe"
+        },
+        "data_description": {
+          "before_playback_script": "Optional. Ein Skript, das Home Assistant startet und abwartet, wenn eine Wiedergabe beginnt und der Player noch nicht spielt, zum Beispiel um den angeschlossenen Verstärker einzuschalten und seinen Eingang zu wählen. Es erhält den Player als `player`."
         }
       }
     }

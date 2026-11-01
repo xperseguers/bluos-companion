@@ -46,7 +46,11 @@
         "data": {
           "hidden_services": "Services masqués",
           "max_volume": "Volume maximal",
-          "backup_playlists": "Sauvegarder les listes de lecture et les favoris de ce lecteur"
+          "backup_playlists": "Sauvegarder les listes de lecture et les favoris de ce lecteur",
+          "before_playback_script": "Script à lancer avant le début d'une lecture"
+        },
+        "data_description": {
+          "before_playback_script": "Facultatif. Un script que Home Assistant lance, et attend, quand une lecture démarre alors que le lecteur ne joue pas encore, par exemple pour allumer l'amplificateur qu'il alimente et choisir son entrée. Il reçoit le lecteur sous le nom `player`."
         }
       }
     }

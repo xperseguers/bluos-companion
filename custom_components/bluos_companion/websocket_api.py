@@ -17,7 +17,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.translation import async_get_translations
 
-from .api import LIBRARY_ALBUMS_KEY, SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket
+from .api import LIBRARY_ALBUMS_KEY, SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket, starts_playback
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .covers import async_playlist_covers, async_preset_images, image_path
@@ -265,6 +265,8 @@ async def ws_control(
         if own >= coordinator.max_volume:
             connection.send_result(msg["id"])
             return
+    if msg["action"] == "play":
+        await coordinator.async_prepare_playback()
     if msg["action"] == "source":
         await _async_call(coordinator.async_select_source(str(msg.get("value", ""))))
     elif msg["action"] == "power":
@@ -1016,8 +1018,10 @@ async def ws_queue_action(
     needed = {"play": ("position",), "remove": ("position",), "move": ("position", "to"), "save": ("name",)}
     if missing := [key for key in needed.get(msg["action"], ()) if key not in msg]:
         raise HomeAssistantError(f"Missing {', '.join(missing)}")
-    client = _coordinator(hass, msg["entry_id"]).client
-    await _async_call(QUEUE_ACTIONS[msg["action"]](client, msg))
+    coordinator = _coordinator(hass, msg["entry_id"])
+    if msg["action"] == "play":
+        await coordinator.async_prepare_playback()
+    await _async_call(QUEUE_ACTIONS[msg["action"]](coordinator.client, msg))
     connection.send_result(msg["id"])
 
 
@@ -1035,6 +1039,8 @@ async def ws_play(
     """Play an item of the browse tree."""
     if not is_play_path(msg["path"]):
         raise HomeAssistantError("This item cannot be played")
-    client = _coordinator(hass, msg["entry_id"]).client
-    await _async_call(client.async_command(msg["path"]))
+    coordinator = _coordinator(hass, msg["entry_id"])
+    if starts_playback(msg["path"]):
+        await coordinator.async_prepare_playback()
+    await _async_call(coordinator.client.async_command(msg["path"]))
     connection.send_result(msg["id"])

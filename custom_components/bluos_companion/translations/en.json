@@ -46,7 +46,11 @@
         "data": {
           "hidden_services": "Hidden services",
           "max_volume": "Maximum volume",
-          "backup_playlists": "Back up the playlists and favourites of this player"
+          "backup_playlists": "Back up the playlists and favourites of this player",
+          "before_playback_script": "Script to run before something starts playing"
+        },
+        "data_description": {
+          "before_playback_script": "Optional. A script that Home Assistant runs, and waits for, when something starts playing and the player is not playing yet, for example to switch on the amplifier it feeds and choose its input. It receives the player as `player`."
         }
       }
     }

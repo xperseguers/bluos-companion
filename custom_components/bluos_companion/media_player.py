@@ -224,6 +224,7 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
 
     async def async_media_play(self) -> None:
         """Resume playback."""
+        await self.coordinator.async_prepare_playback()
         await self._async_call(self._client.async_play())
 
     async def async_media_pause(self) -> None:
@@ -337,6 +338,7 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
         self, media_type: MediaType | str, media_id: str, **kwargs: Any
     ) -> None:
         """Play a library item, or any other media source / URL."""
+        await self.coordinator.async_prepare_playback()
         if media_id.startswith(URI_PREFIX):
             entry_id, path = play_path_from_media_id(media_id)
             if entry_id != self.coordinator.config_entry.entry_id:
