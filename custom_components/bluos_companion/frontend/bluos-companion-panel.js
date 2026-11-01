@@ -270,6 +270,10 @@ const STYLE = `
   .sec-body .rows { margin-bottom: 0; border-top: none; }
   .sec-body .grid { margin-bottom: 8px; }
   .sec-loading { padding: 16px; color: var(--secondary-text-color); }
+  .info-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .info-row { display: flex; justify-content: space-between; gap: 16px; }
+  .info-row span:first-child { color: var(--secondary-text-color); }
+  .info-row span:last-child { text-align: right; overflow-wrap: anywhere; }
   .crumb-cover { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex: none; }
   .crumbs h2 { margin: 0; font-size: 20px; font-weight: 500; }
   .grid {
@@ -685,16 +689,17 @@ class BluOSCompanionPanel extends HTMLElement {
       this._notify(this._t("library_only"));
       return;
     }
-    const list = this._showGoTo(player.title, [player.artist, player.album].filter(Boolean).join(" - "), {
-      album: player.album,
-      artist: player.artist,
-    });
+    const options = {
+      title: player.title,
+      subtitle: [player.artist, player.album].filter(Boolean).join(" - "),
+      names: { album: player.album, artist: player.artist },
+      info: { type: "track", artist: player.artist, album: player.album, duration: player.duration },
+    };
+    this._itemMenu(options);
     // Whether the track is a favourite takes a request: the button comes when it is known
     this._call({ type: "bluos_companion/playing_favourite", entry_id: this._playerId }).then((result) => {
       if (!result || !this._dialog.open) return;
-      list.append(
-        this._actionButton({ favourite: result.favourite, on: result.on }, player.title, () => this._dialog.close()),
-      );
+      this._itemMenu({ ...options, actions: [{ favourite: result.favourite, on: result.on }] });
     });
   }
 
@@ -763,12 +768,51 @@ class BluOSCompanionPanel extends HTMLElement {
     );
   }
 
-  _showGoTo(title, subtitle, names, extra = []) {
-    const list = el("div", { class: "list" }, ...this._gotoButtons(names), ...extra);
+  // The menu of an item, the same everywhere: favourite, what the player offers, what the place adds
+  // (moving in the queue...), go to the album and the artist, info. `info` says what is known of it.
+  _itemMenu({ title, subtitle, actions = [], extra = [], names = {}, info = null }) {
+    const options = { title, subtitle, actions, extra, names, info };
+    const close = () => this._dialog.close();
+    const ordered = [...actions.filter((action) => action.favourite), ...actions.filter((action) => !action.favourite)];
+    const list = el(
+      "div",
+      { class: "list" },
+      ...ordered.map((action) => this._actionButton(action, title, close)),
+      ...extra,
+      ...this._gotoButtons(names),
+      info
+        ? el("button", { class: "action", onclick: () => this._showInfo(options) }, icon("mdi:information-outline"), this._t("info"))
+        : null,
+    );
     this._dialog.replaceChildren(el("h2", {}, title), el("p", {}, subtitle || "\u00a0"), list);
-    this._dialog.showModal();
+    if (!this._dialog.open) this._dialog.showModal();
     return list;
   }
+
+  // What the panel knows of an item, from the lists
+  _showInfo(options) {
+    const info = options.info;
+    const rows = [
+      [this._t("info_artist"), info.artist],
+      [this._t("info_album"), info.album],
+      [this._t("info_duration"), info.duration ? formatTime(info.duration) : null],
+      [this._t("info_tracks"), info.tracks ? String(info.tracks) : null],
+    ].filter(([, value]) => value);
+    this._dialog.replaceChildren(
+      el("h2", {}, options.title),
+      el(
+        "div",
+        { class: "info-rows" },
+        ...rows.map(([label, value]) => el("div", { class: "info-row" }, el("span", {}, label), el("span", {}, value))),
+      ),
+      el(
+        "div",
+        { class: "list", style: "margin-top: 12px" },
+        el("button", { class: "action", onclick: () => this._itemMenu(options) }, icon("mdi:arrow-left"), this._t("back")),
+      ),
+    );
+  }
+
 
   _actionButton(action, label, after) {
     return el(
@@ -792,26 +836,25 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   async _showActions(item) {
-    const actions = await this._actions(item.context_key);
-    // Songs read "Artist \u2022 Album": offer to jump to them.
-    const [artist, album] = item.type === "track" ? (item.subtitle || "").split(" \u2022 ") : [];
-    const names = artist && album ? { artist, album } : {};
-    if (!actions.length && !names.album) {
-      this._notify(this._t("no_action"));
-      return;
-    }
-    this._dialog.replaceChildren(
-      el("h2", {}, item.title),
-      el("p", {}, item.subtitle || "\u00a0"),
-      el(
-        "div",
-        { class: "list" },
-        ...this._gotoButtons(names),
-        ...actions.map((action) => this._actionButton(action, item.title, () => this._dialog.close())),
-      ),
-    );
-    this._dialog.showModal();
+    const actions = item.context_key ? await this._actions(item.context_key) : [];
+    const level = this._stack[this._stack.length - 1];
+    // Songs read "Artist \u2022 Album"; on the page of an album they are the album's
+    let [artist, album] = item.type === "track" ? (item.subtitle || "").split(" \u2022 ") : [];
+    if (item.type === "track" && !album && level && level.type === "album") [artist, album] = [level.subtitle, level.title];
+    if (item.type === "album") artist = item.subtitle;
+    const names = {};
+    if (item.type === "track" && album) names.album = album;
+    if (artist) names.artist = artist;
+    const onAlbum = Boolean(level && level.type === "album");
+    this._itemMenu({
+      title: onAlbum ? item.title.replace(/^\d+\.\s+/, "") : item.title,
+      subtitle: item.subtitle || (level && level.type === "album" && item.type === "track" ? level.title : ""),
+      actions,
+      names,
+      info: { type: item.type, artist, album, duration: item.duration, tracks: item.tracks },
+    });
   }
+
 
   _control(action, value, entryId, extra = {}) {
     const id = entryId || (this._player && this._player.entry_id);
@@ -1057,7 +1100,13 @@ class BluOSCompanionPanel extends HTMLElement {
       "button",
       {
         onclick: stop(() =>
-          this._showGoTo(item.title, [item.artist, item.album].filter(Boolean).join(" - "), item, moves),
+          this._itemMenu({
+            title: item.title,
+            subtitle: [item.artist, item.album].filter(Boolean).join(" - "),
+            extra: moves,
+            names: item,
+            info: { type: "track", artist: item.artist, album: item.album },
+          }),
         ),
       },
       icon("mdi:dots-vertical"),
@@ -1977,13 +2026,15 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _showLevelActions(level, actions) {
-    this._dialog.replaceChildren(
-      el("h2", {}, level.title),
-      el("p", {}, level.subtitle || "\u00a0"),
-      el("div", { class: "list" }, ...actions.map((action) => this._actionButton(action, level.title, () => this._dialog.close()))),
-    );
-    this._dialog.showModal();
+    this._itemMenu({
+      title: level.title,
+      subtitle: level.subtitle,
+      actions,
+      names: level.subtitle ? { artist: level.subtitle } : {},
+      info: { type: level.type, artist: level.subtitle, tracks: level.tracks },
+    });
   }
+
 
   // The first letter of a title as the player sorts it: `#` for what does not start with a letter
   _initial(title) {

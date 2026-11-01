@@ -355,3 +355,15 @@ async def test_image(client: BluOSClient, player_api: AiohttpClientMocker) -> No
         "image/jpeg",
     )
     assert calls(player_api) == [("/Artwork", {"service": "LocalMusic", "album": "x"})]
+
+
+async def test_a_genre_gets_the_menu_the_player_does_not_list(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """The player answers for the menu of a genre, so its key is built from the key of the genre."""
+    aioclient_mock.get(
+        browse_url("genres"),
+        text='<browse><item browseKey="LocalMusic:MG/Genres?genre=A+Capella" text="A Capella" type="genre"/></browse>',
+    )
+    [node] = await client.async_browse("genres")
+    assert node.context_key == "LocalMusic:CM/LocalMusic-Genre?genre=A+Capella"

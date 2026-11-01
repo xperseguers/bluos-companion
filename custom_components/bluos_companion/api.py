@@ -393,6 +393,14 @@ def _float(value: str | None, default: float = 0) -> float:
         return default
 
 
+def _genre_context_key(item: ET.Element) -> str | None:
+    """Return the key of the menu of a genre (the player gives none, but answers for it)."""
+    browse_key = item.get("browseKey") or ""
+    if item.get("type") != "genre" or "?genre=" not in browse_key:
+        return None
+    return f"LocalMusic:CM/LocalMusic-Genre?{browse_key.split('?', 1)[1]}"
+
+
 def _is_playlist_path(path: str | None) -> bool:
     return bool(path) and "service=BluOS" in path and "playlist=" in path
 
@@ -589,7 +597,7 @@ class BluOSClient:
                     browse_key=item.get("browseKey"),
                     play_path=_playlist_play_path(item.get("autoplayURL"), page_start) or item.get("playURL"),
                     image=item.get("image"),
-                    context_key=item.get("contextMenuKey"),
+                    context_key=item.get("contextMenuKey") or _genre_context_key(item),
                     play_url=item.get("playURL"),
                     tracks=_int(item.get("tracks")) or None,
                     duration=_int(item.get("duration")) or None,
