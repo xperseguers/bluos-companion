@@ -16,7 +16,7 @@ is still recommended.
 
 ## Options of a player
 
-**Settings → Devices & services → BluOS Companion → Configure** (for each player):
+**Settings → Devices & services → BluOS Companion**, then the **gear icon** (Configure) at the right of the name of the player, for each player:
 
 | Option | What it does |
 |---|---|
