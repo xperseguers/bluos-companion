@@ -278,14 +278,14 @@ const STYLE = `
     border: 1px solid var(--divider-color);
     padding: 8px 16px 12px;
   }
-  .lsec-head { display: flex; align-items: center; gap: 8px; min-height: 48px; }
+  .lsec-head { display: flex; align-items: center; gap: 8px; min-height: 48px; margin-bottom: 12px; }
   .lsec-head h3 { margin: 0; flex: 1; font-size: 18px; font-weight: 500; cursor: pointer; }
   .lsec-head button.viewall { border-radius: 16px; padding: 6px 14px; font: inherit; font-size: 13px; text-transform: uppercase; background: rgba(127, 127, 127, 0.15); }
-  .lsec-head button.arrow { padding: 4px; --mdc-icon-size: 22px; background: rgba(127, 127, 127, 0.15); }
+  .lsec-head button.arrow { padding: 4px; min-width: 40px; min-height: 40px; --mdc-icon-size: 22px; background: rgba(127, 127, 127, 0.15); }
   .lsec .rows { margin-bottom: 0; border-top: none; }
   .lsec .lrow.link { height: 48px; }
   .lsec .lrow:last-child { border-bottom: none; }
-  .hscroll { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 8px; }
+  .hscroll { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 2px 8px; }
   .hscroll .tile { flex: 0 0 150px; scroll-snap-align: start; }
   .info-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .info-row { display: flex; justify-content: space-between; gap: 16px; }
