@@ -735,23 +735,25 @@ class BluOSCompanionPanel extends HTMLElement {
     this._browse();
   }
 
+  // The artist of a song and the artist of its album can be two: one button for each
   _gotoButtons(names) {
-    const button = (kind, iconName, label) =>
+    const button = (kind, iconName, label, target) =>
       el(
         "button",
         {
           class: "action",
           onclick: () => {
             this._dialog.close();
-            this._jump(kind, names);
+            this._jump(kind, target);
           },
         },
         icon(iconName),
         label,
       );
+    const artists = names.artists || (names.artist ? [names.artist] : []);
     return [
-      names.album ? button("album", "mdi:album", this._t("album_label", { name: names.album })) : null,
-      names.artist ? button("artist", "mdi:account-music", this._t("artist_label", { name: names.artist })) : null,
+      names.album ? button("album", "mdi:album", this._t("album_label", { name: names.album }), names) : null,
+      ...artists.map((name) => button("artist", "mdi:account-music", this._t("artist_label", { name }), { artist: name })),
     ].filter(Boolean);
   }
 
@@ -857,6 +859,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (item.type === "track" && album) names.album = album;
     if (albumArtist) names.albumArtist = albumArtist;
     if (artist) names.artist = artist;
+    names.artists = [...new Set([artist, albumArtist].filter(Boolean))];
     const onAlbum = Boolean(level && level.type === "album");
     this._itemMenu({
       title: onAlbum ? item.title.replace(/^\d+\.\s+/, "") : item.title,
