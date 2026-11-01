@@ -32,10 +32,19 @@ def decode_image(value: str) -> str:
         return ""
 
 
-def async_artwork_url(hass: HomeAssistant, entry_id: str, image: str) -> str:
-    """Return a URL the browser can load for a player image."""
+# The width of the covers of the lists: twice what a tile (about 130 px) shows, against the 600 px of the
+# player's own, which weigh the browser down by the hundred. One size for all keeps the player's work down.
+THUMB_WIDTH = 260
+
+
+def async_artwork_url(
+    hass: HomeAssistant, entry_id: str, image: str, width: int | None = None
+) -> str:
+    """Return a URL the browser can load for a player image, of the given width if it is a cover."""
     if image.startswith("https://"):
         return image
+    if width and image.startswith("/Artwork?"):
+        image = f"{image}&width={width}"
     base = ARTWORK_URL.format(entry_id=entry_id)
     return async_sign_path(hass, f"{base}?path={encode_image(image)}", SIGN_EXPIRATION)
 

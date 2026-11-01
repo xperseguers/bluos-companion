@@ -17,11 +17,11 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.translation import async_get_translations
 
-from .api import SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket
+from .api import LIBRARY_ALBUMS_KEY, SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .covers import async_playlist_covers, async_preset_images, image_path
-from .http import async_artwork_url
+from .http import THUMB_WIDTH, async_artwork_url
 from .media_source import (
     async_get_titles,
     is_play_path,
@@ -160,7 +160,7 @@ def _items(
         title, icon = menu_label(node, titles)
         image = icon
         if image is None and (path := image_path(node)):
-            image = async_artwork_url(hass, entry_id, path)
+            image = async_artwork_url(hass, entry_id, path, THUMB_WIDTH)
         items.append(
             {
                 "type": node.type,
@@ -208,6 +208,11 @@ def ws_subscribe(
                             "image": player["image"]
                             and async_artwork_url(
                                 hass, player["entry_id"], player["image"]
+                            ),
+                            # A small one for the bar, the lists of players and the cards
+                            "thumb": player["image"]
+                            and async_artwork_url(
+                                hass, player["entry_id"], player["image"], THUMB_WIDTH
                             ),
                         }
                         for player in players
@@ -436,7 +441,7 @@ async def ws_albums(
                     "subtitle": album.artist,
                     "year": album.year,
                     "tracks": album.tracks,
-                    "image": async_artwork_url(hass, entry_id, album.image),
+                    "image": async_artwork_url(hass, entry_id, album.image, THUMB_WIDTH),
                     "browse_key": album.browse_key,
                     "play_path": album.play_path,
                     "context_key": album.context_key,
@@ -593,7 +598,7 @@ async def ws_locate(
             "subtitle": node.subtitle,
             "browse_key": node.browse_key,
             "context_key": node.context_key,
-            "image": async_artwork_url(hass, msg["entry_id"], path) if path else None,
+            "image": async_artwork_url(hass, msg["entry_id"], path, THUMB_WIDTH) if path else None,
             "tracks": node.tracks,
         }
     connection.send_result(msg["id"], result)
@@ -619,7 +624,7 @@ async def ws_presets(
                     "name": preset.name,
                     "url": preset.url,
                     "image": images[preset.id]
-                    and async_artwork_url(hass, msg["entry_id"], images[preset.id]),
+                    and async_artwork_url(hass, msg["entry_id"], images[preset.id], THUMB_WIDTH),
                 }
                 for preset in presets
             ]
@@ -675,7 +680,7 @@ async def ws_playlist_covers(
         msg["id"],
         {
             "covers": {
-                key: path and async_artwork_url(hass, entry_id, path)
+                key: path and async_artwork_url(hass, entry_id, path, THUMB_WIDTH)
                 for key, path in covers.items()
             }
         },
@@ -712,6 +717,7 @@ async def ws_home(
         images = await async_preset_images(coordinator, presets)
         groups.append(
             {
+                "kind": "presets",
                 "title": titles["presets"],
                 "items": [
                     {
@@ -719,7 +725,7 @@ async def ws_home(
                         "title": preset.name,
                         "subtitle": "",
                         "image": images[preset.id]
-                        and async_artwork_url(hass, entry_id, images[preset.id]),
+                        and async_artwork_url(hass, entry_id, images[preset.id], THUMB_WIDTH),
                         "browse_key": None,
                         "play_path": f"/Preset?id={preset.id}",
                         "context_key": None,
@@ -737,8 +743,10 @@ async def ws_home(
         # Their covers are asked for after the page is shown, see playlist_covers.
         groups.append(
             {
+                "kind": "playlists",
                 "title": titles["playlists"],
                 "items": _items(hass, entry_id, playlists, titles),
+                "view_all": {"title": titles["playlists"], "key": "BluOS:"},
             }
         )
     # The entries of the library (artists, albums...) one tap from the start page; the
@@ -750,7 +758,11 @@ async def ws_home(
     )
     if entries:
         groups.append(
-            {"title": titles["library"], "items": _items(hass, entry_id, entries, titles)}
+            {
+                "kind": "library",
+                "title": titles["library"],
+                "items": _items(hass, entry_id, entries, titles),
+            }
         )
     if not isinstance(recents, BluOSError):
         # Titled by the player, in the language of Home Assistant.
@@ -759,6 +771,7 @@ async def ws_home(
             if row := rows.get(row_id):
                 groups.append(
                     {
+                        "kind": row_id,
                         "title": row.title,
                         "items": [
                             {
@@ -766,7 +779,7 @@ async def ws_home(
                                 "title": item.title,
                                 "subtitle": item.subtitle,
                                 "image": item.image
-                                and async_artwork_url(hass, entry_id, item.image),
+                                and async_artwork_url(hass, entry_id, item.image, THUMB_WIDTH),
                                 "browse_key": item.browse_key,
                                 "play_path": item.play_path,
                                 "context_key": item.context_key,
@@ -779,13 +792,19 @@ async def ws_home(
     if not isinstance(albums, BluOSError) and albums:
         groups.append(
             {
+                "kind": "recently_added",
                 "title": titles["recently_added"],
+                "view_all": {
+                    "title": titles["albums"],
+                    "key": LIBRARY_ALBUMS_KEY,
+                    "sort": "recent",
+                },
                 "items": [
                     {
                         "type": "album",
                         "title": album.title,
                         "subtitle": album.artist,
-                        "image": async_artwork_url(hass, entry_id, album.image),
+                        "image": async_artwork_url(hass, entry_id, album.image, THUMB_WIDTH),
                         "browse_key": album.browse_key,
                         "play_path": album.play_path,
                         "context_key": album.context_key,
@@ -796,8 +815,15 @@ async def ws_home(
         )
     nodes = [node for node in page.nodes if node.browse_key not in hidden]
     groups.append(
-        {"title": titles["sources"], "items": _items(hass, entry_id, nodes, titles)}
+        {
+            "kind": "sources",
+            "title": titles["sources"],
+            "items": _items(hass, entry_id, nodes, titles),
+        }
     )
+    # What one starts the most comes first: the presets, what was played, the library to browse
+    order = ["presets", "recent", "library", "playlists", "recent-stations", "recently_added", "mostUsed", "sources"]
+    groups.sort(key=lambda group: order.index(group["kind"]))
     connection.send_result(msg["id"], {"groups": groups, "search_key": page.search_key})
 
 
@@ -964,7 +990,7 @@ async def ws_queue(
                     "artist": item.artist,
                     "album": item.album,
                     "image": item.image
-                    and async_artwork_url(hass, msg["entry_id"], item.image),
+                    and async_artwork_url(hass, msg["entry_id"], item.image, THUMB_WIDTH),
                 }
                 for item in queue
             ]

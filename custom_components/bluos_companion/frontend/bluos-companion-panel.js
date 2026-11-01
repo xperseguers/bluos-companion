@@ -1808,8 +1808,8 @@ class BluOSCompanionPanel extends HTMLElement {
                   this._select(target.entry_id);
                 },
               },
-              target.image
-                ? el("img", { class: "cover", src: target.image, alt: "" })
+              target.thumb
+                ? el("img", { class: "cover", src: target.thumb, alt: "" })
                 : el("div", { class: "cover" }, icon("mdi:speaker")),
               el(
                 "div",
@@ -1958,8 +1958,8 @@ class BluOSCompanionPanel extends HTMLElement {
                 this._dialog.close();
               },
             },
-            player.image
-              ? el("img", { class: "cover", src: player.image, alt: "" })
+            player.thumb
+              ? el("img", { class: "cover", src: player.thumb, alt: "" })
               : el("div", { class: "cover" }, icon("mdi:speaker")),
             el(
               "div",
@@ -2719,10 +2719,10 @@ class BluOSCompanionPanel extends HTMLElement {
     const playing = ACTIVE_STATES.includes(player.state);
     this._track.textContent = player.title || player.name;
     this._artist.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
-    if (imageKey(player.image) !== this._coverKey) {
-      this._coverKey = imageKey(player.image);
+    if (imageKey(player.thumb) !== this._coverKey) {
+      this._coverKey = imageKey(player.thumb);
       this._cover.replaceWith(
-        (this._cover = player.image ? el("img", { class: "cover", src: player.image, alt: "" }) : el("div", { class: "cover" })),
+        (this._cover = player.thumb ? el("img", { class: "cover", src: player.thumb, alt: "" }) : el("div", { class: "cover" })),
       );
     }
     this._buttons.toggle.firstChild.setAttribute("icon", playing ? "mdi:pause" : "mdi:play");

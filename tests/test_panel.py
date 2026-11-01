@@ -770,15 +770,18 @@ async def test_home_page_groups(
     )
     groups = (await client.receive_json())["result"]["groups"]
 
+    # What one starts the most comes first: the presets, what was played, then the library to browse
     assert [group["title"] for group in groups] == [
         "Presets",
-        "Library",
         "Recently Played",
+        "Library",
         "Recent Stations",
         "Recently added",
         "Sources",
     ]
-    presets, library, recent, stations, albums, sources = (group["items"] for group in groups)
+    assert [group["kind"] for group in groups][:3] == ["presets", "recent", "library"]
+    assert groups[4]["view_all"]["sort"] == "recent"
+    presets, recent, library, stations, albums, sources = (group["items"] for group in groups)
     assert [(item["title"], item["image"]) for item in library] == [
         ("Artists", "/bluos_companion/icons/artists.svg"),
         ("Albums", "/bluos_companion/icons/albums.svg"),
@@ -887,10 +890,12 @@ async def test_saved_playlist_lists_its_tracks(
     assert result["next_key"] is None
     # The tracks are counted from the first one found, not from the offset of the page
     assert first["play_path"] == "/Add?service=BluOS&listindex=0&playlist=Tuning&playnow=1&offset=0"
+    # The covers of a list are asked at the size they show
     assert _image_query(first["image"]) == {
         "service": "LocalMusic",
         "artist": "ADELE",
         "album": "Skyfall - Single",
+        "width": "260",
     }
     assert second["image"] is None
 
@@ -1211,3 +1216,14 @@ async def test_albums_of_the_library_come_with_their_year_and_tracks(
     )
     assert album["browse_key"].startswith("LocalMusic:MG/LocalMusic-Album?")
     assert result["recent"] == [["Abbey Road", "The Beatles"]]
+
+
+def test_a_cover_of_a_list_is_asked_at_its_size(hass: HomeAssistant) -> None:
+    """The covers of the lists are asked of the player at the width they show, the others as they are."""
+    from custom_components.bluos_companion.http import THUMB_WIDTH, async_artwork_url
+
+    small = async_artwork_url(hass, "entry", "/Artwork?service=LocalMusic&album=x", THUMB_WIDTH)
+    assert _image_query(small)["width"] == str(THUMB_WIDTH)
+    full = async_artwork_url(hass, "entry", "/Artwork?service=LocalMusic&album=x")
+    assert "width" not in _image_query(full)
+    assert async_artwork_url(hass, "entry", "https://x/y.jpg", THUMB_WIDTH) == "https://x/y.jpg"

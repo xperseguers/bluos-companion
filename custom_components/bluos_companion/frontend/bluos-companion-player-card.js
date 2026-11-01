@@ -263,8 +263,8 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     this._sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
     this._sub.hidden = !this._sub.textContent;
     this._where.lastChild.textContent = player.name;
-    if (player.image) {
-      this._cover.replaceWith((this._cover = pel("img", { class: "cover", src: player.image, alt: "" })));
+    if (player.thumb) {
+      this._cover.replaceWith((this._cover = pel("img", { class: "cover", src: player.thumb, alt: "" })));
     } else if (this._cover.tagName === "IMG") {
       this._cover.replaceWith((this._cover = pel("div", { class: "cover" }, picon("mdi:music"))));
     }
