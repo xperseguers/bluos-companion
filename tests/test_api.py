@@ -256,6 +256,32 @@ async def test_actions_of_an_item(
     ]
 
 
+async def test_playlist_tracks_are_numbered_across_the_pages(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """The play path of a saved playlist track starts at the tracks found before its page."""
+
+    def track(index: int, offset: int) -> str:
+        return (
+            f'<item text="t{index}" type="track" autoplayURL="/Add?service=BluOS'
+            f'&amp;listindex={index}&amp;playlist=P&amp;offset={offset}"/>'
+        )
+
+    aioclient_mock.get(browse_url("start"), text='<browse nextKey="a"></browse>')
+    aioclient_mock.get(
+        browse_url("a"), text=f'<browse nextKey="b">{track(0, 260)}{track(1, 260)}</browse>'
+    )
+    aioclient_mock.get(browse_url("b"), text=f'<browse nextKey="c">{track(0, 270)}</browse>')
+    first = await client.async_browse_page("start", max_pages=2)
+    assert [node.play_path.rsplit("=", 1)[1] for node in first.nodes] == ["0", "0", "2"]
+    assert first.next_key == "c|pos=3"
+
+    aioclient_mock.get(browse_url("c"), text=f"<browse>{track(0, 280)}</browse>")
+    second = await client.async_browse_page(first.next_key)
+    assert second.nodes[0].play_path.endswith("listindex=0&playlist=P&offset=3")
+    assert second.next_key is None
+
+
 async def test_browse_keeps_the_context_key(
     client: BluOSClient, aioclient_mock: AiohttpClientMocker
 ) -> None:

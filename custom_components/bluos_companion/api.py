@@ -14,6 +14,7 @@ REQUEST_TIMEOUT = 20
 MAX_BROWSE_PAGES = 8
 MAX_EMPTY_BROWSE_PAGES = 60
 MAX_PLAYLIST_PAGES = 2000
+POSITION_MARK = "|pos="
 LIBRARY_ALBUMS_KEY = "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic"
 HOME_ROWS = ("mostUsed", "recent-stations", "recent")
 UI_HEADERS = {"x-sovi-schema-version": "35", "x-sovi-ui-schema-version": "7"}
@@ -389,6 +390,22 @@ def _float(value: str | None, default: float = 0) -> float:
         return default
 
 
+def _is_playlist_path(path: str | None) -> bool:
+    return bool(path) and "service=BluOS" in path and "playlist=" in path
+
+
+def _playlist_play_path(path: str | None, page_start: int) -> str | None:
+    """Return the play path of a track of a saved playlist, aimed at the right track.
+
+    The player starts playing at the offset plus the position in the page, counted in
+    the tracks it can find, whereas the offset of the page it lists is not (it also
+    counts the entries it cannot find), so the position of the page is used instead.
+    """
+    if not _is_playlist_path(path):
+        return path
+    return re.sub(r"(?<=[?&]offset=)\d+", str(page_start), path)
+
+
 def _int(value: str | None, default: int = 0) -> int:
     try:
         return int(value) if value is not None else default
@@ -540,6 +557,10 @@ class BluOSClient:
         """
         nodes: dict[Node, None] = {}
         search_key: str | None = None
+        # The tracks of a saved playlist are numbered across the pages: the position
+        # reached travels with the key of the next page
+        key, _, position = key.partition(POSITION_MARK) if key else (key, "", "")
+        tracks = _int(position)
         next_key: str | None = key
         first = True
         useful_pages = 0
@@ -554,14 +575,16 @@ class BluOSClient:
                 search_key = root.get("searchKey")
                 first = False
             found = False
+            page_start = tracks
             for item in root.iter("item"):
                 found = True
+                tracks += _is_playlist_path(item.get("autoplayURL"))
                 node = Node(
                     type=item.get("type", ""),
                     title=item.get("text", ""),
                     subtitle=item.get("text2", ""),
                     browse_key=item.get("browseKey"),
-                    play_path=item.get("autoplayURL") or item.get("playURL"),
+                    play_path=_playlist_play_path(item.get("autoplayURL"), page_start) or item.get("playURL"),
                     image=item.get("image"),
                     context_key=item.get("contextMenuKey"),
                     play_url=item.get("playURL"),
@@ -570,6 +593,8 @@ class BluOSClient:
             useful_pages += found
             if not (next_key := root.get("nextKey")) or useful_pages >= max_pages:
                 break
+        if next_key and tracks:
+            next_key += f"{POSITION_MARK}{tracks}"
         return BrowsePage(list(nodes), search_key, next_key)
 
     async def async_find_album(self, title: str, artist: str | None) -> Node | None:

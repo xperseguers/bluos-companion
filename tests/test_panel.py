@@ -865,7 +865,7 @@ async def test_saved_playlist_lists_its_tracks(
         player_api,
         browse_url("tracks-10"),
         text="""<browse type="tracks">
-  <item playURL="/Add?playnow=1&amp;file=a" autoplayURL="/Add?service=BluOS&amp;listindex=0&amp;playlist=Tuning&amp;playnow=1"
+  <item playURL="/Add?playnow=1&amp;file=a" autoplayURL="/Add?service=BluOS&amp;listindex=0&amp;playlist=Tuning&amp;playnow=1&amp;offset=20"
         text="Skyfall" text2="ADELE \u2022 Skyfall - Single" duration="286" image="/Artwork?service=BluOS&amp;songid=" type="track"/>
   <item playURL="/Add?playnow=1&amp;file=b" text="No album" text2="Someone" image="/Artwork?service=BluOS&amp;songid=" type="track"/>
 </browse>""",
@@ -882,7 +882,8 @@ async def test_saved_playlist_lists_its_tracks(
     first, second = result["items"]
 
     assert result["next_key"] is None
-    assert first["play_path"].startswith("/Add?service=BluOS&listindex=0")
+    # The tracks are counted from the first one found, not from the offset of the page
+    assert first["play_path"] == "/Add?service=BluOS&listindex=0&playlist=Tuning&playnow=1&offset=0"
     assert _image_query(first["image"]) == {
         "service": "LocalMusic",
         "artist": "ADELE",
