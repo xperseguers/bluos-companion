@@ -10,6 +10,22 @@ docker compose logs -f
 
 Onboard Home Assistant once in the browser. The integration folder is mounted into the container.
 
+### Try it on a phone or a tablet
+
+The container publishes port 8123 on all the interfaces of your computer, so a phone on the same Wi-Fi can open
+the development instance, which is the way to check the sidebar player on the real device (the status bar, the
+home indicator and the browser toolbars cannot be reproduced by narrowing a desktop browser window):
+
+1. Find the address of your computer (macOS: `ipconfig getifaddr en0`), then open `http://<address>:8123` in the
+   browser of the phone. On macOS `http://<computer name>.local:8123` also works and survives a change of address.
+2. Log in. In Safari, "Add to Home Screen" gives a full screen web app, close to the Home Assistant app.
+3. In the Home Assistant Companion app, add the instance as a second server (Settings, Companion app, Servers).
+   The app may ask for the permission to use the local network the first time.
+4. After `docker compose restart`, reload the page. If the old scripts stay, clear the cache of the browser (in the
+   app: Settings, Companion app, Debugging, Reset frontend cache).
+
+The connection is plain HTTP, which is fine on a private network: do not open the port to the internet.
+
 ## Tests
 
 ```
