@@ -75,7 +75,7 @@ const STYLE = `
       max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
     background: var(--primary-background-color);
   }
-  dialog.now { overflow: hidden; }
+  dialog.now { overflow: hidden; overscroll-behavior: none; }
   /* The cover, scaled up and blurred, as the background of the full screen view */
   .now .bg {
     position: absolute;
@@ -122,7 +122,7 @@ const STYLE = `
   .now .queue-box { display: none; flex: 1; min-height: 0; align-self: stretch; flex-direction: column; max-width: 640px; width: 100%; margin: 0 auto 20px; }
   dialog.now.queue-open .queue-box { display: flex; }
   dialog.now.queue-open .art-box { display: none; }
-  .now .queue-list { flex: 1; min-height: 0; overflow-y: auto; }
+  .now .queue-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
   .now .queue-box .actions { margin: 0 0 8px; flex: none; display: grid; grid-template-columns: 1fr 1fr; }
   .now .queue-box .actions button { width: 100%; justify-content: flex-start; padding: 6px 14px; }
   .now .line.bottom button.on { background: rgba(127, 127, 127, 0.3); }
@@ -855,6 +855,13 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   // The queue inside the full screen view
+  // Whether a swipe (dy: the finger moved down when positive) scrolls the list, not the page behind it
+  _queueCanScroll(list, dy) {
+    if (list.scrollHeight <= list.clientHeight) return false;
+    if (dy > 0) return list.scrollTop > 0;
+    return list.scrollTop + list.clientHeight < list.scrollHeight - 1;
+  }
+
   _setNowQueue(open) {
     this._nowQueueOpen = open;
     this._nowDialog.classList.toggle("queue-open", open);
@@ -1336,8 +1343,17 @@ class BluOSCompanionPanel extends HTMLElement {
         class: "now",
         tabindex: "-1",
         autofocus: "",
+        // A swipe on the full screen view must not scroll the page behind it (the queue and the sliders can)
+        ontouchstart: (event) => (this._touchY = event.touches[0].clientY),
+        ontouchmove: (event) => {
+          if (event.target.tagName === "INPUT") return;
+          const list = event.target.closest(".queue-list");
+          if (list && this._queueCanScroll(list, event.touches[0].clientY - this._touchY)) return;
+          event.preventDefault();
+        },
         onclose: () => {
           this._nowOpen = false;
+          this._main.style.overflowY = "";
           this._setNowQueue(false);
         },
       },
@@ -1379,6 +1395,8 @@ class BluOSCompanionPanel extends HTMLElement {
   _showNow() {
     if (!this._player) return;
     this._nowOpen = true;
+    // Nothing of the page behind scrolls (and shows its scrollbar) under the full screen view
+    this._main.style.overflowY = "hidden";
     this._renderNow();
     if (!this._nowDialog.open) this._nowDialog.showModal();
   }
