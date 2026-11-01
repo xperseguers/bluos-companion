@@ -242,6 +242,8 @@ const STYLE = `
   .ah-actions button.round { padding: 8px; }
   .browse { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
   main.with-az { padding-right: 38px; }
+  main.with-az.wide-az { padding-right: 52px; }
+  .az.wide { width: 40px; }
   .az {
     position: absolute;
     right: calc(var(--scrollbar, 0px) + 4px);
@@ -2253,7 +2255,7 @@ class BluOSCompanionPanel extends HTMLElement {
     const plain = (text) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const byTitle = (a, b) => plain(a.title).localeCompare(plain(b.title));
     const byYear = (a, b) => (a.year || 9999) - (b.year || 9999) || byTitle(a, b);
-    const decade = (year) => (year ? `${Math.floor(year / 10) * 10}s` : this._t("unknown_year"));
+    const decade = (year) => (year ? String(Math.floor(year / 10) * 10) : this._t("unknown_year"));
     const groups = new Map();
     const add = (title, strip, item) => {
       if (!groups.has(title)) groups.set(title, { title, strip, items: [] });
@@ -2268,7 +2270,8 @@ class BluOSCompanionPanel extends HTMLElement {
     } else if (sort === "year" || sort === "decade") {
       for (const album of [...data.albums].sort(byYear)) {
         const label = decade(album.year);
-        add(sort === "year" ? String(album.year || this._t("unknown_year")) : label, label, album);
+        // The index only says the decade ("1980"), the header of a decade says it with its s
+        add(sort === "year" ? String(album.year || this._t("unknown_year")) : album.year ? `${label}s` : label, label, album);
       }
     } else {
       const artists = [...data.albums].sort((a, b) => plain(a.subtitle).localeCompare(plain(b.subtitle)) || (sort === "artist_year" ? byYear(a, b) : byTitle(a, b)));
@@ -2409,6 +2412,8 @@ class BluOSCompanionPanel extends HTMLElement {
       const label = section.strip || section.title;
       if (!view.strips.length || view.strips[view.strips.length - 1].label !== label) view.strips.push({ label, index });
     });
+    this._azStrip.classList.toggle("wide", view.strips.some((entry) => entry.label.length > 2));
+    this._main.classList.toggle("wide-az", view.strips.some((entry) => entry.label.length > 2));
     this._azStrip.replaceChildren(...view.strips.map((entry) => el("div", {}, entry.label)));
     this._azStrip.hidden = view.strips.length < 2;
     this._main.classList.add("with-az");
