@@ -287,6 +287,28 @@ const STYLE = `
   .lsec .lrow:last-child { border-bottom: none; }
   .hscroll { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 2px 8px; }
   .hscroll .tile { flex: 0 0 150px; scroll-snap-align: start; }
+  /* The albums of a wide screen flow in one grid, the letter (or year, artist...) being a cell of it */
+  .grid.flow { margin-bottom: 16px; }
+  .grid.flow .tile .title, .grid.flow .tile .subtitle { line-height: 1.25; }
+  .grid.flow .tile .title { min-height: 2.5em; }
+  .grid.flow .tile .subtitle { min-height: 2.5em; }
+  .tile.ph { visibility: hidden; pointer-events: none; }
+  .tile.hcell { cursor: default; background: transparent; border-color: transparent; }
+  .tile.hcell:hover { background: transparent; }
+  .hbox {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8px;
+    box-sizing: border-box;
+    font-size: 56px;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+    color: var(--primary-color);
+  }
+  .hbox.long { font-size: 22px; }
   .list-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .list-controls button { border-radius: 20px; padding: 6px 14px; gap: 8px; font: inherit; border: 1px solid var(--divider-color); background: var(--card-background-color); }
   .list-controls select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
@@ -498,6 +520,7 @@ const STYLE = `
 
 const ROW_TYPES = ["track", "artist", "composer", "genre"];
 const LANDING_TYPES = ["artist", "composer", "genre"]; // their page shows a few albums, songs...
+const FAR = 4000; // letters this far (in pixels) from what shows are given back
 const ROW_HEIGHT = 56; // a row of a list has a fixed height, so that the length of a list of letters is known
 const REPEAT_CYCLE = { 2: 0, 0: 1, 1: 2 }; // off -> queue -> track -> off
 const ACTIVE_STATES = ["play", "stream"];
@@ -2291,34 +2314,88 @@ class BluOSCompanionPanel extends HTMLElement {
 
   // A list drawn letter by letter: the headers at once, the entries of a letter when it is near or jumped to
   _buildSectioned(kind, specs, level) {
+    // The albums as a grid on a wide screen flow in one grid, the letters being cells of it
+    if (this._albumGrid && window.matchMedia("(min-width: 601px)").matches) {
+      this._buildFlow(kind, specs, level);
+      return;
+    }
     const root = el("div", { class: "sectioned" });
     const view = { kind, groups: this._groups, root, sections: [], level, itemHeight: 0, timer: null, observer: null };
     for (const spec of specs) {
       const head = el("h3", { class: "sec-head" }, spec.title);
       const body = el("div", { class: "sec-body" });
       const wrap = el("div", { class: "sec" }, head, body);
-      const section = { ...spec, wrap, head, body, state: spec.items ? "done" : "idle", visible: false };
+      const section = { ...spec, wrap, head, body, state: spec.items ? "done" : "idle", seen: new Set(), targets: [wrap] };
       view.sections.push(section);
       root.append(wrap);
       if (section.state === "done") this._fillSection(view, section);
       else body.style.minHeight = `${this._estimate(view, section)}px`;
     }
     this._grid.append(root);
+    this._finishSectioned(view);
+  }
+
+  // One grid for all the letters: a cell with the letter, then the albums of the letter (empty cells of the same
+  // size stand for those not loaded yet, so that the grid has its final size and nothing moves when they come)
+  _buildFlow(kind, specs, level) {
+    const root = el("div", { class: "grid flow" });
+    const view = { kind, groups: this._groups, root, sections: [], level, timer: null, observer: null, flow: true };
+    const blank = (view.blank = el(
+      "div",
+      { class: "tile ph" },
+      el("div", { class: "artwrap" }, el("div", { class: "art empty" })),
+      el("div", { class: "text" }, el("div", { class: "title" }, "\u00a0"), el("div", { class: "subtitle" }, "\u00a0")),
+    ));
+    for (const spec of specs) {
+      const head = el(
+        "div",
+        { class: "tile hcell" },
+        el("div", { class: "artwrap" }, el("div", { class: `hbox${spec.title.length > 6 ? " long" : ""}` }, spec.title)),
+        el("div", { class: "text" }, el("div", { class: "title" }, "\u00a0"), el("div", { class: "subtitle" }, "\u00a0")),
+      );
+      const section = { ...spec, wrap: head, state: spec.items ? "done" : "idle", seen: new Set(), targets: [], cells: [] };
+      view.sections.push(section);
+      root.append(head);
+      if (section.items) {
+        section.tiles = section.items.map((item) => this._tile(item));
+        root.append(...section.tiles);
+      } else {
+        for (let index = 0; index < section.count; index++) {
+          const cell = blank.cloneNode(true);
+          section.cells.push(cell);
+          section.targets.push(cell);
+        }
+        root.append(...section.cells);
+      }
+    }
+    this._grid.append(root);
+    this._finishSectioned(view);
+  }
+
+  // The letters that are near are loaded, the others wait; then the strip with the letters
+  _finishSectioned(view) {
     this._sectionedView = view;
-    if (kind === "server") {
+    if (view.kind === "server") {
       view.observer = new IntersectionObserver(
         (entries) => {
-          for (const entry of entries) entry.target._section.visible = entry.isIntersecting;
+          for (const entry of entries) {
+            const section = entry.target._section;
+            if (entry.isIntersecting) section.seen.add(entry.target);
+            else section.seen.delete(entry.target);
+          }
           clearTimeout(view.timer);
           view.timer = setTimeout(() => {
-            for (const section of view.sections) if (section.visible) this._loadSection(view, section);
+            for (const section of view.sections) if (section.seen.size) this._loadSection(view, section);
+            this._unloadFar(view);
           }, 120);
         },
         { root: this._main, rootMargin: "600px 0px" },
       );
       for (const section of view.sections) {
-        section.wrap._section = section;
-        view.observer.observe(section.wrap);
+        for (const target of section.targets) {
+          target._section = section;
+          view.observer.observe(target);
+        }
       }
     }
     // The strip has one entry for the sections that share a label (the albums of a decade, the artists of a letter)
@@ -2336,9 +2413,14 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _fillSection(view, section) {
+    if (view.flow) {
+      this._fillFlow(section);
+      return;
+    }
     section.body.replaceChildren();
     this._appendItems(section.items, view.level, section.body);
     section.body.style.minHeight = "";
+    this._loadFirstCovers(section.body);
     // A grid has no fixed height: what a loaded one measures serves for the estimate of the others
     if (section.key && section.key.startsWith("LocalMusic:S:Album/") && section.items.length && !this._albumRows) {
       const grid = section.body.querySelector(".grid");
@@ -2347,17 +2429,69 @@ class BluOSCompanionPanel extends HTMLElement {
     }
   }
 
+  // The letters far from what shows are given back (their entries, their covers), as empty space of the same size
+  _unloadFar(view) {
+    const box = this._main.getBoundingClientRect();
+    for (const section of view.sections) {
+      if (section.state !== "done") continue;
+      const first = section.wrap.getBoundingClientRect();
+      const tiles = section.tiles || [];
+      const last = (tiles.length ? tiles[tiles.length - 1] : section.wrap).getBoundingClientRect();
+      if (last.bottom >= box.top - FAR && first.top <= box.bottom + FAR) continue;
+      if (view.flow) {
+        const cells = tiles.map((tile) => {
+          const cell = view.blank.cloneNode(true);
+          tile.replaceWith(cell);
+          cell._section = section;
+          view.observer.observe(cell);
+          return cell;
+        });
+        section.cells = cells;
+        section.targets = cells;
+        section.tiles = [];
+      } else {
+        section.body.style.minHeight = `${section.body.offsetHeight}px`;
+        section.body.replaceChildren();
+      }
+      section.items = null;
+      section.seen = new Set();
+      section.state = "idle";
+    }
+  }
+
+  // The albums replace the empty cells that stand for them
+  _fillFlow(section) {
+    const tiles = section.items.map((item) => this._tile(item));
+    let last = section.wrap;
+    tiles.forEach((tile, index) => {
+      const cell = section.cells[index];
+      if (cell) cell.replaceWith(tile);
+      else last.after(tile);
+      last = tile;
+    });
+    section.cells.slice(tiles.length).forEach((cell) => cell.remove());
+    section.cells = [];
+    section.tiles = tiles;
+    this._loadFirstCovers(section.wrap.parentElement, tiles.slice(0, 30));
+  }
+
+  // The first covers of a letter are those that show after a jump: they are not left to the lazy loading
+  _loadFirstCovers(root, tiles) {
+    const images = tiles ? tiles.flatMap((tile) => [...tile.querySelectorAll("img")]) : [...root.querySelectorAll("img")];
+    for (const image of images.slice(0, 30)) image.loading = "eager";
+  }
+
   async _loadSection(view, section) {
     if (section.state !== "idle" || !this._player) return;
     section.state = "loading";
-    section.body.replaceChildren(el("div", { class: "sec-loading" }, "\u2026"));
+    if (!view.flow) section.body.replaceChildren(el("div", { class: "sec-loading" }, "\u2026"));
     // The whole letter in one request
     const key = section.key.replace(/limit=\d+/, `limit=${section.count + 50}`);
     const result = await this._call({ type: "bluos_companion/browse", entry_id: this._player.entry_id, key });
     if (this._sectionedView !== view) return;
     if (!result) {
       section.state = "idle";
-      section.body.replaceChildren();
+      if (!view.flow) section.body.replaceChildren();
       return;
     }
     section.items = result.items;
@@ -2423,6 +2557,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (!this._built) return;
     this._albumActions = null;
     this._albumRows = false;
+    this._albumGrid = false;
     this._renderCrumbs();
     this._buttons.queue.classList.toggle("on", this._inQueue);
     // A list of letters already on screen stays, with what it has loaded
@@ -2448,6 +2583,7 @@ class BluOSCompanionPanel extends HTMLElement {
       const letters = this._sectionItems();
       const albums = this._isAlbumList(level);
       this._albumRows = albums && this._preference(DISPLAY_KEY, ["list", "grid"], "list") === "list";
+      this._albumGrid = albums && !this._albumRows;
       if (albums) this._grid.append(this._listControls(level));
       // The other sorts need the albums of the whole library (if the player does not give them, the letters stay)
       const sort = level && level.key === ALBUMS_KEY && this._albumsData !== false ? this._preference(ALBUM_SORT_KEY, ALBUM_SORTS, "az") : "az";
