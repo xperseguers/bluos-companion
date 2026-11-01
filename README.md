@@ -18,9 +18,10 @@ backup carries along.
 
 ## What you get
 
-- **A sidebar player** open to every user, ideal for a kiosk tablet: home page, library with an A–Z bar,
-  search, queue, playlists with covers, group and volume of each player, move the music to another
-  player. [Read more](documentation/panel.md)
+- **A sidebar player** open to every user, for a kiosk tablet, a desktop or a phone: a home page of rows to scroll,
+  a library you browse as in the BluOS app (letters you jump to, albums as a list or a grid, pages for an artist or a
+  genre), search, a full-screen view with the blurred cover, the queue, playlists with covers, group and volume of
+  each player, move the music to another player. [Read more](documentation/panel.md)
 - **Dashboard cards**: the presets of a player as a grid, and a compact player.
   [Read more](documentation/cards.md)
 - **Voice and AI**: "play Adele on Kitchen" through Assist or an AI agent, with tolerance for typos.
