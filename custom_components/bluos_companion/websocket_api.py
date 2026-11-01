@@ -821,8 +821,8 @@ async def ws_home(
             "items": _items(hass, entry_id, nodes, titles),
         }
     )
-    # What one starts the most comes first: the presets, what was played, the library to browse
-    order = ["presets", "recent", "library", "playlists", "recent-stations", "recently_added", "mostUsed", "sources"]
+    # The shortcuts into the library first, then what one starts the most: the presets, what was played
+    order = ["library", "presets", "recent", "playlists", "recent-stations", "recently_added", "mostUsed", "sources"]
     groups.sort(key=lambda group: order.index(group["kind"]))
     connection.send_result(msg["id"], {"groups": groups, "search_key": page.search_key})
 

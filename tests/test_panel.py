@@ -770,18 +770,18 @@ async def test_home_page_groups(
     )
     groups = (await client.receive_json())["result"]["groups"]
 
-    # What one starts the most comes first: the presets, what was played, then the library to browse
+    # The shortcuts into the library first, then the presets and what was played
     assert [group["title"] for group in groups] == [
+        "Library",
         "Presets",
         "Recently Played",
-        "Library",
         "Recent Stations",
         "Recently added",
         "Sources",
     ]
-    assert [group["kind"] for group in groups][:3] == ["presets", "recent", "library"]
+    assert [group["kind"] for group in groups][:3] == ["library", "presets", "recent"]
     assert groups[4]["view_all"]["sort"] == "recent"
-    presets, recent, library, stations, albums, sources = (group["items"] for group in groups)
+    library, presets, recent, stations, albums, sources = (group["items"] for group in groups)
     assert [(item["title"], item["image"]) for item in library] == [
         ("Artists", "/bluos_companion/icons/artists.svg"),
         ("Albums", "/bluos_companion/icons/albums.svg"),
