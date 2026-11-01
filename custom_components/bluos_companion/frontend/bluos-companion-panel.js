@@ -96,6 +96,7 @@ const STYLE = `
     --secondary-background-color: rgba(255, 255, 255, 0.15);
   }
   dialog.now.has-art input[type="range"] { accent-color: #fff; }
+  dialog.now.has-art button:focus-visible { outline: 2px solid #fff; }
   dialog.now.has-art select { background: rgba(255, 255, 255, 0.18); color: #fff; border: none; }
   dialog.now.has-art select option { color: initial; }
   dialog.now[open] { display: flex; flex-direction: column; align-items: center; gap: 12px; }
@@ -1241,7 +1242,7 @@ class BluOSCompanionPanel extends HTMLElement {
     );
     this._nowDialog = el(
       "dialog",
-      { class: "now", onclose: () => (this._nowOpen = false) },
+      { class: "now", tabindex: "-1", autofocus: "", onclose: () => (this._nowOpen = false) },
       (now.bg = el("div", { class: "bg" })),
       el("div", { class: "veil" }),
       el(
