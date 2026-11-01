@@ -158,7 +158,13 @@
     "panel_editor_show_power": "Show the power button of the amplifier",
     "panel_power": "Amplifier power",
     "panel_open_control_panel": "Open control panel",
-    "panel_input": "Input"
+    "panel_input": "Input",
+    "panel_more": "More",
+    "panel_shuffle": "Shuffle",
+    "panel_repeat": "Repeat",
+    "panel_volume": "Volume",
+    "panel_close": "Close",
+    "panel_sleep_timer": "Sleep timer"
   },
   "services": {
     "backup_playlists": {

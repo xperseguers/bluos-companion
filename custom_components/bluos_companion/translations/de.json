@@ -158,7 +158,13 @@
     "panel_editor_show_power": "Ein/Aus-Taste des Verstärkers anzeigen",
     "panel_power": "Verstärker ein/aus",
     "panel_open_control_panel": "Bedienfeld öffnen",
-    "panel_input": "Eingang"
+    "panel_input": "Eingang",
+    "panel_more": "Mehr",
+    "panel_shuffle": "Zufall",
+    "panel_repeat": "Wiederholen",
+    "panel_volume": "Lautstärke",
+    "panel_close": "Schließen",
+    "panel_sleep_timer": "Sleep-Timer"
   },
   "services": {
     "backup_playlists": {

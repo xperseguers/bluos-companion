@@ -57,6 +57,7 @@ const STYLE = `
     border-color: var(--primary-color);
     background: var(--secondary-background-color);
   }
+  .now .top button { min-width: 48px; min-height: 48px; }
   @media (pointer: coarse) {
     button { min-width: 48px; min-height: 48px; }
     input[type="range"] { height: 32px; }
@@ -70,17 +71,48 @@ const STYLE = `
     margin: 0;
     border-radius: 0;
     box-sizing: border-box;
-    padding: 12px 24px 24px;
+    padding: max(12px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+      max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
     background: var(--primary-background-color);
   }
+  dialog.now { overflow: hidden; }
+  /* The cover, scaled up and blurred, as the background of the full screen view */
+  .now .bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    filter: blur(48px) saturate(1.3);
+    transform: scale(1.6);
+  }
+  .now .veil { position: absolute; inset: 0; z-index: 0; background: rgba(0, 0, 0, 0.4); }
+  .now > *:not(.bg):not(.veil) { position: relative; z-index: 1; }
+  dialog.now.has-art {
+    color: #fff;
+    --primary-text-color: #fff;
+    --secondary-text-color: rgba(255, 255, 255, 0.72);
+    --divider-color: rgba(255, 255, 255, 0.3);
+    --secondary-background-color: rgba(255, 255, 255, 0.15);
+  }
+  dialog.now.has-art input[type="range"] { accent-color: #fff; }
+  dialog.now.has-art select { background: rgba(255, 255, 255, 0.18); color: #fff; border: none; }
+  dialog.now.has-art select option { color: initial; }
   dialog.now[open] { display: flex; flex-direction: column; align-items: center; gap: 12px; }
   .now .top { align-self: stretch; display: flex; align-items: center; gap: 8px; }
   .now .top span { flex: 1; text-align: center; color: var(--secondary-text-color); }
-  .now .art {
+  .now .art-box {
     flex: 1;
     min-height: 0;
-    max-width: 100%;
-    aspect-ratio: 1;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    container-type: size;
+  }
+  .now .art {
+    width: min(100cqw, 100cqh);
+    height: min(100cqw, 100cqh);
     object-fit: cover;
     border-radius: 12px;
     background: var(--secondary-background-color);
@@ -259,6 +291,7 @@ const STYLE = `
     background: var(--card-background-color);
     border-top: 1px solid var(--divider-color);
     flex-wrap: wrap;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
   }
   footer img, footer .cover {
     width: 64px;
@@ -277,8 +310,55 @@ const STYLE = `
   .progress input { flex: 1; }
   .volume { display: flex; align-items: center; gap: 4px; }
   input[type="range"] { accent-color: var(--primary-color); }
+  .phone-only { display: none; }
+  .mini-bar { display: none; }
+  .vol-ring, .vol-ring:hover:not(:disabled) {
+    position: relative;
+    flex: none;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    background: conic-gradient(var(--primary-color) calc(var(--level, 0) * 1%), var(--divider-color) 0);
+  }
+  .vol-ring::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background: var(--card-background-color);
+  }
+  .vol-ring ha-icon { position: relative; --mdc-icon-size: 22px; }
+  dialog .more-list select {
+    font: inherit;
+    padding: 10px;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  dialog .more-list label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--secondary-text-color); }
+  /* Phone: a compact bar (cover, title, play, volume, more) and a strip for the volume */
   @media (max-width: 600px) {
-    .volume input { width: 90px; }
+    .phone-only { display: inline-flex; }
+    footer {
+      position: relative;
+      flex-wrap: nowrap;
+      gap: 8px;
+      padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+    }
+    footer img, footer .cover { width: 48px; height: 48px; }
+    .info { flex: 1 1 0; }
+    .controls button { display: none; }
+    .controls button.keep { display: inline-flex; }
+    footer .progress, footer .player-pill { display: none; }
+    footer .volume { display: none; }
+    footer.vol-open > *:not(.volume) { display: none; }
+    footer.vol-open .volume { display: flex; flex: 1; gap: 8px; }
+    footer .volume input { flex: 1; min-width: 0; }
+    .mini-bar { display: block; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--divider-color); }
+    .mini-bar div { height: 100%; width: 0; background: var(--primary-color); }
+    footer.vol-open .mini-bar { display: none; }
+    .now .line.settings { display: none; }
+    .now .top button.phone-only { display: inline-flex; }
   }
 `;
 
@@ -382,9 +462,20 @@ class BluOSCompanionPanel extends HTMLElement {
   connectedCallback() {
     if (this._hass && !this._unsubscribe) this._subscribe();
     this._ticker = setInterval(() => this._tick(), 1000);
+    this._fit = () => this._fitHeight();
+    window.addEventListener("resize", this._fit);
+    requestAnimationFrame(this._fit);
+  }
+
+  // The panel may start below the top of the window (a phone's status bar, a toolbar of the
+  // app): take that off the viewport height so the footer is never pushed out of sight.
+  _fitHeight() {
+    const top = Math.max(0, this.getBoundingClientRect().top);
+    this.style.height = top ? `calc(100dvh - ${top}px)` : "";
   }
 
   disconnectedCallback() {
+    window.removeEventListener("resize", this._fit);
     clearInterval(this._ticker);
     if (this._unsubscribe) {
       this._unsubscribe();
@@ -968,7 +1059,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._buttons = {
       shuffle: el("button", { onclick: () => this._control("shuffle", !this._player.shuffle) }, icon("mdi:shuffle")),
       previous: el("button", { onclick: () => this._control("previous") }, icon("mdi:skip-previous")),
-      toggle: el("button", { onclick: () => this._togglePlayback() }, icon("mdi:play")),
+      toggle: el("button", { class: "keep", onclick: () => this._togglePlayback() }, icon("mdi:play")),
       next: el("button", { onclick: () => this._control("next") }, icon("mdi:skip-next")),
       queue: el("button", { onclick: () => this._toggleQueue() }, icon("mdi:playlist-music")),
       expand: el("button", { onclick: () => this._showNow() }, icon("mdi:fullscreen")),
@@ -980,8 +1071,13 @@ class BluOSCompanionPanel extends HTMLElement {
       type: "range",
       min: 0,
       max: 100,
+      oninput: () => this._armVolumeTimer(),
       onchange: (event) => this._control("volume", Number(event.target.value)),
     });
+    this._volButton = el("button", { class: "vol-ring phone-only", title: this._t("volume"), onclick: () => this._openVolume() }, icon("mdi:volume-high"));
+    this._moreButton = el("button", { class: "phone-only", title: this._t("more"), onclick: () => this._showMore() }, icon("mdi:dots-vertical"));
+    this._miniFill = el("div");
+    this._miniBar = el("div", { class: "mini-bar" }, this._miniFill);
     this._seek = el("input", {
       type: "range",
       min: 0,
@@ -1001,7 +1097,8 @@ class BluOSCompanionPanel extends HTMLElement {
       "footer",
       {},
       this._cover,
-      el("div", { class: "info", onclick: () => this._showPlaying() }, this._track, this._artist),
+      this._miniBar,
+      el("div", { class: "info", onclick: () => (this._isPhone() ? this._showNow() : this._showPlaying()) }, this._track, this._artist),
       el(
         "div",
         { class: "controls" },
@@ -1014,7 +1111,17 @@ class BluOSCompanionPanel extends HTMLElement {
         this._buttons.expand,
         this._buttons.move,
       ),
-      el("div", { class: "volume" }, this._buttons.mute, this._volume),
+      this._volButton,
+      el(
+        "div",
+        { class: "volume" },
+        this._buttons.mute,
+        this._volume,
+        this._stepButton(-1, "phone-only"),
+        this._stepButton(1, "phone-only"),
+        el("button", { class: "phone-only", title: this._t("close"), onclick: () => this._closeVolume() }, icon("mdi:close")),
+      ),
+      this._moreButton,
       this._playerButton,
       this._progress,
     );
@@ -1029,6 +1136,7 @@ class BluOSCompanionPanel extends HTMLElement {
       this._nowDialog,
     );
     this._built = true;
+    this._fitHeight();
     this._renderPlayers();
     this._renderNowPlaying();
   }
@@ -1120,12 +1228,12 @@ class BluOSCompanionPanel extends HTMLElement {
       max: 100,
       onchange: (event) => this._control("volume", Number(event.target.value)),
     });
-    now.volumeRow = el("div", { class: "line" }, now.mute, now.volume);
+    now.volumeRow = el("div", { class: "line" }, now.mute, now.volume, this._stepButton(-1, "phone-only"), this._stepButton(1, "phone-only"));
     now.source = el("select", { onchange: (event) => this._control("source", event.target.value) });
     now.sleep = el("select", { onchange: (event) => this._control("sleep", Number(event.target.value)) });
     now.settings = el(
       "div",
-      { class: "line" },
+      { class: "line settings" },
       icon("mdi:import"),
       now.source,
       icon("mdi:sleep"),
@@ -1134,6 +1242,8 @@ class BluOSCompanionPanel extends HTMLElement {
     this._nowDialog = el(
       "dialog",
       { class: "now", onclose: () => (this._nowOpen = false) },
+      (now.bg = el("div", { class: "bg" })),
+      el("div", { class: "veil" }),
       el(
         "div",
         { class: "top" },
@@ -1149,8 +1259,9 @@ class BluOSCompanionPanel extends HTMLElement {
           },
           icon("mdi:transfer-right"),
         )),
+        el("button", { class: "phone-only", title: this._t("more"), onclick: () => this._showMore() }, icon("mdi:dots-vertical")),
       ),
-      now.art,
+      (now.artBox = el("div", { class: "art-box" }, now.art)),
       now.title,
       now.sub,
       now.progress,
@@ -1174,6 +1285,8 @@ class BluOSCompanionPanel extends HTMLElement {
     const playing = ACTIVE_STATES.includes(player.state);
     now.player.textContent = this._groupName(player) || player.name;
     now.move.hidden = !this._canMove(player);
+    now.bg.style.backgroundImage = player.image ? `url("${player.image}")` : "";
+    this._nowDialog.classList.toggle("has-art", Boolean(player.image));
     now.title.textContent = player.title || player.name;
     now.sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
     if (player.image) {
@@ -1194,25 +1307,12 @@ class BluOSCompanionPanel extends HTMLElement {
     now.seek.max = player.duration || 0;
     this._nowSeeking = false;
     if (document.activeElement !== now.source && this.shadowRoot.activeElement !== now.source) {
-      now.source.replaceChildren(
-        el("option", { value: "" }, this._t("input")),
-        ...player.sources.map((name) => {
-          const option = el("option", { value: name }, name);
-          option.selected = name === player.source;
-          return option;
-        }),
-      );
-      now.source.firstChild.disabled = true;
+      now.source.replaceChildren(...this._sourceOptions(player));
       now.source.value = player.source || "";
     }
     now.source.hidden = !player.sources.length;
-    now.sleep.replaceChildren(
-      ...[0, ...player.sleep_options].map((minutes) => {
-        const option = el("option", { value: minutes }, minutes ? this._t("minutes", { minutes }) : this._t("sleep_off"));
-        option.selected = minutes === player.sleep;
-        return option;
-      }),
-    );
+    now.sleep.replaceChildren(...this._sleepOptions(player));
+    now.sleep.value = player.sleep;
     this._tickNow();
   }
 
@@ -1226,6 +1326,95 @@ class BluOSCompanionPanel extends HTMLElement {
     now.seek.value = position;
     now.elapsed.textContent = formatTime(position);
     now.total.textContent = formatTime(player.duration);
+  }
+
+  _isPhone() {
+    return window.matchMedia("(max-width: 600px)").matches;
+  }
+
+  _stepButton(direction, className) {
+    return el(
+      "button",
+      { class: className, title: this._t("volume"), onclick: () => this._stepVolume(direction) },
+      icon(direction < 0 ? "mdi:minus" : "mdi:plus"),
+    );
+  }
+
+  _stepVolume(direction) {
+    const player = this._player;
+    if (!player || player.volume < 0) return;
+    this._armVolumeTimer();
+    this._control("volume", Math.min(player.max_volume, Math.max(0, Math.round(player.volume) + direction * 2)));
+  }
+
+  _openVolume() {
+    this._footer.classList.add("vol-open");
+    this._armVolumeTimer();
+  }
+
+  _closeVolume() {
+    clearTimeout(this._volumeTimer);
+    this._footer.classList.remove("vol-open");
+  }
+
+  // The volume strip goes back to the bar after a few seconds without a touch
+  _armVolumeTimer() {
+    clearTimeout(this._volumeTimer);
+    this._volumeTimer = setTimeout(() => this._closeVolume(), 5000);
+  }
+
+  _sourceOptions(player) {
+    return [
+      el("option", { value: "", disabled: "" }, this._t("input")),
+      ...player.sources.map((name) => el("option", { value: name }, name)),
+    ];
+  }
+
+  _sleepOptions(player) {
+    return [0, ...player.sleep_options].map((minutes) =>
+      el("option", { value: minutes }, minutes ? this._t("minutes", { minutes }) : this._t("sleep_off")),
+    );
+  }
+
+  // What the compact bar and the full screen view on a phone leave out
+  _showMore() {
+    const player = this._player;
+    if (!player) return;
+    const leave = () => {
+      this._dialog.close();
+      if (this._nowDialog.open) this._nowDialog.close();
+    };
+    const row = (name, iconName, onclick, on = false) =>
+      el("button", { class: `action${on ? " on" : ""}`, onclick }, icon(iconName), name);
+    const list = el(
+      "div",
+      { class: "list more-list" },
+      row(this._t("shuffle"), "mdi:shuffle", () => {
+        this._dialog.close();
+        this._control("shuffle", !player.shuffle);
+      }, player.shuffle),
+      row(this._t("repeat"), player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat", () => {
+        this._dialog.close();
+        this._control("repeat", REPEAT_CYCLE[player.repeat]);
+      }, player.repeat !== 2),
+      row(this._t("queue"), "mdi:playlist-music", () => {
+        leave();
+        this._toggleQueue();
+      }),
+      row(this._groupName(player) || player.name, "mdi:speaker-multiple", () => this._showPlayers()),
+    );
+    if (this._canMove(player)) list.append(row(this._t("move_playback"), "mdi:transfer-right", () => this._showMove()));
+    if (player.sources.length) {
+      const source = el("select", { onchange: (event) => this._control("source", event.target.value) }, ...this._sourceOptions(player));
+      source.value = player.source || "";
+      list.append(el("label", {}, this._t("input"), source));
+    }
+    const sleep = el("select", { onchange: (event) => this._control("sleep", Number(event.target.value)) }, ...this._sleepOptions(player));
+    sleep.value = player.sleep;
+    list.append(el("label", {}, this._t("sleep_timer"), sleep));
+    this._dialogMode = "more";
+    this._dialog.replaceChildren(el("h2", {}, this._t("more")), list);
+    if (!this._dialog.open) this._dialog.showModal();
   }
 
   _showPlayers() {
@@ -1580,12 +1769,16 @@ class BluOSCompanionPanel extends HTMLElement {
     this._buttons.repeat.classList.toggle("on", player.repeat !== 2);
     this._buttons.repeat.firstChild.setAttribute("icon", player.repeat === 1 ? "mdi:repeat-once" : "mdi:repeat");
     this._buttons.mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
+    this._volButton.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
+    this._volButton.style.setProperty("--level", player.max_volume ? Math.round((Math.max(player.volume, 0) / player.max_volume) * 100) : 0);
+    this._volButton.disabled = player.volume < 0;
     this._volume.disabled = player.volume < 0;
     this._volume.max = player.max_volume;
     this._volume.value = Math.max(player.volume, 0);
     this._buttons.next.disabled = this._buttons.previous.disabled = !player.available;
     this._buttons.move.hidden = !this._canMove(player);
     this._progress.hidden = !(player.duration > 0);
+    if (!(player.duration > 0)) this._miniFill.style.width = "0";
     this._seek.disabled = !player.can_seek;
     this._seek.max = player.duration || 0;
     this._seeking = false;
@@ -1600,6 +1793,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (ACTIVE_STATES.includes(player.state)) position += (Date.now() - this._receivedAt) / 1000;
     position = Math.min(position, player.duration);
     this._seek.value = position;
+    this._miniFill.style.width = `${(position / player.duration) * 100}%`;
     this._elapsed.textContent = formatTime(position);
     this._total.textContent = formatTime(player.duration);
   }

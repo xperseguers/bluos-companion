@@ -158,7 +158,13 @@
     "panel_editor_show_power": "Afficher le bouton d'alimentation de l'amplificateur",
     "panel_power": "Alimentation de l'amplificateur",
     "panel_open_control_panel": "Ouvrir le panneau de contrôle",
-    "panel_input": "Entrée"
+    "panel_input": "Entrée",
+    "panel_more": "Plus",
+    "panel_shuffle": "Aléatoire",
+    "panel_repeat": "Répéter",
+    "panel_volume": "Volume",
+    "panel_close": "Fermer",
+    "panel_sleep_timer": "Minuterie"
   },
   "services": {
     "backup_playlists": {
