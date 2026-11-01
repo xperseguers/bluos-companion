@@ -533,7 +533,7 @@ class BluOSCompanionPanel extends HTMLElement {
     ].filter(Boolean);
   }
 
-  _menuButton(iconName, label, run) {
+  _menuRow(iconName, label, run) {
     return el(
       "button",
       {
@@ -789,8 +789,8 @@ class BluOSCompanionPanel extends HTMLElement {
     };
     const move = (to) => this._queueAction("move", { position: item.position, to });
     const moves = [
-      item.position > 0 ? this._menuButton("mdi:chevron-up", this._t("move_up"), () => move(item.position - 1)) : null,
-      index < count - 1 ? this._menuButton("mdi:chevron-down", this._t("move_down"), () => move(item.position + 1)) : null,
+      item.position > 0 ? this._menuRow("mdi:chevron-up", this._t("move_up"), () => move(item.position - 1)) : null,
+      index < count - 1 ? this._menuRow("mdi:chevron-down", this._t("move_down"), () => move(item.position + 1)) : null,
     ].filter(Boolean);
     const more = el(
       "button",
