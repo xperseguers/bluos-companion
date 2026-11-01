@@ -1104,3 +1104,66 @@ async def test_home_library_row_follows_the_hidden_services_and_the_language(
         init_integration, options={"hidden_services": ["LocalMusic:"]}
     )
     assert await row() is None
+
+
+async def test_landing_gives_the_first_entries_of_each_list_of_a_genre(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A genre shows songs, artists and albums, a few of each, the lists coming by letters."""
+    respond(
+        player_api,
+        browse_url("LocalMusic:MG/Genres?genre=Rock"),
+        text="""<browse type="menu">
+  <item browseKey="LocalMusic:bySection:Album/albums" text="Albums" type="link"/>
+  <item browseKey="LocalMusic:bySection:Song/songs" text="Songs" type="link"/>
+  <item browseKey="LocalMusic:bySection:Artist/artists" text="Artists" type="link"/>
+  <item browseKey="LocalMusic:bySection:Composer/composers" text="Composers" type="link"/>
+</browse>""",
+    )
+    for kind, key in (("Album", "albums"), ("Song", "songs"), ("Artist", "artists")):
+        respond(
+            player_api,
+            browse_url(f"LocalMusic:bySection:{kind}/{key}"),
+            text=(
+                '<browse type="sections">'
+                f'<item browseKey="LocalMusic:S:{kind}/{key}&amp;limit=50&amp;section=%23" text="#" text2="0" type="section"/>'
+                f'<item browseKey="LocalMusic:S:{kind}/{key}&amp;limit=50&amp;section=A" text="A" text2="2" type="section"/>'
+                "</browse>"
+            ),
+        )
+    respond(
+        player_api,
+        browse_url("LocalMusic:S:Album/albums&limit=12&section=A"),
+        text='<browse><item browseKey="a1" text="Abbey Road" text2="The Beatles" type="album"/></browse>',
+    )
+    respond(
+        player_api,
+        browse_url("LocalMusic:S:Song/songs&limit=5&section=A"),
+        text="""<browse>
+  <item playURL="/Add?playnow=1&amp;file=a" text="All Right Now" text2="Free • Fire and Water" type="track"/>
+</browse>""",
+    )
+    respond(
+        player_api,
+        browse_url("LocalMusic:S:Artist/artists&limit=5&section=A"),
+        text='<browse><item browseKey="ar1" text="AC/DC" type="artist"/></browse>',
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/landing",
+            "entry_id": init_integration.entry_id,
+            "key": "LocalMusic:MG/Genres?genre=Rock",
+        }
+    )
+    sections = (await client.receive_json())["result"]["sections"]
+
+    assert [section["kind"] for section in sections] == ["songs", "artists", "albums", "composers"]
+    assert [item["title"] for item in sections[0]["items"]] == ["All Right Now"]
+    assert [item["title"] for item in sections[1]["items"]] == ["AC/DC"]
+    assert [item["title"] for item in sections[2]["items"]] == ["Abbey Road"]
+    assert sections[3]["items"] == []
+    assert sections[2]["browse_key"] == "LocalMusic:bySection:Album/albums"

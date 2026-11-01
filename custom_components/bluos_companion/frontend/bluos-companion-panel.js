@@ -270,6 +270,22 @@ const STYLE = `
   .sec-body .rows { margin-bottom: 0; border-top: none; }
   .sec-body .grid { margin-bottom: 8px; }
   .sec-loading { padding: 16px; color: var(--secondary-text-color); }
+  .landing { display: flex; flex-direction: column; gap: 16px; }
+  .lsec {
+    background: var(--card-background-color);
+    border-radius: var(--ha-card-border-radius, 12px);
+    box-shadow: var(--ha-card-box-shadow, none);
+    border: 1px solid var(--divider-color);
+    padding: 8px 16px 12px;
+  }
+  .lsec-head { display: flex; align-items: center; gap: 8px; min-height: 48px; }
+  .lsec-head h3 { margin: 0; flex: 1; font-size: 18px; font-weight: 500; cursor: pointer; }
+  .lsec-head button.viewall { border-radius: 16px; padding: 6px 14px; font: inherit; font-size: 13px; text-transform: uppercase; background: rgba(127, 127, 127, 0.15); }
+  .lsec-head button.arrow { padding: 4px; --mdc-icon-size: 22px; background: rgba(127, 127, 127, 0.15); }
+  .lsec .rows { margin-bottom: 0; border-top: none; }
+  .lsec .lrow.link { height: 48px; }
+  .hscroll { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 8px; }
+  .hscroll .tile { flex: 0 0 150px; scroll-snap-align: start; }
   .info-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .info-row { display: flex; justify-content: space-between; gap: 16px; }
   .info-row span:first-child { color: var(--secondary-text-color); }
@@ -477,6 +493,7 @@ const STYLE = `
 `;
 
 const ROW_TYPES = ["track", "artist", "composer", "genre"];
+const LANDING_TYPES = ["artist", "composer", "genre"]; // their page shows a few albums, songs...
 const ROW_HEIGHT = 56; // a row of a list has a fixed height, so that the length of a list of letters is known
 const REPEAT_CYCLE = { 2: 0, 0: 1, 1: 2 }; // off -> queue -> track -> off
 const ACTIVE_STATES = ["play", "stream"];
@@ -715,7 +732,7 @@ class BluOSCompanionPanel extends HTMLElement {
     });
     if (!found) return;
     const level = (page) => ({ title: page.title, key: page.browse_key, contextKey: page.context_key });
-    const stack = found.artist ? [level(found.artist)] : [];
+    const stack = found.artist ? [{ ...level(found.artist), type: "artist" }] : [];
     if (kind === "album") {
       if (!found.album) {
         this._notify(this._t("album_not_found"));
@@ -928,9 +945,11 @@ class BluOSCompanionPanel extends HTMLElement {
     }
     if (token !== this._browseToken) return;
     this._groups = groups;
+    this._landing = null;
     this._renderBrowse();
     this._main.scrollTop = 0;
     this._loadPlaylistCovers();
+    if (this._isLandingLevel(level)) this._loadLanding(level, token);
   }
 
   // Saved playlists have no cover of their own: use the one of their first track, which
@@ -2051,6 +2070,65 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
 
+  // The page of an artist, a composer or a genre is a menu of lists (albums, songs...)
+  _isLandingLevel(level) {
+    if (!level || !LANDING_TYPES.includes(level.type) || !this._groups || this._groups.length !== 1) return false;
+    const items = this._groups[0].items;
+    return items.length > 0 && items.every((item) => item.type === "link");
+  }
+
+  async _loadLanding(level, token) {
+    const result = await this._call({ type: "bluos_companion/landing", entry_id: this._player.entry_id, key: level.key });
+    if (token !== this._browseToken) return;
+    this._landing = result ? result.sections : false;
+    this._renderBrowse();
+  }
+
+  // A few albums (a row to scroll), a few songs or artists, and View all for the whole lists
+  _renderLanding(level) {
+    if (this._landing === null) {
+      this._message.textContent = "\u2026";
+      return;
+    }
+    if (this._landing === false) {
+      this._appendItems(this._groups[0].items, level);
+      return;
+    }
+    const root = el("div", { class: "landing" });
+    for (const section of this._landing) {
+      const open = () => this._open({ title: section.title, browse_key: section.browse_key, type: "link" });
+      if (!section.items.length && section.kind !== "composers") continue;
+      const card = el("section", { class: "lsec" });
+      if (!section.items.length) {
+        card.append(
+          el("div", { class: "lrow link", onclick: open }, el("div", { class: "text" }, el("div", { class: "title" }, section.title)), el("span", { class: "chev" }, icon("mdi:chevron-right"))),
+        );
+        root.append(card);
+        continue;
+      }
+      const head = el("div", { class: "lsec-head" }, el("h3", { onclick: open }, section.title));
+      if (section.kind === "albums") {
+        const scroller = el("div", { class: "hscroll" });
+        this._appendItems(section.items, level, scroller);
+        const grid = scroller.querySelector(".grid");
+        if (grid) scroller.replaceChildren(...grid.children);
+        const scrollBy = (direction) => scroller.scrollBy({ left: direction * scroller.clientWidth * 0.8, behavior: "smooth" });
+        head.append(
+          el("button", { class: "arrow", onclick: () => scrollBy(-1) }, icon("mdi:chevron-left")),
+          el("button", { class: "arrow", onclick: () => scrollBy(1) }, icon("mdi:chevron-right")),
+        );
+        head.append(el("button", { class: "viewall", onclick: open }, this._t("view_all")));
+        card.append(head, scroller);
+      } else {
+        head.append(el("button", { class: "viewall", onclick: open }, this._t("view_all")));
+        card.append(head);
+        this._appendItems(section.items, level, card);
+      }
+      root.append(card);
+    }
+    this._grid.append(root);
+  }
+
   // The first letter of a title as the player sorts it: `#` for what does not start with a letter
   _initial(title) {
     const letter = title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").charAt(0).toUpperCase();
@@ -2240,7 +2318,9 @@ class BluOSCompanionPanel extends HTMLElement {
       const level = this._stack[this._stack.length - 1];
       if (level && level.type === "album") this._grid.append(this._albumHead(level));
       const letters = this._sectionItems();
-      if (letters) {
+      if (this._isLandingLevel(level)) {
+        this._renderLanding(level);
+      } else if (letters) {
         this._buildSectioned(
           "server",
           letters.map((item) => ({ title: item.title, count: Number(item.subtitle) || 0, key: item.browse_key })),

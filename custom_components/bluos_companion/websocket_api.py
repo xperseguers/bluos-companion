@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from urllib.parse import urlencode
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -59,6 +60,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_control)
     websocket_api.async_register_command(hass, ws_browse)
     websocket_api.async_register_command(hass, ws_search)
+    websocket_api.async_register_command(hass, ws_landing)
     websocket_api.async_register_command(hass, ws_actions)
     websocket_api.async_register_command(hass, ws_group)
     websocket_api.async_register_command(hass, ws_translations)
@@ -335,6 +337,82 @@ async def ws_search(
                 {"title": menu_label(node, titles)[0], "type": node.title, "items": items}
             )
     connection.send_result(msg["id"], {"groups": groups})
+
+
+# What the landing page of an artist, a composer or a genre shows of each of its lists
+LANDING_KINDS = {"Album": "albums", "Song": "songs", "Artist": "artists", "Composer": "composers"}
+LANDING_SIZES = {"albums": 12, "songs": 5, "artists": 5}
+
+
+def _landing_kind(key: str) -> str | None:
+    found = re.match(r"LocalMusic:(?:bySection:)?(\w+)/", key)
+    return LANDING_KINDS.get(found.group(1)) if found else None
+
+
+async def _landing_preview(client: BluOSClient, key: str, size: int) -> list[Node]:
+    """Return the first entries of a list: those of its first letter when it comes by letters."""
+    if ":bySection:" in key:
+        letters = await client.async_browse_page(key, None, 1)
+        first = next(
+            (node for node in letters.nodes if node.browse_key and node.subtitle not in ("", "0")),
+            None,
+        )
+        if first is None or first.browse_key is None:
+            return []
+        key = re.sub(r"limit=\d+", f"limit={size}", first.browse_key)
+    return (await client.async_browse_page(key, None, 1)).nodes[:size]
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/landing",
+        vol.Required("entry_id"): str,
+        vol.Required("key"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_landing(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the first entries of each list of an artist, a composer or a genre."""
+    entry_id = msg["entry_id"]
+    client = _coordinator(hass, entry_id).client
+    menu = await _async_call(client.async_browse_page(msg["key"], None, 1))
+    links = [
+        (kind, node)
+        for node in menu.nodes
+        if node.browse_key and (kind := _landing_kind(node.browse_key))
+    ]
+    # A genre has songs, artists and albums; the others have albums and songs
+    order = ["songs", "artists", "albums", "composers"]
+    if "artists" not in [kind for kind, _ in links]:
+        order = ["albums", "songs", "composers"]
+    links.sort(key=lambda link: order.index(link[0]))
+    previews = await asyncio.gather(
+        *(
+            _landing_preview(client, node.browse_key or "", LANDING_SIZES[kind])
+            if kind in LANDING_SIZES
+            else asyncio.sleep(0, [])
+            for kind, node in links
+        ),
+        return_exceptions=True,
+    )
+    titles = await async_get_titles(hass)
+    sections = []
+    for (kind, node), preview in zip(links, previews, strict=True):
+        if isinstance(preview, BluOSError):
+            preview = []
+        elif isinstance(preview, BaseException):
+            raise preview
+        sections.append(
+            {
+                "kind": kind,
+                "title": menu_label(node, titles)[0],
+                "browse_key": node.browse_key,
+                "items": _items(hass, entry_id, preview, titles),
+            }
+        )
+    connection.send_result(msg["id"], {"sections": sections})
 
 
 @websocket_api.websocket_command(
