@@ -321,22 +321,27 @@ const STYLE = `
   .list-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .list-controls button { border-radius: 20px; padding: 6px 14px; gap: 8px; font: inherit; border: 1px solid var(--divider-color); background: var(--card-background-color); }
   .list-controls select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
-  .shortcuts { display: flex; gap: 8px; overflow-x: auto; padding: 2px; }
-  .shortcut {
+  /* The first icon lines up with the search field and the cards; the labels may be wider than the icons */
+  .shortcuts { display: flex; gap: 10px; overflow-x: auto; padding: 0 8px 4px; margin: 0 -8px; }
+  .shortcut, .shortcut:hover:not(:disabled) {
     flex: 0 0 auto;
-    width: 88px;
+    width: 64px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    padding: 6px 4px;
+    padding: 0;
     border-radius: 12px;
+    background: none;
     font: inherit;
-    font-size: 13px;
+    font-size: 12px;
     text-align: center;
+    overflow: visible;
     --mdc-icon-size: 40px;
   }
-  .shortcut img { width: 56px; height: 56px; border-radius: 12px; }
+  .shortcut img { width: 64px; height: 64px; border-radius: 12px; }
+  .shortcut:hover img { filter: brightness(1.12); }
+  .shortcut span { white-space: nowrap; margin: 0 -8px; }
   .info-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .info-row { display: flex; justify-content: space-between; gap: 16px; }
   .info-row span:first-child { color: var(--secondary-text-color); }
