@@ -111,6 +111,7 @@ const STYLE = `
     align-items: center;
     justify-content: center;
     container-type: size;
+    margin-bottom: 20px;
   }
   .now .art {
     width: min(100cqw, 100cqh);
@@ -134,6 +135,12 @@ const STYLE = `
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
     mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
   }
+  /* The volume is a ring in the bottom row, a tap opens the slider in its place */
+  .now .line.volume-row { display: none; order: 20; }
+  .now .line.bottom { order: 10; }
+  .now .line.bottom .vol-ring { margin-right: auto; }
+  dialog.now.vol-open .line.volume-row { display: flex; }
+  dialog.now.vol-open .line.bottom { display: none; }
   .now .line.bottom button.on { background: rgba(127, 127, 127, 0.3); }
   .now .line.bottom { justify-content: flex-end; }
   dialog.now.has-art .qrow { background: rgba(255, 255, 255, 0.12); border-color: transparent; }
@@ -387,11 +394,6 @@ const STYLE = `
     .mini-bar div { height: 100%; width: 0; background: var(--primary-color); }
     footer.vol-open .mini-bar { display: none; }
     .now .settings-button { display: none; }
-    /* The volume is a ring in the bottom row, a tap opens the slider in its place */
-    .now .line.volume-row { display: none; order: 20; }
-    .now .line.bottom { order: 10; justify-content: space-between; }
-    dialog.now.vol-open .line.volume-row { display: flex; }
-    dialog.now.vol-open .line.bottom { display: none; }
     .now .top button.phone-only { display: inline-flex; }
   }
 `;
@@ -1345,13 +1347,13 @@ class BluOSCompanionPanel extends HTMLElement {
       { class: "line volume-row" },
       now.mute,
       now.volume,
-      this._stepButton(-1, "phone-only"),
-      this._stepButton(1, "phone-only"),
-      el("button", { class: "phone-only", title: this._t("close"), onclick: () => this._closeVolume() }, icon("mdi:close")),
+      this._stepButton(-1),
+      this._stepButton(1),
+      el("button", { title: this._t("close"), onclick: () => this._closeVolume() }, icon("mdi:close")),
     );
     now.volRing = el(
       "button",
-      { class: "vol-ring phone-only", title: this._t("volume"), onclick: () => this._openNowVolume() },
+      { class: "vol-ring", title: this._t("volume"), onclick: () => this._openNowVolume() },
       icon("mdi:volume-high"),
     );
     now.queueButton = el("button", { title: this._t("queue"), onclick: () => this._setNowQueue(!this._nowQueueOpen) }, icon("mdi:playlist-music"));
@@ -1525,7 +1527,7 @@ class BluOSCompanionPanel extends HTMLElement {
   _stepButton(direction, className) {
     return el(
       "button",
-      { class: className, title: this._t("volume"), onclick: () => this._stepVolume(direction) },
+      { class: className || "", title: this._t("volume"), onclick: () => this._stepVolume(direction) },
       icon(direction < 0 ? "mdi:minus" : "mdi:plus"),
     );
   }
