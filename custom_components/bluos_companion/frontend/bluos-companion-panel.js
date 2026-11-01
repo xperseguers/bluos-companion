@@ -291,24 +291,31 @@ const STYLE = `
   .grid.flow { margin-bottom: 16px; }
   .grid.flow .tile .title, .grid.flow .tile .subtitle { line-height: 1.25; }
   .grid.flow .tile .title { min-height: 2.5em; }
-  .grid.flow .tile .subtitle { min-height: 2.5em; }
+  .grid.flow .tile .subtitle { min-height: 1.25em; -webkit-line-clamp: 1; line-clamp: 1; }
+  .grid.flow .tile .text { padding-top: 8px; }
   .tile.ph { visibility: hidden; pointer-events: none; }
-  .tile.hcell { cursor: default; background: transparent; border-color: transparent; }
-  .tile.hcell:hover { background: transparent; }
-  .hbox {
-    aspect-ratio: 1;
+  /* The letter, the year, the artist: a card of the grid, lighter than the albums */
+  .tile.hcell {
+    cursor: default;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     padding: 8px;
-    box-sizing: border-box;
-    font-size: 56px;
-    font-weight: 500;
-    overflow-wrap: anywhere;
-    color: var(--primary-color);
+    background: var(--secondary-background-color);
   }
-  .hbox.long { font-size: 22px; }
+  .tile.hcell:hover { background: var(--secondary-background-color); }
+  .hlabel {
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.3;
+    overflow-wrap: break-word;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+  }
   .list-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .list-controls button { border-radius: 20px; padding: 6px 14px; gap: 8px; font: inherit; border: 1px solid var(--divider-color); background: var(--card-background-color); }
   .list-controls select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
@@ -2323,6 +2330,7 @@ class BluOSCompanionPanel extends HTMLElement {
     const view = { kind, groups: this._groups, root, sections: [], level, itemHeight: 0, timer: null, observer: null };
     for (const spec of specs) {
       const head = el("h3", { class: "sec-head" }, spec.title);
+      head.hidden = specs.length === 1 && kind === "local";
       const body = el("div", { class: "sec-body" });
       const wrap = el("div", { class: "sec" }, head, body);
       const section = { ...spec, wrap, head, body, state: spec.items ? "done" : "idle", seen: new Set(), targets: [wrap] };
@@ -2347,12 +2355,9 @@ class BluOSCompanionPanel extends HTMLElement {
       el("div", { class: "text" }, el("div", { class: "title" }, "\u00a0"), el("div", { class: "subtitle" }, "\u00a0")),
     ));
     for (const spec of specs) {
-      const head = el(
-        "div",
-        { class: "tile hcell" },
-        el("div", { class: "artwrap" }, el("div", { class: `hbox${spec.title.length > 6 ? " long" : ""}` }, spec.title)),
-        el("div", { class: "text" }, el("div", { class: "title" }, "\u00a0"), el("div", { class: "subtitle" }, "\u00a0")),
-      );
+      // A list of one group (the recent albums) needs no card to name it
+      const head = el("div", { class: "tile hcell" }, el("span", { class: "hlabel" }, spec.title));
+      head.hidden = specs.length === 1;
       const section = { ...spec, wrap: head, state: spec.items ? "done" : "idle", seen: new Set(), targets: [], cells: [] };
       view.sections.push(section);
       root.append(head);
