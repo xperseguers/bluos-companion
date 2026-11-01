@@ -326,6 +326,8 @@ const STYLE = `
   .controls { display: flex; align-items: center; }
   .progress { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; font-size: 12px; }
   .progress input { flex: 1; }
+  .progress .time { min-width: 3.2em; font-variant-numeric: tabular-nums; }
+  .progress .time:last-child { text-align: right; }
   .volume { display: flex; align-items: center; gap: 4px; }
   input[type="range"] { accent-color: var(--primary-color); }
   .phone-only { display: none; }
@@ -1163,12 +1165,13 @@ class BluOSCompanionPanel extends HTMLElement {
       step: 1,
       value: 0,
       onchange: (event) => this._control("seek", Number(event.target.value)),
-      oninput: () => {
+      oninput: (event) => {
         this._seeking = true;
+        this._showTimes(Number(event.target.value));
       },
     });
-    this._elapsed = el("span");
-    this._total = el("span");
+    this._elapsed = el("span", { class: "time" });
+    this._total = el("span", { class: "time" });
     this._progress = el("div", { class: "progress" }, this._elapsed, this._seek, this._total);
 
     const footer = el(
@@ -1948,8 +1951,15 @@ class BluOSCompanionPanel extends HTMLElement {
     position = Math.min(position, player.duration);
     this._seek.value = position;
     this._miniFill.style.width = `${(position / player.duration) * 100}%`;
+    this._showTimes(position);
+  }
+
+  // The time played and the time left of the track
+  _showTimes(position) {
+    const player = this._player;
+    if (!player || !(player.duration > 0)) return;
     this._elapsed.textContent = formatTime(position);
-    this._total.textContent = formatTime(player.duration);
+    this._total.textContent = `\u2212${formatTime(player.duration - position)}`;
   }
 }
 
