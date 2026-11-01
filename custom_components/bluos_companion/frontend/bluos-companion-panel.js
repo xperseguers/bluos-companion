@@ -125,6 +125,15 @@ const STYLE = `
   .now .queue-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
   .now .queue-box .actions { margin: 0 0 8px; flex: none; display: grid; grid-template-columns: 1fr 1fr; }
   .now .queue-box .actions button { width: 100%; justify-content: flex-start; padding: 6px 14px; }
+  dialog.now { --vol-fill: var(--primary-color); }
+  dialog.now.has-art { --vol-fill: #fff; }
+  .now .vol-ring, .now .vol-ring:hover:not(:disabled) { background: none; }
+  .now .vol-ring::before {
+    inset: 0;
+    background: conic-gradient(var(--vol-fill) calc(var(--level, 0) * 1%), var(--divider-color) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  }
   .now .line.bottom button.on { background: rgba(127, 127, 127, 0.3); }
   .now .line.bottom { justify-content: flex-end; }
   dialog.now.has-art .qrow { background: rgba(255, 255, 255, 0.12); border-color: transparent; }
@@ -378,6 +387,11 @@ const STYLE = `
     .mini-bar div { height: 100%; width: 0; background: var(--primary-color); }
     footer.vol-open .mini-bar { display: none; }
     .now .settings-button { display: none; }
+    /* The volume is a ring in the bottom row, a tap opens the slider in its place */
+    .now .line.volume-row { display: none; order: 20; }
+    .now .line.bottom { order: 10; justify-content: space-between; }
+    dialog.now.vol-open .line.volume-row { display: flex; }
+    dialog.now.vol-open .line.bottom { display: none; }
     .now .top button.phone-only { display: inline-flex; }
   }
 `;
@@ -1313,6 +1327,7 @@ class BluOSCompanionPanel extends HTMLElement {
       type: "range",
       min: 0,
       max: 100,
+      oninput: () => this._armVolumeTimer(),
       onchange: (event) => this._control("volume", Number(event.target.value)),
     });
     now.favourite = el(
@@ -1325,11 +1340,25 @@ class BluOSCompanionPanel extends HTMLElement {
       { title: this._t("more"), onclick: () => this._showPlaying() },
       icon("mdi:dots-horizontal"),
     );
-    now.volumeRow = el("div", { class: "line" }, now.mute, now.volume, this._stepButton(-1, "phone-only"), this._stepButton(1, "phone-only"));
+    now.volumeRow = el(
+      "div",
+      { class: "line volume-row" },
+      now.mute,
+      now.volume,
+      this._stepButton(-1, "phone-only"),
+      this._stepButton(1, "phone-only"),
+      el("button", { class: "phone-only", title: this._t("close"), onclick: () => this._closeVolume() }, icon("mdi:close")),
+    );
+    now.volRing = el(
+      "button",
+      { class: "vol-ring phone-only", title: this._t("volume"), onclick: () => this._openNowVolume() },
+      icon("mdi:volume-high"),
+    );
     now.queueButton = el("button", { title: this._t("queue"), onclick: () => this._setNowQueue(!this._nowQueueOpen) }, icon("mdi:playlist-music"));
     now.bottom = el(
       "div",
       { class: "line bottom" },
+      now.volRing,
       el("button", { class: "settings-button", title: this._t("more"), onclick: () => this._showSettings() }, icon("mdi:tune-variant")),
       now.queueButton,
     );
@@ -1353,6 +1382,7 @@ class BluOSCompanionPanel extends HTMLElement {
         },
         onclose: () => {
           this._nowOpen = false;
+          this._closeVolume();
           this._main.style.overflowY = "";
           this._setNowQueue(false);
         },
@@ -1421,6 +1451,9 @@ class BluOSCompanionPanel extends HTMLElement {
     now.sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
     now.toggle.firstChild.setAttribute("icon", playing ? "mdi:pause" : "mdi:play");
     now.mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
+    now.volRing.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
+    now.volRing.style.setProperty("--level", player.max_volume ? Math.round((Math.max(player.volume, 0) / player.max_volume) * 100) : 0);
+    now.volRing.disabled = player.volume < 0;
     now.volume.disabled = player.volume < 0;
     now.volume.max = player.max_volume;
     now.volume.value = Math.max(player.volume, 0);
@@ -1509,9 +1542,15 @@ class BluOSCompanionPanel extends HTMLElement {
     this._armVolumeTimer();
   }
 
+  _openNowVolume() {
+    this._nowDialog.classList.add("vol-open");
+    this._armVolumeTimer();
+  }
+
   _closeVolume() {
     clearTimeout(this._volumeTimer);
     this._footer.classList.remove("vol-open");
+    this._nowDialog.classList.remove("vol-open");
   }
 
   // The volume strip goes back to the bar after a few seconds without a touch
