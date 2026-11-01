@@ -322,7 +322,8 @@ const STYLE = `
   .list-controls button { border-radius: 20px; padding: 6px 14px; gap: 8px; font: inherit; border: 1px solid var(--divider-color); background: var(--card-background-color); }
   .list-controls select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
   /* The first icon lines up with the search field and the cards; the labels may be wider than the icons */
-  .shortcuts { display: flex; gap: 10px; overflow-x: auto; padding: 0 8px 4px; margin: 0 -8px; }
+  /* A little more on the left: against rounded borders, an icon that is exactly in line looks too far left */
+  .shortcuts { display: flex; gap: 10px; overflow-x: auto; padding: 0 8px 4px 14px; margin: 0 -8px; }
   .shortcut, .shortcut:hover:not(:disabled) {
     flex: 0 0 auto;
     width: 64px;
