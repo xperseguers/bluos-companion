@@ -166,6 +166,8 @@
     "panel_power": "Amplifier power",
     "panel_open_control_panel": "Open control panel",
     "panel_input": "Input",
+    "panel_play_all": "Play all",
+    "panel_tracks_count": "{count} tracks",
     "panel_more": "More",
     "panel_shuffle": "Shuffle",
     "panel_repeat": "Repeat",

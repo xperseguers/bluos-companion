@@ -166,6 +166,8 @@
     "panel_power": "Verstärker ein/aus",
     "panel_open_control_panel": "Bedienfeld öffnen",
     "panel_input": "Eingang",
+    "panel_play_all": "Alle abspielen",
+    "panel_tracks_count": "{count} Titel",
     "panel_more": "Mehr",
     "panel_shuffle": "Zufall",
     "panel_repeat": "Wiederholen",

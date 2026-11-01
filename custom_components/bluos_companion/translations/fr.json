@@ -166,6 +166,8 @@
     "panel_power": "Alimentation de l'amplificateur",
     "panel_open_control_panel": "Ouvrir le panneau de contrôle",
     "panel_input": "Entrée",
+    "panel_play_all": "Tout lire",
+    "panel_tracks_count": "{count} titres",
     "panel_more": "Plus",
     "panel_shuffle": "Aléatoire",
     "panel_repeat": "Répéter",

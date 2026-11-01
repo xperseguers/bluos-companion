@@ -163,6 +163,9 @@ class Node:
     context_key: str | None = None
     # What plays the entry alone (a track found by a search plays the rest of the results otherwise).
     play_url: str | None = None
+    # The number of tracks of an album and the length of a track, in seconds, when the player says
+    tracks: int | None = None
+    duration: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -588,6 +591,8 @@ class BluOSClient:
                     image=item.get("image"),
                     context_key=item.get("contextMenuKey"),
                     play_url=item.get("playURL"),
+                    tracks=_int(item.get("tracks")) or None,
+                    duration=_int(item.get("duration")) or None,
                 )
                 nodes.setdefault(node, None)
             useful_pages += found

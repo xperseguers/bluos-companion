@@ -598,8 +598,11 @@ async def test_locate_finds_the_album_and_the_artist(
 
     assert result["album"] == {
         "title": "Hits",
+        "subtitle": "Various Artists",
         "browse_key": "various",
         "context_key": "cm-various",
+        "image": None,
+        "tracks": None,
     }
     assert result["artist"]["browse_key"] == (
         "LocalMusic:MG/LocalMusic-Artist?artist=Meat+Loaf+%26+Co"

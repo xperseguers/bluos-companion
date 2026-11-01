@@ -132,6 +132,7 @@ async def test_browse(client: BluOSClient) -> None:
         play_path="/Add?playnow=1&service=LocalMusic&album=x",
         image="/Artwork?service=LocalMusic&album=x",
         play_url="/Add?playnow=1&service=LocalMusic&album=x",
+        tracks=13,
     )
     assert nodes[1].type == "link"
     assert nodes[1].browse_key is None

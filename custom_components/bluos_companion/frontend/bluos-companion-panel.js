@@ -196,6 +196,59 @@ const STYLE = `
     border-color: var(--primary-color);
     color: var(--text-primary-color, #fff);
   }
+  .rows { border-top: 1px solid var(--divider-color); margin-bottom: 16px; }
+  .lrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 4px 4px 8px;
+    min-height: 52px;
+    border-bottom: 1px solid var(--divider-color);
+    cursor: pointer;
+  }
+  .lrow:hover { background: rgba(127, 127, 127, 0.1); }
+  .lrow .num { width: 28px; text-align: right; color: var(--secondary-text-color); flex: none; font-variant-numeric: tabular-nums; }
+  .lrow .cover {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex: none;
+    background: var(--secondary-background-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    --mdc-icon-size: 22px;
+  }
+  .lrow .text { flex: 1; min-width: 0; }
+  .lrow .text div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lrow .sub { font-size: 12px; color: var(--secondary-text-color); }
+  .lrow .time { color: var(--secondary-text-color); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .lrow button { --mdc-icon-size: 24px; padding: 6px; }
+  .lrow .chev { color: var(--secondary-text-color); --mdc-icon-size: 22px; padding-right: 4px; display: inline-flex; }
+  .album-head { position: relative; overflow: hidden; border-radius: var(--ha-card-border-radius, 12px); margin-bottom: 12px; background: #3a3a3a; color: #fff; }
+  .ah-bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(32px) saturate(1.3); transform: scale(1.5); }
+  .ah-veil { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); }
+  .ah-body { position: relative; display: flex; gap: 16px; padding: 16px; align-items: flex-end; }
+  .ah-cover {
+    width: min(160px, 34vw);
+    aspect-ratio: 1;
+    border-radius: 8px;
+    object-fit: cover;
+    flex: none;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    --mdc-icon-size: 48px;
+  }
+  .ah-text { min-width: 0; flex: 1; }
+  .ah-text h2 { margin: 0 0 4px; font-size: 22px; font-weight: 500; overflow-wrap: anywhere; }
+  .ah-artist, .ah-meta { opacity: 0.8; }
+  .ah-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .ah-actions button { border-radius: 20px; padding: 8px 16px; gap: 8px; font: inherit; background: rgba(255, 255, 255, 0.18); color: #fff; }
+  .ah-actions button.primary { background: var(--primary-color); }
+  .ah-actions button.round { padding: 8px; }
   .crumb-cover { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex: none; }
   .crumbs h2 { margin: 0; font-size: 20px; font-weight: 500; }
   .grid {
@@ -398,6 +451,7 @@ const STYLE = `
   }
 `;
 
+const ROW_TYPES = ["track", "artist", "composer", "genre"];
 const REPEAT_CYCLE = { 2: 0, 0: 1, 1: 2 }; // off -> queue -> track -> off
 const ACTIVE_STATES = ["play", "stream"];
 const INITIALS_FROM = 40; // a list this long gets a bar of first letters
@@ -638,7 +692,13 @@ class BluOSCompanionPanel extends HTMLElement {
         this._notify(this._t("album_not_found"));
         return;
       }
-      stack.push(level(found.album));
+      stack.push({
+        ...level(found.album),
+        type: "album",
+        subtitle: found.album.subtitle,
+        image: found.album.image,
+        tracks: found.album.tracks,
+      });
     } else if (!found.artist) {
       return;
     }
@@ -1047,7 +1107,15 @@ class BluOSCompanionPanel extends HTMLElement {
       if (top && top.bar) this._stack[this._stack.length - 1] = level;
       else this._stack.push(level);
     } else {
-      this._stack.push({ title: item.title, key: item.browse_key, contextKey: item.context_key, image: item.image });
+      this._stack.push({
+        title: item.title,
+        key: item.browse_key,
+        contextKey: item.context_key,
+        image: item.image,
+        type: item.type,
+        subtitle: item.subtitle,
+        tracks: item.tracks,
+      });
     }
     this._browse();
   }
@@ -1810,8 +1878,134 @@ class BluOSCompanionPanel extends HTMLElement {
     );
   }
 
+  // Artists, composers, genres and tracks are flat rows, the rest (albums, playlists...) tiles
+  _appendItems(items, level) {
+    const album = Boolean(level && level.type === "album");
+    let rows = null;
+    let grid = null;
+    for (const item of items) {
+      if (ROW_TYPES.includes(item.type)) {
+        grid = null;
+        if (!rows) this._grid.append((rows = el("div", { class: "rows" })));
+        rows.append(this._row(item, album));
+      } else {
+        rows = null;
+        if (!grid) this._grid.append((grid = el("div", { class: "grid" })));
+        grid.append(this._tile(item));
+      }
+    }
+  }
+
+  // The number of a track of an album is part of its title ("3. Title")
+  _row(item, album) {
+    let title = item.title;
+    let number = null;
+    if (album) {
+      const found = /^(\d+)\.\s+(.*)$/.exec(title);
+      if (found) [, number, title] = found;
+    }
+    const withCover = !album && item.type === "track";
+    return el(
+      "div",
+      { class: "lrow", onclick: () => (item.browse_key ? this._open(item) : this._play(item)) },
+      album ? el("div", { class: "num" }, number || "") : null,
+      withCover
+        ? item.image
+          ? el("img", { class: "cover", src: item.image, loading: "lazy", alt: "" })
+          : el("div", { class: "cover" }, icon("mdi:music"))
+        : null,
+      el(
+        "div",
+        { class: "text" },
+        el("div", { class: "title", title }, title),
+        item.subtitle ? el("div", { class: "sub" }, item.subtitle) : null,
+      ),
+      item.duration ? el("div", { class: "time" }, formatTime(item.duration)) : null,
+      item.context_key
+        ? el(
+            "button",
+            {
+              title: this._t("more"),
+              onclick: (event) => {
+                event.stopPropagation();
+                this._showActions(item);
+              },
+            },
+            icon("mdi:dots-vertical"),
+          )
+        : null,
+      item.browse_key ? el("span", { class: "chev" }, icon("mdi:chevron-right")) : null,
+    );
+  }
+
+  // The header of the page of an album: its cover, what it is, and what to do with it
+  _albumHead(level) {
+    const tracks = level.tracks || (this._groups || []).reduce((sum, group) => sum + group.items.filter((item) => item.type === "track").length, 0);
+    this._albumActions = el("div", { class: "ah-actions" });
+    const head = el(
+      "div",
+      { class: "album-head" },
+      level.image ? el("div", { class: "ah-bg", style: `background-image: url("${level.image}")` }) : null,
+      el("div", { class: "ah-veil" }),
+      el(
+        "div",
+        { class: "ah-body" },
+        level.image
+          ? el("img", { class: "ah-cover", src: level.image, alt: "" })
+          : el("div", { class: "ah-cover" }, icon("mdi:music")),
+        el(
+          "div",
+          { class: "ah-text" },
+          el("h2", {}, level.title),
+          level.subtitle ? el("div", { class: "ah-artist" }, level.subtitle) : null,
+          tracks ? el("div", { class: "ah-meta" }, this._t("tracks_count", { count: tracks })) : null,
+          this._albumActions,
+        ),
+      ),
+    );
+    this._renderAlbumActions();
+    return head;
+  }
+
+  _renderAlbumActions() {
+    const level = this._stack[this._stack.length - 1];
+    const box = this._albumActions;
+    if (!box || !level || level.type !== "album") return;
+    const actions = this._levelActions || [];
+    const play = actions.find((action) => action.type === "add-now");
+    const shuffle = actions.find((action) => action.type.endsWith("-shuffle"));
+    const rest = actions.filter((action) => action !== play && action !== shuffle);
+    box.replaceChildren(
+      ...[
+        play
+          ? el("button", { class: "primary", onclick: () => this._runAction(play, level.title) }, icon("mdi:play"), this._t("play_all"))
+          : null,
+        shuffle
+          ? el("button", { onclick: () => this._runAction(shuffle, level.title) }, icon("mdi:shuffle"), this._t("shuffle"))
+          : null,
+        rest.length
+          ? el(
+              "button",
+              { class: "round", title: this._t("more"), onclick: () => this._showLevelActions(level, rest) },
+              icon("mdi:dots-vertical"),
+            )
+          : null,
+      ].filter(Boolean),
+    );
+  }
+
+  _showLevelActions(level, actions) {
+    this._dialog.replaceChildren(
+      el("h2", {}, level.title),
+      el("p", {}, level.subtitle || "\u00a0"),
+      el("div", { class: "list" }, ...actions.map((action) => this._actionButton(action, level.title, () => this._dialog.close()))),
+    );
+    this._dialog.showModal();
+  }
+
   _renderBrowse() {
     if (!this._built) return;
+    this._albumActions = null;
     this._renderCrumbs();
     this._buttons.queue.classList.toggle("on", this._inQueue);
     this._grid.replaceChildren();
@@ -1830,6 +2024,7 @@ class BluOSCompanionPanel extends HTMLElement {
     } else {
       const bar = this._sectionBar();
       const level = this._stack[this._stack.length - 1];
+      if (level && level.type === "album") this._grid.append(this._albumHead(level));
       if (bar) this._grid.append(this._renderBar(bar, level && level.letter));
       else if (
         this._groups.length === 1 &&
@@ -1843,7 +2038,7 @@ class BluOSCompanionPanel extends HTMLElement {
         if (!group.items.length) continue;
         if (bar && !level.bar) continue; // the letters are the bar, not tiles
         if (group.title) this._grid.append(el("h3", {}, group.title));
-        this._grid.append(el("div", { class: "grid" }, ...group.items.map((item) => this._tile(item))));
+        this._appendItems(group.items, level);
       }
       if (this._nextKey) {
         this._grid.append(
@@ -1867,14 +2062,20 @@ class BluOSCompanionPanel extends HTMLElement {
             this._stack.length > 1
               ? el("button", { title: this._t("home"), onclick: () => this._home() }, icon("mdi:home"))
               : null,
-            level.image && !level.image.includes("/bluos_companion/icons/")
+            // The page of an album has its own header
+            level.type !== "album" && level.image && !level.image.includes("/bluos_companion/icons/")
               ? el("img", { class: "crumb-cover", src: level.image, alt: "" })
               : null,
-            el("h2", {}, level.title),
+            level.type !== "album" ? el("h2", {}, level.title) : null,
           ].filter(Boolean)
         : []),
     );
     if (level && level.queue) return;
+    if (level && level.type === "album") {
+      this._actionRow.hidden = true;
+      this._renderAlbumActions();
+      return;
+    }
     const actions = level ? this._levelActions : [];
     this._actionRow.replaceChildren(...actions.map((action) => this._actionButton(action, level.title)));
     this._actionRow.hidden = !actions.length;

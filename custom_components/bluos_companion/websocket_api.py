@@ -167,6 +167,8 @@ def _items(
                 "browse_key": node.browse_key if can_expand else None,
                 "play_path": node.play_path if can_play else None,
                 "context_key": node.context_key,
+                "tracks": node.tracks,
+                "duration": node.duration,
             }
         )
     return items
@@ -473,10 +475,14 @@ async def ws_locate(
             "context_key": f"LocalMusic:CM/LocalMusic-Artist?{query}",
         }
     if album and (node := await _async_call(client.async_find_album(album, artist))):
+        path = image_path(node)
         result["album"] = {
             "title": node.title,
+            "subtitle": node.subtitle,
             "browse_key": node.browse_key,
             "context_key": node.context_key,
+            "image": async_artwork_url(hass, msg["entry_id"], path) if path else None,
+            "tracks": node.tracks,
         }
     connection.send_result(msg["id"], result)
 
