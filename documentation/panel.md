@@ -74,6 +74,10 @@ Presets belong to a player: a player without presets has no presets row.
 
 ![Artists, with the A–Z bar](images/panel-artists-letter.jpg)
 
+![The albums, as a grid](images/panel-albums.jpg)
+
+![The page of an artist](images/panel-artist.jpg)
+
 ## The queue
 
 The queue button opens the tracks of the current queue, the playing one highlighted. Tap a track to
