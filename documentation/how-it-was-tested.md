@@ -42,6 +42,7 @@ afterwards:
   player, from an album page and from the title of the playing track.
 - **Sidebar player**: the home button of the breadcrumb, used by hand several levels deep.
 - **Sidebar player on a phone**: the compact bar, the volume strip, the More menu, the full screen view with its blurred cover (light and dark covers), tried by hand in a narrowed browser window; the safe areas of an iPhone still need a look on the phone itself.
+- **Sidebar player, full screen view**: the queue inside it (shuffle, repeat, playing a track, the covers staying still while the state updates), the favourite heart and the menu of the playing track, and the input and sleep timer popup, tried by hand on a phone and a tablet.
 - **Playlists**: playing tracks of saved playlists (first and later pages, a playlist with 250 entries the player cannot find), tried by hand on the amplifier.
 - **Import**: a real playlist of 134 tracks exported from Apple Music, with accents written the way a Mac does, built
   on the player in its order; the tracks the player's library did not know were reported.
