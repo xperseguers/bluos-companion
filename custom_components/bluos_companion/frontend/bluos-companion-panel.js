@@ -248,7 +248,7 @@ const STYLE = `
     top: 8px;
     bottom: 8px;
     width: 26px;
-    z-index: 3;
+    z-index: 5;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
