@@ -2,7 +2,7 @@
  * Plain JavaScript, no build step. */
 
 // The shared controls come with the version of this file, so that a changed file is not cached
-const { createControls, flatten, CONTROLS_STYLE } = await import(
+const { createControls, CONTROLS_STYLE } = await import(
   new URL(`./bluos-companion-card-controls.js${new URL(import.meta.url).search}`, import.meta.url)
 );
 
@@ -113,7 +113,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
 
   setConfig(config) {
     if (!config.entity) throw new Error("Choose the BluOS Companion player (entity)");
-    this._config = { show_volume: true, ...flatten(config) };
+    this._config = { show_volume: true, ...config };
     this._build();
     this._render();
   }
@@ -386,6 +386,7 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
       { name: "show_control_panel", selector: { boolean: {} } },
       {
         type: "expandable",
+        name: "other_entities",
         title: this._t("editor_other_entities"),
         schema: [
           { name: "volume_entity", selector: { entity: { domain: "media_player" } } },

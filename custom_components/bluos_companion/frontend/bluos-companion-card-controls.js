@@ -176,12 +176,6 @@ const power = {
  * then the buttons of the card (`extras`), the input and the power. The card needs `_hass`,
  * `_config`, `_player`, `_t(key)` and `_control(action, value)`. Call `update()` after every change
  * of the player or of the states; it tells whether the row has something to show. */
-// The entities of another player may sit under `other_entities` (as an older editor saved them) or at the top
-export function flatten(config) {
-  const { other_entities: other, ...rest } = config;
-  return { ...rest, ...(other && typeof other === "object" ? other : {}) };
-}
-
 export function createControls(card, extras = []) {
   let timer = null;
   const arm = () => {

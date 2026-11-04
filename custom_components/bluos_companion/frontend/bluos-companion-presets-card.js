@@ -2,7 +2,7 @@
  * volume, input selection, power and play / pause. Plain JavaScript, no build step. */
 
 // The shared controls come with the version of this file, so that a changed file is not cached
-const { createControls, flatten, CONTROLS_STYLE } = await import(
+const { createControls, CONTROLS_STYLE } = await import(
   new URL(`./bluos-companion-card-controls.js${new URL(import.meta.url).search}`, import.meta.url)
 );
 
@@ -77,7 +77,7 @@ class BluOSCompanionPresetsCard extends HTMLElement {
 
   setConfig(config) {
     if (!config.entity) throw new Error("Choose the BluOS Companion player (entity)");
-    this._config = { columns: 3, show_footer: true, ...flatten(config) };
+    this._config = { columns: 3, show_footer: true, ...config };
     this._build();
     this._render();
   }
@@ -308,6 +308,7 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
       { name: "show_power", selector: { boolean: {} } },
       {
         type: "expandable",
+        name: "other_entities",
         title: this._t("editor_other_entities"),
         schema: [
           { name: "volume_entity", selector: { entity: { domain: "media_player" } } },
