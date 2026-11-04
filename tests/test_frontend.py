@@ -30,3 +30,21 @@ def test_scripts_have_no_syntax_error(script: Path, tmp_path: Path) -> None:
     module = tmp_path / f"{script.stem}.mjs"
     module.write_text(script.read_text())
     subprocess.run(["node", "--check", str(module)], check=True, capture_output=True)
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is not installed")
+def test_other_entities_are_read_nested_or_flat(tmp_path: Path) -> None:
+    """The entities of another player count under `other_entities` as well as at the top of the card."""
+    module = tmp_path / "controls.mjs"
+    module.write_text((FRONTEND / "bluos-companion-card-controls.js").read_text())
+    script = tmp_path / "check.mjs"
+    script.write_text(
+        f'import {{ flatten }} from "{module}";\n'
+        'const nested = flatten({ entity: "a", other_entities: { volume_entity: "v", power_entity: "p" } });\n'
+        'const flat = flatten({ entity: "a", volume_entity: "v" });\n'
+        "console.log(JSON.stringify([nested, flat]));\n"
+    )
+    out = subprocess.run(["node", str(script)], check=True, capture_output=True, text=True).stdout
+    assert out.strip() == (
+        '[{"entity":"a","volume_entity":"v","power_entity":"p"},{"entity":"a","volume_entity":"v"}]'
+    )
