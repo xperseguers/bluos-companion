@@ -6,7 +6,7 @@
 |---|---|---|
 | NAD C368 with the MDC2 BluOS-D module | an amplifier with a built-in BluOS module (inputs and standby are handled by the amplifier) | everything, live: playback, browsing, search, queue, playlists, presets, grouping, moving playback, backup and restore, the amplifier power and speaker switches, favourites, the cover size limit, the import of playlists |
 | Bluesound Pulse Mini 2i | a wireless speaker | everything, live, including grouping with the NAD, moving playback, restoring a playlist, muting a group, the volume and mute of a secondary player, and favourites shared with the NAD |
-| Bluesound NODE | a standalone streamer | playback with version 1.2.0; the sidebar player, the cards and the playlists through read-only checks (inputs, presets, playlists, home page) |
+| Bluesound NODE | a standalone streamer | used for real on a daily basis in a second home, and kept up to date with the releases: not tested as thoroughly as the owner's own devices above, but constantly checked in real life |
 
 All three run the same BluOS firmware family (4.18). The live tests used Home Assistant 2026.10. Players of other
 models or firmware may behave differently: please report what you find.
