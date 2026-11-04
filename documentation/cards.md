@@ -65,9 +65,10 @@ BluOS player. Each is optional, set separately, and comes with a picker in the e
 ```yaml
 type: custom:bluos-companion-presets-card
 entity: media_player.node            # the presets and the playback stay with the BluOS player
-volume_entity: media_player.amplifier   # volume ring: volume and mute of that media player
-source_entity: media_player.amplifier   # input button: its source list
-power_entity: switch.amplifier_power    # power button: a media player, a switch or an input boolean
+other_entities:
+  volume_entity: media_player.amplifier   # volume ring: volume and mute of that media player
+  source_entity: media_player.amplifier   # input button: its source list
+  power_entity: switch.amplifier_power    # power button: a media player, a switch or an input boolean
 show_power: true
 ```
 

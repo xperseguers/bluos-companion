@@ -101,7 +101,7 @@ class BluOSCompanionPresetsCard extends HTMLElement {
 
   // The volume, the input or the power can be those of another entity: follow its states
   _usesOtherEntities() {
-    const { volume_entity: volume, source_entity: source, power_entity: power } = this._config;
+    const { volume_entity: volume, source_entity: source, power_entity: power } = this._config.other_entities || {};
     return Boolean(volume || source || power);
   }
 

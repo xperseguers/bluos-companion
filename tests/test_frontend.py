@@ -30,3 +30,10 @@ def test_scripts_have_no_syntax_error(script: Path, tmp_path: Path) -> None:
     module = tmp_path / f"{script.stem}.mjs"
     module.write_text(script.read_text())
     subprocess.run(["node", "--check", str(module)], check=True, capture_output=True)
+
+
+@pytest.mark.parametrize("script", ["bluos-companion-card-controls.js", "bluos-companion-presets-card.js", "bluos-companion-player-card.js"])
+def test_other_entities_are_read_under_their_group(script: str) -> None:
+    """The entities of another player are only read under `other_entities`, as the card editor saves them."""
+    source = (FRONTEND / script).read_text()
+    assert not re.search(r"_config\.(volume|source|power)_entity", source)

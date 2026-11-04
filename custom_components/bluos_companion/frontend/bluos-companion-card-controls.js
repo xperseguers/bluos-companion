@@ -107,7 +107,7 @@ function call(card, domain, service, data) {
 // The volume of the BluOS player, or of another media player
 const volume = {
   read(card) {
-    const id = card._config.volume_entity;
+    const id = card._config.other_entities?.volume_entity;
     if (id) {
       const state = entity(card, id);
       const level = state && state.attributes.volume_level;
@@ -119,12 +119,12 @@ const volume = {
     return { level: Math.max(player.volume, 0), max: player.max_volume, muted: player.muted, fixed: player.volume < 0 };
   },
   set(card, value) {
-    const id = card._config.volume_entity;
+    const id = card._config.other_entities?.volume_entity;
     if (id) return call(card, "media_player", "volume_set", { entity_id: id, volume_level: value / 100 });
     return card._control("volume", value);
   },
   mute(card, muted) {
-    const id = card._config.volume_entity;
+    const id = card._config.other_entities?.volume_entity;
     if (id) return call(card, "media_player", "volume_mute", { entity_id: id, is_volume_muted: muted });
     return card._control("mute", muted);
   },
@@ -133,7 +133,7 @@ const volume = {
 // The inputs of the BluOS player, or of another media player
 const sources = {
   read(card) {
-    const id = card._config.source_entity;
+    const id = card._config.other_entities?.source_entity;
     if (id) {
       const state = entity(card, id);
       const list = state && state.attributes.source_list;
@@ -143,7 +143,7 @@ const sources = {
     return player && player.sources.length ? { names: player.sources, current: player.source } : null;
   },
   select(card, name) {
-    const id = card._config.source_entity;
+    const id = card._config.other_entities?.source_entity;
     if (id) return call(card, "media_player", "select_source", { entity_id: id, source: name });
     return card._control("source", name);
   },
@@ -152,7 +152,7 @@ const sources = {
 // The amplifier of the BluOS player, or another media player, switch...
 const power = {
   read(card) {
-    const id = card._config.power_entity;
+    const id = card._config.other_entities?.power_entity;
     if (id) {
       const state = entity(card, id);
       if (!state || ["unavailable", "unknown"].includes(state.state)) return null;
@@ -162,7 +162,7 @@ const power = {
     return player && typeof player.power === "boolean" ? { on: player.power } : null;
   },
   toggle(card, on) {
-    const id = card._config.power_entity;
+    const id = card._config.other_entities?.power_entity;
     if (id) {
       const domain = id.split(".")[0];
       const service = on ? "turn_off" : "turn_on";
