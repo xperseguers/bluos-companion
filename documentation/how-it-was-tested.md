@@ -13,7 +13,7 @@ models or firmware may behave differently: please report what you find.
 
 ## Automated tests
 
-More than 430 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
+More than 460 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
 (no real device is needed), on **Home Assistant 2025.6** (the oldest supported version) and on the latest one,
 for every change. They cover the client, the setup and the options, the media player entity and
 the media browser, the data and commands of the sidebar player and the cards, the search (with typos), the
