@@ -846,11 +846,12 @@ class BluOSClient:
 
     async def async_get_image(self, path: str) -> tuple[bytes, str]:
         """Fetch an image from the player (relative path) or a preset CDN (URL)."""
-        url = (
-            path
-            if path.startswith(("http://", "https://"))
-            else f"{self.base_url}{path}"
-        )
+        if path.startswith(("http://", "https://")):
+            url = path
+        elif path.startswith("/") and not path.startswith("//"):
+            url = f"{self.base_url}{path}"
+        else:
+            raise BluOSError(f"Not an image path: {path!r}")
         try:
             async with self._session.get(
                 url, timeout=ClientTimeout(total=REQUEST_TIMEOUT)

@@ -357,6 +357,16 @@ async def test_image(client: BluOSClient, player_api: AiohttpClientMocker) -> No
     assert calls(player_api) == [("/Artwork", {"service": "LocalMusic", "album": "x"})]
 
 
+@pytest.mark.parametrize("path", ["", "relative", "@evil.example/x", "//evil.example/x", "ftp://x/y"])
+async def test_image_refuses_what_is_not_an_image_path(
+    client: BluOSClient, player_api: AiohttpClientMocker, path: str
+) -> None:
+    """Only a path on the player or an http(s) URL is fetched."""
+    with pytest.raises(BluOSError):
+        await client.async_get_image(path)
+    assert calls(player_api) == []
+
+
 async def test_a_genre_gets_the_menu_the_player_does_not_list(
     client: BluOSClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
