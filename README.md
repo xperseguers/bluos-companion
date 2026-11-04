@@ -48,21 +48,25 @@ backup carries along.
 
 ## Installation
 
-### With HACS (custom repository)
+### With HACS (recommended)
 
-1. In HACS, open the menu (three dots) → **Custom repositories**.
-2. Add `https://github.com/xperseguers/bluos-companion` with the category **Integration**.
-3. Search for *BluOS Companion*, download it and restart Home Assistant.
+BluOS Companion is in the default [HACS](https://hacs.xyz) store, so updates show up in Home Assistant like for any
+other integration. If you do not have HACS yet, follow the [HACS installation guide](https://hacs.xyz/docs/use/download/download/).
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=xperseguers&repository=bluos-companion&category=integration)
+
+Or by hand: in HACS search for *BluOS Companion*, download it and restart Home Assistant.
 
 ### Manually
 
-Copy the folder `custom_components/bluos_companion` of this repository into the `custom_components`
-folder of your Home Assistant configuration (next to `configuration.yaml`) and restart.
+Download the latest [release](https://github.com/xperseguers/bluos-companion/releases/latest) and copy the folder
+`custom_components/bluos_companion` into the `custom_components` folder of your Home Assistant configuration (next to
+`configuration.yaml`), then restart. You will have to update it yourself.
 
 ## Quick start
 
 1. **Settings → Devices & services → Add integration → BluOS Companion**, and pick a discovered player or
-   enter its IP address. Repeat for each player (a player is identified by its MAC address, so a new IP address just
+   enter its IP address ([add it directly](https://my.home-assistant.io/redirect/config_flow_start/?domain=bluos_companion)). Repeat for each player (a player is identified by its MAC address, so a new IP address just
    updates the existing entry).
 2. Open **BluOS Companion** in the sidebar. Pick the player with the button in the bottom bar.
 3. On a dashboard, **Add card** and pick *BluOS Companion presets* or *BluOS Companion player*.
