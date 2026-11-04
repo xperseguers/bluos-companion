@@ -17,6 +17,7 @@ from .const import DOMAIN
 
 ARTWORK_URL = "/api/bluos_companion/{entry_id}/artwork"
 SIGN_EXPIRATION = timedelta(hours=1)
+KNOWN_IMAGES = f"{DOMAIN}_artwork_images"
 
 
 def encode_image(image: str) -> str:
@@ -45,10 +46,13 @@ def async_artwork_url(
         return image
     if width and image.startswith("/Artwork?"):
         image = f"{image}&width={width}"
+    hass.data.setdefault(KNOWN_IMAGES, {}).setdefault(entry_id, set()).add(image)
     base = ARTWORK_URL.format(entry_id=entry_id)
     return async_sign_path(hass, f"{base}?path={encode_image(image)}", SIGN_EXPIRATION)
 
 
+# Only images the integration itself handed out (covers of the player, image URLs the player reported) are
+# served: the view never fetches an address chosen by the caller.
 class BluOSArtworkView(HomeAssistantView):
     """Proxy images from the plain-HTTP player."""
 
@@ -65,7 +69,7 @@ class BluOSArtworkView(HomeAssistantView):
             entry is None
             or entry.domain != DOMAIN
             or entry.state is not ConfigEntryState.LOADED
-            or not path.startswith(("/", "http://"))
+            or path not in hass.data.get(KNOWN_IMAGES, {}).get(entry_id, ())
         ):
             return web.Response(status=HTTPStatus.NOT_FOUND)
         try:

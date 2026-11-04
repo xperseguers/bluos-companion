@@ -268,6 +268,8 @@ async def test_artwork_proxy(
         pytest.param("{eid}", "", 404, id="missing-path"),
         pytest.param("unknown", "/Artwork", 404, id="unknown-entry"),
         pytest.param("{eid}", "/Missing", 502, id="player-error"),
+        pytest.param("{eid}", "/Delete?id=1", 404, id="command-not-issued"),
+        pytest.param("{eid}", "http://192.168.1.5/admin", 404, id="url-not-issued"),
     ],
 )
 async def test_artwork_proxy_errors(
@@ -281,6 +283,8 @@ async def test_artwork_proxy_errors(
 ) -> None:
     """Bad requests and player failures are not proxied."""
     player_api.get(f"{BASE}/Missing", status=404)
+    if status == 502:
+        async_artwork_url(hass, init_integration.entry_id, path)
     client = await hass_client()
     response = await client.get(
         f"/api/{DOMAIN}/{entry_id.format(eid=init_integration.entry_id)}/artwork",
