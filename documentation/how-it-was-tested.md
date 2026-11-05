@@ -58,10 +58,13 @@ service offers and the integration shows it. Only the services below were tried 
 
 | Service | What was tried |
 |---|---|
+| Radio (the player's own radio directory) | browsing it in its many ways, playing stations on a chosen player, by hand in the sidebar player |
+| TuneIn | browsing and playing stations, presets that start a station, by hand in the sidebar player |
+| Radio Paradise | the available stations (about seven), choosing one to send the broadcast to the chosen player, a preset that starts one, by hand in the sidebar player |
 | Amazon Music | browsing My Music (playlists, artists, albums, songs, genres), opening an album, the actions of an album, playing a song and an album, by hand in the sidebar player |
 
-Other services (Deezer, Tidal, Qobuz...) are expected to work the same way but were not tried: if you use one, please
-tell us in an [issue](https://github.com/xperseguers/bluos-companion/issues) what works and what does not.
+The other services (Deezer, Tidal, Qobuz...) are expected to work the same way but were not tried: if you use one,
+please tell us in an [issue](https://github.com/xperseguers/bluos-companion/issues) what works and what does not.
 
 ## What is not tested
 
