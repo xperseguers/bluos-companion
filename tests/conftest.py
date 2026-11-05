@@ -61,7 +61,7 @@ SOURCES = """<radiotime service="Capture">
   <item text="No index" type="audio" URL="x"></item>
 </radiotime>"""
 QUEUE = """<playlist length="2" id="1491">
-  <song service="LocalMusic" id="0"><art>Prince</art><alb>Hits</alb><title>U Got the Look</title><image>/Artwork?service=LocalMusic&amp;album=Hits</image></song>
+  <song service="LocalMusic" id="0"><art>Prince</art><alb>Hits</alb><title>U Got the Look</title><quality>cd</quality><image>/Artwork?service=LocalMusic&amp;album=Hits</image></song>
   <song service="LocalMusic" id="1"><art></art><alb></alb><title>Kiss</title></song>
 </playlist>"""
 GROUPED_SYNC_STATUS = (

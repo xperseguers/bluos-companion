@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import asdict
 import re
 from urllib.parse import urlencode
 from collections.abc import Awaitable, Callable
@@ -17,7 +18,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.translation import async_get_translations
 
-from .api import LIBRARY_ALBUMS_KEY, SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket, starts_playback
+from .api import LIBRARY_ALBUMS_KEY, SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket, song_file_from_context_key, starts_playback
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .covers import async_playlist_covers, async_preset_images, image_path
@@ -57,6 +58,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_subscribe)
     websocket_api.async_register_command(hass, ws_favourite)
     websocket_api.async_register_command(hass, ws_playing_favourite)
+    websocket_api.async_register_command(hass, ws_technical_info)
     websocket_api.async_register_command(hass, ws_control)
     websocket_api.async_register_command(hass, ws_browse)
     websocket_api.async_register_command(hass, ws_search)
@@ -504,6 +506,40 @@ async def ws_actions(
                 }
             )
     connection.send_result(msg["id"], {"actions": result})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/technical_info",
+        vol.Required("entry_id"): str,
+        # A track of a list (its context menu key) or of the queue (its position); the playing track otherwise
+        vol.Optional("context_key"): str,
+        vol.Optional("position"): vol.All(int, vol.Range(min=0)),
+    }
+)
+@websocket_api.async_response
+async def ws_technical_info(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Give the technical details of a track of the library (nothing if it is not one)."""
+    coordinator = _coordinator(hass, msg["entry_id"])
+    file: str | None = None
+    if (key := msg.get("context_key")) is not None:
+        file = song_file_from_context_key(key)
+    elif (position := msg.get("position")) is not None:
+        file = await _async_call(coordinator.client.async_get_queue_file(position))
+    else:
+        # A player grouped under another one plays its queue
+        primary = coordinator.group_primary()
+        status = primary.data
+        if status.service == "LocalMusic" and status.queue_position is not None:
+            file = await _async_call(primary.client.async_get_queue_file(status.queue_position))
+            coordinator = primary
+    if not file:
+        connection.send_result(msg["id"], None)
+        return
+    info = await _async_call(coordinator.client.async_get_technical_info(file))
+    connection.send_result(msg["id"], asdict(info))
 
 
 @websocket_api.websocket_command(
@@ -991,6 +1027,7 @@ async def ws_queue(
                     "title": item.title,
                     "artist": item.artist,
                     "album": item.album,
+                    "quality": item.quality,
                     "image": item.image
                     and async_artwork_url(hass, msg["entry_id"], item.image, THUMB_WIDTH),
                 }

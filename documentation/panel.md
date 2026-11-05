@@ -48,7 +48,8 @@ Presets belong to a player: a player without presets has no presets row.
 - **An artist, a composer or a genre** opens on a page with a few albums (a row to scroll), a few songs and, for a
   genre, a few artists, each with **View all** for the whole list.
 - **The ⋮ menu** is the same for every item (albums, songs, artists, genres): Favourite, what the player offers
-  (Play now, Shuffle, Add next, Add last...), go to the album and the artist, and **Info**. A song found by a search
+  (Play now, Shuffle, Add next, Add last...), go to the album and the artist, and **Info**. The Info of a song of the library also gives its technical details
+  (file, format, sample rate, sample size, channels), whether it plays or not. A song found by a search
   that has a different artist on its album offers both artists. Lists the player cuts after a few pages offer
   **Show more**.
 - **The way back** (arrow, home button) stays at the top while you scroll up and hides while you scroll down; the

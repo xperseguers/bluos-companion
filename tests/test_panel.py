@@ -475,6 +475,8 @@ async def test_queue_lists_tracks_with_covers(
     ]
     assert items[0]["image"].startswith("/api/bluos_companion/")
     assert items[1]["image"] is None
+    # What the player says of the audio is passed on, for a badge
+    assert [item["quality"] for item in items] == ["cd", ""]
 
 
 @pytest.mark.parametrize(

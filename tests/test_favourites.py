@@ -17,7 +17,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 from yarl import URL
 
-from custom_components.bluos_companion.api import BluOSClient, Favourite, Favourites
+from custom_components.bluos_companion.api import BluOSClient, BluOSError, song_file_from_context_key, Favourite, Favourites
 from custom_components.bluos_companion.const import DOMAIN
 from custom_components.bluos_companion.favourites_backup import (
     async_backup_favourites,
@@ -455,3 +455,124 @@ async def test_nothing_to_favour_when_it_is_not_a_track_of_the_library(
     await init_integration.runtime_data.async_refresh()
 
     assert await _playing(hass, hass_ws_client, init_integration) is None
+
+
+# ---- the technical info of the playing track ----
+
+INFO_HTML = (
+    "<br><table><head><style>p {{max-width: 700px;}}</style></head>"
+    '<tr><td colspan="2">File: <small>{file}</small></td></tr>'
+    "<tr><td>Format:</td><td><small>Apple Lossless 16/44.1</small></td></tr>"
+    "<tr><td>Sample&nbsp;rate:</td><td><small>44100</small></td></tr>"
+    "<tr><td>Sample&nbsp;size:</td><td><small>16</small></td></tr>"
+    "<tr><td>Channels:</td><td><small>2</small></td></tr></table>"
+)
+
+
+async def test_the_technical_info_of_a_file(client: BluOSClient, aioclient_mock: AiohttpClientMocker) -> None:
+    """The details are read from the table the player answers, even for a file name with HTML characters."""
+    aioclient_mock.get(f"{BASE}/Info", text=INFO_HTML.format(file="/nas/A &amp; B/#9 Dream.m4a"))
+    info = await client.async_get_technical_info("/nas/A & B/#9 Dream.m4a")
+    assert (info.file, info.format, info.sample_rate, info.sample_size, info.channels) == (
+        "/nas/A & B/#9 Dream.m4a",
+        "Apple Lossless 16/44.1",
+        "44100",
+        "16",
+        "2",
+    )
+    assert calls(aioclient_mock) == [
+        ("/Info", {"category": "technical", "filename": "/nas/A & B/#9 Dream.m4a", "service": "LocalMusic"})
+    ]
+
+
+async def test_an_unexpected_technical_info_is_an_error(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """A page that is not the table is refused."""
+    aioclient_mock.get(f"{BASE}/Info", text="<html>nothing</html>")
+    with pytest.raises(BluOSError):
+        await client.async_get_technical_info(FILE)
+
+
+async def test_the_technical_info_of_the_playing_track(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    favourites_api: AiohttpClientMocker,
+) -> None:
+    """The file of the playing track is looked up, a station has no technical info."""
+    respond(favourites_api, f"{BASE}/Status", text=status_xml(song="3"))
+    await init_integration.runtime_data.async_refresh()
+    respond(favourites_api, f"{BASE}/Playlist?start=3&end=3", text=QUEUE_SONG.format(service="LocalMusic", file=FILE))
+    respond(favourites_api, f"{BASE}/Info", text=INFO_HTML.format(file=FILE))
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/technical_info", "entry_id": init_integration.entry_id}
+    )
+    result = (await client.receive_json())["result"]
+    assert result["file"] == FILE
+    assert (result["format"], result["sample_rate"], result["sample_size"], result["channels"]) == (
+        "Apple Lossless 16/44.1",
+        "44100",
+        "16",
+        "2",
+    )
+
+    respond(favourites_api, f"{BASE}/Status", text=status_xml(song="3", service="TuneIn"))
+    await init_integration.runtime_data.async_refresh()
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/technical_info", "entry_id": init_integration.entry_id}
+    )
+    assert (await client.receive_json())["result"] is None
+
+
+SONG_KEY = "LocalMusic:CM/LocalMusic-Song?album=21&artist=Adele&filename=%2Fnas%2FA+%26+B%2F%239+Dream.m4a&title=Dream"
+
+
+@pytest.mark.parametrize(
+    ("key", "file"),
+    [
+        (SONG_KEY, "/nas/A & B/#9 Dream.m4a"),
+        ("LocalMusic:CM/LocalMusic-Album?album=21&artist=Adele", None),
+        ("LocalMusic:CM/LocalMusic-Song?album=21", None),
+        ("Deezer:CM/Song?filename=%2Fx", None),
+    ],
+)
+def test_the_file_of_a_listed_track(key: str, file: str | None) -> None:
+    """Only the menu of a track of the library tells its file."""
+    assert song_file_from_context_key(key) == file
+
+
+@pytest.mark.parametrize(
+    ("request_extra", "asked_file"),
+    [
+        ({"context_key": SONG_KEY}, "/nas/A & B/#9 Dream.m4a"),
+        ({"position": 3}, FILE),
+        ({"context_key": "LocalMusic:CM/LocalMusic-Album?album=21"}, None),
+    ],
+)
+async def test_the_technical_info_of_any_track(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    favourites_api: AiohttpClientMocker,
+    request_extra: dict,
+    asked_file: str | None,
+) -> None:
+    """A track of a list or of the queue has its details, playing or not."""
+    respond(favourites_api, f"{BASE}/Playlist?start=3&end=3", text=QUEUE_SONG.format(service="LocalMusic", file=FILE))
+    respond(favourites_api, f"{BASE}/Info", text=INFO_HTML.format(file=asked_file))
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/technical_info", "entry_id": init_integration.entry_id, **request_extra}
+    )
+    result = (await client.receive_json())["result"]
+
+    if asked_file is None:
+        assert result is None
+    else:
+        assert result["file"] == asked_file
+        asked = [params for path, params in calls(favourites_api) if path == "/Info"]
+        assert asked == [{"category": "technical", "filename": asked_file, "service": "LocalMusic"}]

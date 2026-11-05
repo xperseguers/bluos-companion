@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import re
 from dataclasses import dataclass
 from urllib.parse import parse_qs, unquote, urlencode, urlparse
@@ -64,6 +65,28 @@ class Status:
     preset_name: str | None = None
     can_move: bool = False
     indexing: int = 0
+
+
+SONG_CONTEXT_PREFIX = "LocalMusic:CM/LocalMusic-Song?"
+
+
+def song_file_from_context_key(key: str) -> str | None:
+    """Return the file of a track of the library from the context menu key of its list entry."""
+    if not key.startswith(SONG_CONTEXT_PREFIX):
+        return None
+    files = parse_qs(key.removeprefix(SONG_CONTEXT_PREFIX)).get("filename")
+    return files[0] if files else None
+
+
+@dataclass(frozen=True, slots=True)
+class TechnicalInfo:
+    """Technical details of a file of the library."""
+
+    file: str
+    format: str
+    sample_rate: str
+    sample_size: str
+    channels: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +171,8 @@ class QueueItem:
     artist: str
     album: str
     image: str | None
+    # How good the audio is as the player labels it ("cd", "hd", a bitrate...), empty if it does not say
+    quality: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -834,9 +859,24 @@ class BluOSClient:
                 artist=song.findtext("art", ""),
                 album=song.findtext("alb", ""),
                 image=song.findtext("image"),
+                quality=song.findtext("quality", ""),
             )
             for song in root.iter("song")
         ]
+
+    async def async_get_technical_info(self, file: str) -> TechnicalInfo:
+        """Return the technical details (format, sample rate...) of a file of the library."""
+        body = await self._get(
+            "/Info", {"category": "technical", "filename": file, "service": "LocalMusic"}
+        )
+        # The player answers a small HTML table: file, format, sample rate, sample size, channels
+        cells = [
+            html.unescape(cell).strip()
+            for cell in re.findall(r"<small>(.*?)</small>", body.decode(errors="replace"), re.S)
+        ]
+        if len(cells) != 5:
+            raise BluOSError("Invalid response from player")
+        return TechnicalInfo(*cells)
 
     async def async_get_queue_file(self, position: int) -> str | None:
         """Return the file of a track of the queue, for a track of the library."""

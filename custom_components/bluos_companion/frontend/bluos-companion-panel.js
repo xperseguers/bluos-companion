@@ -772,7 +772,7 @@ class BluOSCompanionPanel extends HTMLElement {
       title: player.title,
       subtitle: [player.artist, player.album].filter(Boolean).join(" - "),
       names: { album: player.album, artist: player.artist },
-      info: { type: "track", artist: player.artist, album: player.album, duration: player.duration },
+      info: { type: "track", artist: player.artist, album: player.album, duration: player.duration, technical_request: {} },
     };
     this._itemMenu(options);
     // Whether the track is a favourite takes a request: the button comes when it is known
@@ -878,19 +878,40 @@ class BluOSCompanionPanel extends HTMLElement {
       [this._t("info_album"), info.album],
       [this._t("info_duration"), info.duration ? formatTime(info.duration) : null],
       [this._t("info_tracks"), info.tracks ? String(info.tracks) : null],
+      ...(info.technical
+        ? [
+            [this._t("info_file"), info.technical.file],
+            [this._t("info_format"), info.technical.format],
+            [this._t("info_sample_rate"), info.technical.sample_rate],
+            [this._t("info_sample_size"), info.technical.sample_size],
+            [this._t("info_channels"), info.technical.channels],
+          ]
+        : []),
     ].filter(([, value]) => value);
   }
 
   // What the panel knows of an item, from the lists
   _showInfo(options) {
-    const rows = this._infoRows(options.info);
+    const rowsBox = el("div", { class: "info-rows" });
+    const fill = () =>
+      rowsBox.replaceChildren(
+        ...this._infoRows(options.info).map(([label, value]) =>
+          el("div", { class: "info-row" }, el("span", {}, label), el("span", {}, value)),
+        ),
+      );
+    fill();
+    // The technical details of a track of the library are asked to the player, when the info is opened
+    const request = options.info.technical_request;
+    if (request && !options.info.technical) {
+      this._call({ type: "bluos_companion/technical_info", entry_id: this._playerId, ...request }).then((result) => {
+        if (!result) return;
+        options.info.technical = result;
+        fill();
+      });
+    }
     this._dialog.replaceChildren(
       el("h2", {}, options.title),
-      el(
-        "div",
-        { class: "info-rows" },
-        ...rows.map(([label, value]) => el("div", { class: "info-row" }, el("span", {}, label), el("span", {}, value))),
-      ),
+      rowsBox,
       el(
         "div",
         { class: "list", style: "margin-top: 12px" },
@@ -945,7 +966,14 @@ class BluOSCompanionPanel extends HTMLElement {
       subtitle: item.subtitle || (level && level.type === "album" && item.type === "track" ? level.title : ""),
       actions,
       names,
-      info: { type: item.type, artist, album, duration: item.duration, tracks: item.tracks },
+      info: {
+        type: item.type,
+        artist,
+        album,
+        duration: item.duration,
+        tracks: item.tracks,
+        technical_request: item.type === "track" && item.context_key ? { context_key: item.context_key } : null,
+      },
     });
   }
 
@@ -1202,7 +1230,7 @@ class BluOSCompanionPanel extends HTMLElement {
             subtitle: [item.artist, item.album].filter(Boolean).join(" - "),
             extra: moves,
             names: item,
-            info: { type: "track", artist: item.artist, album: item.album },
+            info: { type: "track", artist: item.artist, album: item.album, technical_request: { position: item.position } },
           }),
         ),
       },
