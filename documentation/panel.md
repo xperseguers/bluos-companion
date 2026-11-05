@@ -30,7 +30,8 @@ From top to bottom: a row of **shortcuts** into the library (Artists, Albums, So
 Favourites), then rows you scroll sideways, each with **View all** when there is more behind: your **presets**,
 **recently played**, your **saved playlists** (with the cover of their first track), **recent stations**,
 **recently added** albums (View all opens the albums by most recent) and your **sources** (services such as TuneIn or
-Deezer, and inputs such as Bluetooth). The titles come from the player, in your language. Services you do not use can
+Deezer, and inputs such as Bluetooth). The titles come from the player, in your language. Items played recently carry a small badge: a folder for your library, a cloud for a music service
+(its name shows when you hover it). Services you do not use can
 be hidden, see [Configuration](configuration.md).
 
 Presets belong to a player: a player without presets has no presets row.

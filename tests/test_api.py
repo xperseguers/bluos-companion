@@ -215,6 +215,9 @@ async def test_home_rows(client: BluOSClient, aioclient_mock: AiohttpClientMocke
     assert song.context_key == (
         "LocalMusic:CM/LocalMusic-Song?album=En+Public&artist=Goldman&filename=%2Fa.m4a&title=Je+te+donne"
     )
+    # The service is named from the icon the player gives, nothing when there is none
+    assert [i.service for i in stations] == ["TuneIn", None]
+    assert (album.service, song.service) == ("Library", "Amazon Music")
     request = aioclient_mock.mock_calls[-1]
     assert request[3]["Accept-Language"] == "fr"
     assert request[3]["x-sovi-schema-version"] == "35"

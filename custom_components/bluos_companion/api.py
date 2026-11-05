@@ -334,6 +334,8 @@ class HomeItem:
     browse_key: str | None
     play_path: str
     context_key: str | None
+    # Where it comes from, as named by the player ("Library", "Amazon Music"...)
+    service: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -372,8 +374,19 @@ def _ui_query(uri: str, name: str) -> str | None:
     return values[0] if values else None
 
 
+def _home_service(element: ET.Element) -> str | None:
+    """Return the name of the service of an item of the home screen, from its icon."""
+    match = re.search(r"/(\w+)Icon\.png", element.get("icon", ""))
+    if not match:
+        return None
+    name = match.group(1)
+    # "AmazonMusic" reads "Amazon Music", the names that are written with capitals inside stay
+    return name if name in ("TuneIn", "BluOS") else re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)
+
+
 def _home_item(element: ET.Element) -> HomeItem | None:
     """Turn an item of the home screen into an album, a song or a station."""
+    service = _home_service(element)
     play = element.find("playAction")
     actions = element.findall("action")
     play_uri = (play if play is not None else next(iter(actions), None))
@@ -395,6 +408,7 @@ def _home_item(element: ET.Element) -> HomeItem | None:
                 album.browse_key,
                 album.play_path,
                 album.context_key,
+                service,
             )
         return None
     if not play_path:
@@ -407,10 +421,10 @@ def _home_item(element: ET.Element) -> HomeItem | None:
             wanted = {k: params[k][0] for k in ("album", "artist", "filename", "title") if k in params}
             context_key = f"LocalMusic:CM/LocalMusic-Song?{urlencode(wanted)}"
         return HomeItem(
-            "song", title, element.get("subTitle", ""), element.get("image"), None, play_path, context_key
+            "song", title, element.get("subTitle", ""), element.get("image"), None, play_path, context_key, service
         )
     if play_path.startswith("/Play?url="):
-        return HomeItem("station", title, "", element.get("image"), None, play_path, None)
+        return HomeItem("station", title, "", element.get("image"), None, play_path, None, service)
     return None
 
 

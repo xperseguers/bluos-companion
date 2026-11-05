@@ -821,6 +821,7 @@ async def ws_home(
                                 "browse_key": item.browse_key,
                                 "play_path": item.play_path,
                                 "context_key": item.context_key,
+                                "service": item.service,
                             }
                             for item in row.items
                             if is_play_path(item.play_path)

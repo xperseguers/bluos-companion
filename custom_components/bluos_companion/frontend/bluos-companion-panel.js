@@ -410,6 +410,7 @@ const STYLE = `
     background: var(--card-background-color);
   }
   .tile .artwrap { position: relative; }
+  .tile .origin { position: absolute; left: 6px; bottom: 6px; background: rgba(0, 0, 0, 0.6); color: #fff; --mdc-icon-size: 18px; border-radius: 50%; padding: 5px; display: flex; }
   .tile .more { position: absolute; right: 6px; top: 6px; background: rgba(0, 0, 0, 0.6); color: #fff; --mdc-icon-size: 22px; padding: 6px; }
   dialog {
     border: none;
@@ -2767,6 +2768,13 @@ class BluOSCompanionPanel extends HTMLElement {
         el("div", { class: "subtitle" }, item.subtitle || " "),
       ),
     );
+    if (item.service) {
+      // Where it comes from: our own glyphs, the name of a service in the tooltip
+      const local = ["Library", "BluOS"].includes(item.service);
+      tile.firstChild.append(
+        el("span", { class: "origin", title: local ? "" : item.service }, icon(local ? "mdi:folder-music-outline" : "mdi:cloud-outline")),
+      );
+    }
     if (item.browse_key && item.play_path) {
       tile.firstChild.append(
         el(

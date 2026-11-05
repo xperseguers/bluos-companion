@@ -92,7 +92,7 @@ SONGS_SECTION = """<browse type="tracks">
 HOME = """<screen>
   <row id="presets" title="Presets"><largeThumbnail title="Ignored"/></row>
   <row id="recent-stations" title="Recent Stations">
-    <largeThumbnail image="http://cdn.example/s6814.jpg" title="Radio Swiss Jazz">
+    <largeThumbnail image="http://cdn.example/s6814.jpg" title="Radio Swiss Jazz" icon="/Sources/images/TuneInIcon.png?style=Default">
       <action type="player-link" URI="/ui/prf?u=%2FPlay%3Furl%3DTuneIn%253As6814%26title1%3DRadio%2BSwiss%2BJazz"></action>
       <playAction type="player-link" URI="/ui/prf?u=%2FPlay%3Furl%3DTuneIn%253As6814%26title1%3DRadio%2BSwiss%2BJazz"></playAction>
     </largeThumbnail>
@@ -101,11 +101,11 @@ HOME = """<screen>
     </largeThumbnail>
   </row>
   <row id="recent" title="Recently Played">
-    <item image="/Artwork?service=LocalMusic&amp;album=Io+Canto+2&amp;artist=Laura+Pausini" objectType="album" title="Io Canto 2" subTitle="Laura Pausini">
+    <item image="/Artwork?service=LocalMusic&amp;album=Io+Canto+2&amp;artist=Laura+Pausini" objectType="album" title="Io Canto 2" subTitle="Laura Pausini" icon="/images/LibraryIcon.png?style=Default">
       <action type="browse" URI="/ui/browseContext?service=LocalMusic&amp;title=Io+Canto+2&amp;type=Album&amp;url=%2FAlbums%3Fservice%3DLocalMusic%26album%3DIo%2BCanto%2B2%26artist%3DLaura%2BPausini" resultType="screen"></action>
       <action type="player-link" URI="/ui/prf?u=%2FAdd%3Fplaynow%3D1"></action>
     </item>
-    <item image="/Artwork?service=LocalMusic&amp;album=En+Public&amp;artist=Goldman" objectType="song" title="Je te donne" subTitle="Goldman &#8226; En Public">
+    <item image="/Artwork?service=LocalMusic&amp;album=En+Public&amp;artist=Goldman" objectType="song" title="Je te donne" subTitle="Goldman &#8226; En Public" icon="/Sources/images/AmazonMusicIcon.png?style=Default">
       <action type="player-link" URI="/ui/prf?u=%2FAdd%3Fplaynow%3D1%26file%3D%252Fa.m4a" haptic="true"></action>
       <contextMenu type="browse" URI="/ui/ContextMenu?album=En+Public&amp;artist=Goldman&amp;context=Song&amp;filename=%2Fa.m4a&amp;service=LocalMusic&amp;title=Je+te+donne" resultType="contextMenu"></contextMenu>
     </item>
