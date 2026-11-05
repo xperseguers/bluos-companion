@@ -226,6 +226,10 @@ async def test_browse_translates_library_menu(
         ("/Play?url=TuneIn%3As6814&title1=x", True),
         ("/Play?url=TuneIn:s6814", True),
         ("/Play?url=Capture%3Abluez%3Abluetooth", True),
+        ("/Play?url=%2FAdd%3Fplaynow%3D1%26service%3DAmazon%26url%3Dhttps%253A%252F%252Fx%252F&title=T", True),
+        ("/Play?url=%2FReboot", False),
+        ("/Play?url=%2F%2Fevil.example", False),
+        ("/Play?url=/Add?playnow=1&service=Amazon", True),
     ],
 )
 async def test_play_only_allowed_paths(

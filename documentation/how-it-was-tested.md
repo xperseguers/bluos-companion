@@ -51,6 +51,18 @@ afterwards:
 - **Presets and inputs by name**: a preset by a word of its name, inputs by common names, and the error for a name
   that fits several inputs.
 
+## Music services
+
+Browsing a music service in the sidebar player and the media browser is generic: the player describes what the
+service offers and the integration shows it. Only the services below were tried on a real account.
+
+| Service | What was tried |
+|---|---|
+| Amazon Music | browsing My Music (playlists, artists, albums, songs, genres), opening an album, the actions of an album, playing a song and an album, by hand in the sidebar player |
+
+Other services (Deezer, Tidal, Qobuz...) are expected to work the same way but were not tried: if you use one, please
+tell us in an [issue](https://github.com/xperseguers/bluos-companion/issues) what works and what does not.
+
 ## What is not tested
 
 - other models and firmware, players with several secondary players in a group
@@ -59,7 +71,7 @@ afterwards:
 - the favourites of the streaming services and favourite playlists, and the import of playlists exported in another
   format than `.m3u8` or from a library that is not organised as artist / album / file (the paths of Windows are
   covered by automated tests only)
-- the accounts of music services (Deezer, Tidal...)
+- the accounts of the music services other than Amazon Music (Deezer, Tidal...)
 - selecting the HDMI ARC input or using the sleep timer of the NODE
 - the sidebar player in browsers and tablets other than the ones used during development, and live use on Home
   Assistant versions other than 2026.10

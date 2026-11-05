@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import re
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, unquote
 
 from homeassistant.components.media_player import BrowseError, MediaClass, MediaType
 from homeassistant.components.media_source import (
@@ -62,9 +62,14 @@ NODE_CLASSES = {
 def is_play_path(path: str) -> bool:
     """Return whether a player path only starts something to play.
 
-    A station of a service (`/Play?url=TuneIn:s6814`) is allowed, an address is not.
+    A station of a service (`/Play?url=TuneIn:s6814`) is allowed, an address is not. A track of a
+    service is played through a path of the player itself (`/Play?url=/Add?...`), allowed as well.
     """
-    return path.startswith(PLAY_PATH_PREFIXES) or bool(STATION_PATH.match(path))
+    if path.startswith(PLAY_PATH_PREFIXES) or STATION_PATH.match(path):
+        return True
+    if path.startswith("/Play?url=%2F") or path.startswith("/Play?url=/"):
+        return unquote(path.removeprefix("/Play?url=").partition("&")[0]).startswith("/Add?")
+    return False
 
 
 async def async_get_media_source(hass: HomeAssistant) -> BluOSMediaSource:
