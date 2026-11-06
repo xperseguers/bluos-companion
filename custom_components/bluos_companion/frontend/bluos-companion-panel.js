@@ -604,8 +604,8 @@ const ACTION_ICONS = {
 // The player words its actions in English whatever the language: they are translated by type
 const ACTION_TEXTS = {
   "add-now": "action_play_now",
-  "add-shuffle": "shuffle",
-  "addAll-shuffle": "shuffle",
+  "add-shuffle": "action_shuffle",
+  "addAll-shuffle": "action_shuffle",
   "add-next": "action_add_next",
   "addAll-next": "action_add_next",
   "add-last": "action_add_last",
