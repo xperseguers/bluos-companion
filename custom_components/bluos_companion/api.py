@@ -702,8 +702,14 @@ class BluOSClient:
         album: str | None = None,
         artist: str | None = None,
     ) -> None:
-        """Add a track (its file) or a whole album of the library to the end of a saved playlist."""
+        """Add a track (its file) or a whole album of the library to the end of a saved playlist.
+
+        A name that no playlist has yet makes a new one: the player wants to be told so, and
+        refuses to "create" a playlist that exists.
+        """
         params = {"sourceService": "LocalMusic", "name": name}
+        if name not in await self.async_get_playlist_names():
+            params["create"] = "1"
         if file:
             params["songid"] = file
         else:

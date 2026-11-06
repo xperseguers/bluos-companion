@@ -1351,6 +1351,7 @@ async def test_add_to_playlist(
 ) -> None:
     """A track, an album or a track of the queue is added to the end of a playlist."""
     player_api.get(f"{BASE}/AddToPlaylist", text='<addToPlaylist service="BluOS"></addToPlaylist>')
+    respond(player_api, f"{BASE}/Playlists", text="<playlists><name>NEW</name></playlists>")
     respond(
         player_api,
         f"{BASE}/Playlist",
@@ -1392,3 +1393,28 @@ async def test_add_to_playlist_needs_something_to_add(
     )
     assert (await client.receive_json())["success"] is False
     assert "/AddToPlaylist" not in [call[0] for call in calls(player_api)]
+
+
+async def test_add_to_playlist_creates_a_new_playlist(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """A name that no playlist has makes a new one, and only then the player is told to create it."""
+    player_api.get(f"{BASE}/AddToPlaylist", text='<addToPlaylist service="BluOS"></addToPlaylist>')
+    respond(player_api, f"{BASE}/Playlists", text="<playlists><name>NEW</name></playlists>")
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/add_to_playlist",
+            "entry_id": init_integration.entry_id,
+            "name": "TEST",
+            "file": "/a.m4a",
+        }
+    )
+    assert (await client.receive_json())["success"]
+    assert calls(player_api)[-1] == (
+        "/AddToPlaylist",
+        {"sourceService": "LocalMusic", "name": "TEST", "songid": "/a.m4a", "create": "1"},
+    )
