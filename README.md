@@ -48,14 +48,16 @@ backup carries along.
 
 ## Installation
 
-### With HACS (recommended)
+### With HACS / Marketplace (recommended)
 
 BluOS Companion is in the default [HACS](https://hacs.xyz) store, so updates show up in Home Assistant like for any
-other integration. If you do not have HACS yet, follow the [HACS installation guide](https://hacs.xyz/docs/use/download/download/).
+other integration. Since Home Assistant 2026.11, HACS appears as **Marketplace** in the interface; it is the same
+thing. If you do not have it yet, follow the [HACS installation guide](https://hacs.xyz/docs/use/download/download/).
 
 [![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=xperseguers&repository=bluos-companion&category=integration)
 
-Or by hand: in HACS search for *BluOS Companion*, download it and restart Home Assistant.
+Or by hand: in HACS (*Marketplace* on Home Assistant 2026.11 and later) search for *BluOS Companion*, download it
+and restart Home Assistant.
 
 ### Manually
 
