@@ -13,7 +13,7 @@ models or firmware may behave differently: please report what you find.
 
 ## Automated tests
 
-More than 480 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
+More than 490 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
 (no real device is needed), on **Home Assistant 2025.6** (the oldest supported version) and on the latest one,
 for every change. They cover the client, the setup and the options, the media player entity and
 the media browser, the data and commands of the sidebar player and the cards, the search (with typos), the
@@ -46,6 +46,15 @@ afterwards:
 - **Browsing the library in the sidebar player**: the lists of artists, albums, songs, composers and genres as flat rows with the letters, the A-Z index (touch and mouse, a library of about 17,000 songs), the sorts of the albums (year, decade, artist...), the landing pages of an artist and a genre, the album page, the item menu with Info, the home screen, and the covers at their size, tried by hand on a phone, a tablet and a desktop.
 - **Technical info**: the Info of tracks of the library (CD, high resolution and lossy files), playing or not, from the lists, the search results and the queue, tried by hand on a desktop and on a phone, with the details compared with the ones of the BluOS app.
 - **Playlists**: playing tracks of saved playlists (first and later pages, a playlist with 250 entries the player cannot find), tried by hand on the amplifier.
+- **Editing the queue and the playlists**: the edit mode of the queue (drag and drop, remove) and of a saved playlist
+  (reorder, remove, save), tried by hand on a desktop and on a phone; a playlist of 541 tracks (many of them repeated)
+  was rebuilt from its backup in its order, and so was a playlist of 12 tracks, each checked track by track against
+  the backup. Reading a long playlist can take a while: the page keeps loading instead of starting over.
+- **Add to playlist**: adding a track, a whole album and a track of the queue to the end of an existing playlist, and
+  to a playlist that did not exist yet, through the same commands the sidebar player uses, on the amplifier. The two
+  dialogs (choosing a playlist, naming a new one) were tried by hand. The test playlist was deleted afterwards.
+- **Languages of the actions**: play now, shuffle, add next and add last in French and German, compared with the
+  BluOS app.
 - **Import**: a real playlist of 134 tracks exported from Apple Music, with accents written the way a Mac does, built
   on the player in its order; the tracks the player's library did not know were reported.
 - **Presets and inputs by name**: a preset by a word of its name, inputs by common names, and the error for a name
