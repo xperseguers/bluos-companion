@@ -601,6 +601,17 @@ const ACTION_ICONS = {
   add: "mdi:playlist-plus",
 };
 
+// The player words its actions in English whatever the language: they are translated by type
+const ACTION_TEXTS = {
+  "add-now": "action_play_now",
+  "add-shuffle": "shuffle",
+  "addAll-shuffle": "shuffle",
+  "add-next": "action_add_next",
+  "addAll-next": "action_add_next",
+  "add-last": "action_add_last",
+  "addAll-last": "action_add_last",
+};
+
 function formatTime(seconds) {
   const total = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(total / 60);
@@ -734,6 +745,11 @@ class BluOSCompanionPanel extends HTMLElement {
     );
   }
 
+  _actionTitle(action) {
+    const key = ACTION_TEXTS[action.type];
+    return key && this._strings && this._strings[key] ? this._strings[key] : action.title;
+  }
+
   async _actions(contextKey) {
     const result = await this._call({
       type: "bluos_companion/actions",
@@ -757,7 +773,7 @@ class BluOSCompanionPanel extends HTMLElement {
       return;
     }
     await this._call({ type: "bluos_companion/play", entry_id: this._playerId, path: action.path });
-    this._notify(`${action.title}: ${label}`);
+    this._notify(`${this._actionTitle(action)}: ${label}`);
   }
 
   // The actions of the page on display, after one of them changed (a favourite).
@@ -948,7 +964,7 @@ class BluOSCompanionPanel extends HTMLElement {
             : "mdi:heart"
           : ACTION_ICONS[action.type] || "mdi:playlist-plus",
       ),
-      action.favourite ? this._t(action.on ? "favourite_remove" : "favourite_add") : action.title,
+      action.favourite ? this._t(action.on ? "favourite_remove" : "favourite_add") : this._actionTitle(action),
     );
   }
 
