@@ -635,6 +635,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._queueEdit = false; // the queue is being edited: drag and drop, remove
     this._editor = null; // the playlist being edited: { name, tracks, changed }
     this._dragging = false;
+    this._browsedFor = null; // the player whose page was asked for last
     this._searchKey = DEFAULT_SEARCH_KEY;
     this._receivedAt = 0;
     this._browseToken = 0;
@@ -726,7 +727,8 @@ class BluOSCompanionPanel extends HTMLElement {
       localStorage.setItem(STORAGE_KEY, this._playerId);
       this._stack = [];
       this._browse();
-    } else if (this._groups === null) {
+    } else if (this._groups === null && this._browsedFor !== this._playerId) {
+      // Only a page that was never asked for: one still loading must not start over at every update
       this._browse();
     }
     this._renderPlayers();
@@ -1063,6 +1065,7 @@ class BluOSCompanionPanel extends HTMLElement {
   async _browse() {
     const player = this._player;
     if (!player) return;
+    this._browsedFor = player.entry_id;
     const token = ++this._browseToken;
     this._groups = null;
     this._nextKey = null;
