@@ -8,7 +8,7 @@
 | Bluesound Pulse Mini 2i | a wireless speaker | everything, live, including grouping with the NAD, moving playback, restoring a playlist, muting a group, the volume and mute of a secondary player, and favourites shared with the NAD |
 | Bluesound NODE | a standalone streamer | used for real on a daily basis in a second home, and kept up to date with the releases: not tested as thoroughly as the owner's own devices above, but constantly checked in real life |
 
-All three run the same BluOS firmware family (4.18). The live tests used Home Assistant 2026.10. Players of other
+All three run the same BluOS firmware family (4.18). The live tests used Home Assistant 2026.10 and 2026.11. Players of other
 models or firmware may behave differently: please report what you find.
 
 ## Automated tests
@@ -86,7 +86,7 @@ please tell us in an [issue](https://github.com/xperseguers/bluos-companion/issu
 - the accounts of the music services other than Amazon Music (Deezer, Tidal...)
 - selecting the HDMI ARC input or using the sleep timer of the NODE
 - the sidebar player in browsers and tablets other than the ones used during development, and live use on Home
-  Assistant versions other than 2026.10
+  Assistant versions other than 2026.10 and 2026.11
 
 If something does not work on your player, an [issue](https://github.com/xperseguers/bluos-companion/issues)
 with the model and firmware helps a lot.
