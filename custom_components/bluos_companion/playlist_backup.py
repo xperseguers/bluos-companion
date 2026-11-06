@@ -19,7 +19,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
-from .api import BluOSError, PlaylistTrack
+from .api import BluOSClient, BluOSError, PlaylistTrack
 from .const import CONF_BACKUP_PLAYLISTS, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -155,6 +155,27 @@ def _read_files(path: Path) -> dict[str, list[PlaylistTrack]]:
     return playlists
 
 
+async def async_build_playlist(
+    client: BluOSClient, name: str, paths: list[str], replace: bool
+) -> int:
+    """Save the files, in this order, as a playlist of the player and return how many it kept.
+
+    The player only saves its queue as a playlist, so the queue is emptied and refilled.
+    A playlist of the same name is only deleted once the new queue is ready, and never
+    when the player found none of the files.
+    """
+    await client.async_clear_queue()
+    for path in paths:
+        await client.async_add_file(path)
+    queued = await client.async_get_queue_length()
+    if not queued:
+        raise BluOSError("The player found none of the files")
+    if replace:
+        await client.async_delete_playlist(name)
+    await client.async_save_queue(name)
+    return queued
+
+
 async def async_restore_playlists(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -186,13 +207,9 @@ async def async_restore_playlists(
             if name in existing and not replace:
                 result["skipped"].append(name)
                 continue
-            await client.async_clear_queue()
-            for track in tracks:
-                await client.async_add_file(track.path)
-            queued = await client.async_get_queue_length()
-            if name in existing:
-                await client.async_delete_playlist(name)
-            await client.async_save_queue(name)
+            queued = await async_build_playlist(
+                client, name, [track.path for track in tracks], name in existing
+            )
             result["restored"][name] = queued
             if queued < len(tracks):
                 # The player only keeps the files its library knows: say how many it did not

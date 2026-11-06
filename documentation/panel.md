@@ -85,7 +85,12 @@ Presets belong to a player: a player without presets has no presets row.
 The queue button opens the tracks of the current queue, the playing one highlighted. Tap a track to
 play it; use ⋮ to move it up or down; the cross removes it. **Shuffle** and **Repeat** (off, all, one track) are
 here, since they belong to a queue, not to a single track. **Clear** empties the queue and **Save** keeps it as a
-playlist under a name.
+playlist under a name. **Edit** switches the queue to an edit mode: drag a track by its handle to move it, tap the
+cross to remove it, then **Done**.
+
+To change a saved playlist without playing it first, open it and press **Edit**: reorder and remove tracks the same
+way, then **Save**. The playlist is replaced by the edited list. To save it, the player rebuilds its queue, so what it
+plays at that moment stops.
 
 ![The queue](images/panel-queue.jpg)
 

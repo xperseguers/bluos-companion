@@ -23,6 +23,7 @@ from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .covers import async_playlist_covers, async_preset_images, image_path
 from .http import THUMB_WIDTH, async_artwork_url
+from .playlist_backup import async_build_playlist
 from .media_source import (
     async_get_titles,
     is_play_path,
@@ -68,6 +69,8 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_group)
     websocket_api.async_register_command(hass, ws_translations)
     websocket_api.async_register_command(hass, ws_playlist_covers)
+    websocket_api.async_register_command(hass, ws_playlist_tracks)
+    websocket_api.async_register_command(hass, ws_playlist_save)
     websocket_api.async_register_command(hass, ws_move)
     websocket_api.async_register_command(hass, ws_group_volumes)
     websocket_api.async_register_command(hass, ws_home)
@@ -1082,3 +1085,60 @@ async def ws_play(
         await coordinator.async_prepare_playback()
     await _async_call(coordinator.client.async_command(msg["path"]))
     connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/playlist_tracks",
+        vol.Required("entry_id"): str,
+        vol.Required("name"): vol.All(str, vol.Length(min=1, max=100)),
+    }
+)
+@websocket_api.async_response
+async def ws_playlist_tracks(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the tracks of a saved playlist, to edit them."""
+    client = _coordinator(hass, msg["entry_id"]).client
+    tracks = await _async_call(client.async_get_playlist_tracks(msg["name"]))
+    connection.send_result(
+        msg["id"],
+        {
+            "items": [
+                {
+                    "title": track.title,
+                    "artist": track.artist,
+                    "album": track.album,
+                    "path": track.path,
+                }
+                for track in tracks
+            ]
+        },
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/playlist_save",
+        vol.Required("entry_id"): str,
+        vol.Required("name"): vol.All(str, vol.Length(min=1, max=100)),
+        vol.Required("paths"): vol.All([vol.All(str, vol.Length(min=1))], vol.Length(min=1)),
+    }
+)
+@websocket_api.async_response
+async def ws_playlist_save(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Replace a saved playlist by an edited list of tracks.
+
+    The queue of the player is rebuilt to save it, so nothing plays afterwards.
+    """
+    client = _coordinator(hass, msg["entry_id"]).client
+
+    async def save() -> int:
+        queued = await async_build_playlist(client, msg["name"], msg["paths"], True)
+        await client.async_stop()
+        return queued
+
+    queued = await _async_call(save())
+    connection.send_result(msg["id"], {"saved": queued, "missing": len(msg["paths"]) - queued})

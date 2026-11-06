@@ -1234,3 +1234,81 @@ async def test_a_cover_of_a_list_is_asked_at_its_size(hass: HomeAssistant) -> No
     full = async_artwork_url(hass, "entry", "/Artwork?service=LocalMusic&album=x")
     assert "width" not in _image_query(full)
     assert async_artwork_url(hass, "entry", "https://x/y.jpg", THUMB_WIDTH) == "https://x/y.jpg"
+
+
+async def test_playlist_tracks_for_editing(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The tracks of a saved playlist come with the file that identifies them."""
+    respond(
+        player_api,
+        f"{BASE}/Songs",
+        text="<songs><song><title>Skyfall</title><art>ADELE</art><alb>Skyfall</alb><fn>/a.m4a</fn></song></songs>",
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/playlist_tracks",
+            "entry_id": init_integration.entry_id,
+            "name": "Relaxing",
+        }
+    )
+    response = await client.receive_json()
+    assert response["result"]["items"] == [
+        {"title": "Skyfall", "artist": "ADELE", "album": "Skyfall", "path": "/a.m4a"}
+    ]
+    assert calls(player_api)[-1] == ("/Songs", {"playlist": "Relaxing"})
+
+
+async def test_playlist_save_replaces_the_playlist(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """An edited playlist is rebuilt in the new order, the old one is deleted, nothing keeps playing."""
+    for command in ("Clear", "Add", "Delete", "Save", "Stop"):
+        player_api.get(f"{BASE}/{command}", text="<ok/>")
+    respond(player_api, f"{BASE}/Playlist", text="<playlist><length>2</length></playlist>")
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/playlist_save",
+            "entry_id": init_integration.entry_id,
+            "name": "Relaxing",
+            "paths": ["/b.m4a", "/a.m4a", "/c.m4a"],
+        }
+    )
+    response = await client.receive_json()
+    assert response["result"] == {"saved": 2, "missing": 1}
+    made = [call for call in calls(player_api) if call[0] in ("/Clear", "/Add", "/Delete", "/Save", "/Stop")]
+    assert [call[0] for call in made] == ["/Clear", "/Add", "/Add", "/Add", "/Delete", "/Save", "/Stop"]
+    assert [call[1]["file"] for call in made if call[0] == "/Add"] == ["/b.m4a", "/a.m4a", "/c.m4a"]
+    assert ("/Delete", {"name": "Relaxing", "service": "BluOS"}) in made
+
+
+async def test_playlist_save_keeps_the_playlist_when_no_file_is_found(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The old playlist is not deleted when the player found none of the files."""
+    for command in ("Clear", "Add", "Delete", "Save", "Stop"):
+        player_api.get(f"{BASE}/{command}", text="<ok/>")
+    respond(player_api, f"{BASE}/Playlist", text="<playlist><length>0</length></playlist>")
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/playlist_save",
+            "entry_id": init_integration.entry_id,
+            "name": "Relaxing",
+            "paths": ["/gone.m4a"],
+        }
+    )
+    assert (await client.receive_json())["success"] is False
+    assert "/Delete" not in [call[0] for call in calls(player_api)]
+    assert "/Save" not in [call[0] for call in calls(player_api)]

@@ -401,6 +401,8 @@ const STYLE = `
     --mdc-icon-size: 24px;
   }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 16px; }
+  /* Under the sticky way back, which would otherwise cover the top of the buttons */
+  .actions.editor { padding-top: 12px; }
   .actions button, dialog button.action {
     border: 1px solid var(--divider-color);
     border-radius: 20px;
@@ -438,6 +440,10 @@ const STYLE = `
     cursor: pointer;
   }
   .qrow.current { border-color: var(--primary-color); }
+  .qrow.editing { cursor: default; }
+  .qrow .handle { cursor: grab; touch-action: none; color: var(--secondary-text-color); }
+  .qrow.dragging { position: relative; z-index: 3; opacity: 0.92; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); transition: none; }
+  .qrow.dragging .handle { cursor: grabbing; }
   .qrow .pos { width: 28px; text-align: right; color: var(--secondary-text-color); flex: none; }
   .qrow .cover { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none; background: var(--secondary-background-color); display: flex; align-items: center; justify-content: center; --mdc-icon-size: 24px; }
   .qrow .text { flex: 1; min-width: 0; }
@@ -613,6 +619,9 @@ class BluOSCompanionPanel extends HTMLElement {
     this._levelActions = [];
     this._queue = null; // [{ position, title, artist, image }]
     this._queueKey = null;
+    this._queueEdit = false; // the queue is being edited: drag and drop, remove
+    this._editor = null; // the playlist being edited: { name, tracks, changed }
+    this._dragging = false;
     this._searchKey = DEFAULT_SEARCH_KEY;
     this._receivedAt = 0;
     this._browseToken = 0;
@@ -1012,6 +1021,11 @@ class BluOSCompanionPanel extends HTMLElement {
       await this._loadQueue();
       return;
     }
+    if (level && level.editor) {
+      this._editor = null;
+      await this._loadEditor(level.editor);
+      return;
+    }
     if (level && level.search) {
       const result = await this._call({
         type: "bluos_companion/search",
@@ -1089,6 +1103,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _toggleQueue() {
+    this._queueEdit = false;
     if (this._inQueue) {
       this._up();
       return;
@@ -1111,7 +1126,7 @@ class BluOSCompanionPanel extends HTMLElement {
 
   _refreshQueue() {
     const player = this._player;
-    if (!player || `${player.queue_id}/${player.queue_position}` === this._queueKey) return;
+    if (!player || this._dragging || `${player.queue_id}/${player.queue_position}` === this._queueKey) return;
     if (this._nowQueueOpen) this._loadNowQueue();
     else if (this._inQueue) this._loadQueue();
   }
@@ -1130,6 +1145,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _setNowQueue(open) {
+    this._queueEdit = false;
     this._nowQueueOpen = open;
     this._nowDialog.classList.toggle("queue-open", open);
     this._now.queueButton.classList.toggle("on", open);
@@ -1155,9 +1171,10 @@ class BluOSCompanionPanel extends HTMLElement {
     const queue = this._queue || [];
     const current = this._player ? this._player.queue_position : null;
     now.queueActions.hidden = !queue.length;
+    now.queueActions.replaceChildren(...this._queueActionButtons(now.queueModes));
     now.queueList.replaceChildren(
       ...(queue.length
-        ? queue.map((item, index) => this._queueRow(item, index, queue.length, current))
+        ? queue.map((item, index) => (this._queueEdit ? this._queueEditRow(item) : this._queueRow(item, index, queue.length, current)))
         : [el("div", { class: "message" }, this._t("queue_empty"))]),
     );
     if (this._nowQueueScroll) {
@@ -1258,6 +1275,196 @@ class BluOSCompanionPanel extends HTMLElement {
     );
   }
 
+  // Whether the queue shown is being edited (drag and drop, remove) and the list on screen
+  _toggleQueueEdit() {
+    this._queueEdit = !this._queueEdit;
+    if (this._nowQueueOpen) this._renderNowQueue();
+    else this._renderQueue();
+  }
+
+  // The scrolling ancestor of an element, to scroll it while a row is dragged near its edge
+  _scroller(node) {
+    for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+      const overflow = getComputedStyle(parent).overflowY;
+      if ((overflow === "auto" || overflow === "scroll") && parent.scrollHeight > parent.clientHeight) return parent;
+    }
+    return null;
+  }
+
+  // Drag a row by its handle: the row follows the finger and the others make room, `onDrop(from, to)` says where it ended
+  _startDrag(event, row, onDrop) {
+    event.preventDefault();
+    const handle = event.currentTarget;
+    const list = row.parentElement;
+    const rows = () => [...list.children].filter((child) => child.classList.contains("qrow"));
+    const from = rows().indexOf(row);
+    const scroller = this._scroller(row);
+    const grab = event.clientY - row.getBoundingClientRect().top;
+    const middle = (node) => {
+      const box = node.getBoundingClientRect();
+      return box.top + box.height / 2;
+    };
+    let y = event.clientY;
+    let frame = 0;
+    const place = () => {
+      for (let prev = row.previousElementSibling; prev && prev.classList.contains("qrow") && y < middle(prev); prev = row.previousElementSibling) {
+        list.insertBefore(row, prev);
+      }
+      for (let next = row.nextElementSibling; next && next.classList.contains("qrow") && y > middle(next); next = row.nextElementSibling) {
+        list.insertBefore(next, row);
+      }
+      row.style.transform = "";
+      row.style.transform = `translateY(${y - grab - row.getBoundingClientRect().top}px)`;
+    };
+    const tick = () => {
+      if (scroller) {
+        const box = scroller.getBoundingClientRect();
+        if (y < box.top + 56) scroller.scrollTop -= 14;
+        else if (y > box.bottom - 56) scroller.scrollTop += 14;
+      }
+      place();
+      frame = requestAnimationFrame(tick);
+    };
+    const move = (moved) => {
+      y = moved.clientY;
+    };
+    const end = () => {
+      cancelAnimationFrame(frame);
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", end);
+      handle.removeEventListener("pointercancel", end);
+      row.classList.remove("dragging");
+      row.style.transform = "";
+      this._dragging = false;
+      const to = rows().indexOf(row);
+      if (to !== from) onDrop(from, to);
+    };
+    this._dragging = true;
+    handle.setPointerCapture(event.pointerId);
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+    row.classList.add("dragging");
+    frame = requestAnimationFrame(tick);
+  }
+
+  // A row of a list being edited: a handle to drag it, what it is, a button to remove it
+  _editRow(item, onDrop, onRemove) {
+    const row = el(
+      "div",
+      { class: "qrow editing" },
+      el("button", { class: "handle", title: this._t("drag_to_move"), onpointerdown: (event) => this._startDrag(event, row, onDrop) }, icon("mdi:drag")),
+      item.image
+        ? el("img", { class: "cover", src: item.image, alt: "", loading: "lazy" })
+        : el("div", { class: "cover" }, icon("mdi:music")),
+      el(
+        "div",
+        { class: "text" },
+        el("div", { title: item.title }, item.title),
+        el("div", { class: "sub" }, [item.artist, item.album].filter(Boolean).join(" - ") || " "),
+      ),
+      el("button", { title: this._t("remove"), onclick: () => onRemove() }, icon("mdi:close")),
+    );
+    return row;
+  }
+
+  _queueEditRow(item) {
+    return this._editRow(
+      item,
+      (from, to) => this._queueAction("move", { position: from, to }),
+      () => this._queueAction("remove", { position: item.position }),
+    );
+  }
+
+  get _inEditor() {
+    const level = this._stack[this._stack.length - 1];
+    return Boolean(level && level.editor);
+  }
+
+  _editPlaylist(level) {
+    const name = new URLSearchParams((level.key || "").split("?")[1] || "").get("playlist") || level.title;
+    this._stack.push({ title: name, editor: name });
+    this._browse();
+  }
+
+  async _loadEditor(name) {
+    const player = this._player;
+    const token = ++this._browseToken;
+    const result = await this._call({ type: "bluos_companion/playlist_tracks", entry_id: player.entry_id, name });
+    if (token !== this._browseToken) return;
+    this._editor = { name, tracks: result ? result.items : [], changed: false };
+    this._groups = [];
+    this._renderBrowse();
+    this._main.scrollTop = 0;
+  }
+
+  _renderEditor() {
+    const editor = this._editor;
+    if (!editor) {
+      this._message.textContent = "…";
+      return;
+    }
+    this._grid.replaceChildren(
+      ...editor.tracks.map((track) =>
+        this._editRow(
+          track,
+          (from, to) => {
+            editor.tracks.splice(to, 0, ...editor.tracks.splice(from, 1));
+            editor.changed = true;
+          },
+          () => {
+            editor.tracks.splice(editor.tracks.indexOf(track), 1);
+            editor.changed = true;
+            this._renderEditor();
+          },
+        ),
+      ),
+    );
+    this._message.textContent = editor.tracks.length ? "" : this._t("nothing_here");
+    const save = el("button", { class: "action", onclick: () => this._confirmSavePlaylist() }, icon("mdi:content-save"), this._t("save"));
+    save.disabled = !editor.tracks.length;
+    this._actionRow.replaceChildren(
+      save,
+      el("button", { class: "action", onclick: () => this._up() }, icon("mdi:close"), this._t("close")),
+    );
+    this._actionRow.classList.add("editor");
+    this._actionRow.hidden = false;
+  }
+
+  _confirmSavePlaylist() {
+    const editor = this._editor;
+    this._dialog.replaceChildren(
+      el("h2", {}, this._t("edit_playlist_title")),
+      el("p", {}, this._t("edit_playlist_text")),
+      el(
+        "div",
+        { class: "list" },
+        el(
+          "button",
+          {
+            class: "action",
+            onclick: async () => {
+              this._dialog.close();
+              const result = await this._call({
+                type: "bluos_companion/playlist_save",
+                entry_id: this._playerId,
+                name: editor.name,
+                paths: editor.tracks.map((track) => track.path),
+              });
+              if (!result) return;
+              this._notify(this._t("saved", { name: editor.name }));
+              if (result.missing) this._notify(this._t("playlist_tracks_left_out", { count: result.missing }));
+              this._up();
+            },
+          },
+          icon("mdi:content-save"),
+          this._t("save"),
+        ),
+      ),
+    );
+    this._dialog.showModal();
+  }
+
   _queueModeButtons() {
     return {
       shuffle: el("button", { class: "action", onclick: () => this._control("shuffle", !this._player.shuffle) }, icon("mdi:shuffle"), this._t("shuffle")),
@@ -1267,11 +1474,15 @@ class BluOSCompanionPanel extends HTMLElement {
 
   // The buttons above the queue, in the page of the queue and in the full screen view
   _queueActionButtons(modes) {
+    if (this._queueEdit) {
+      return [el("button", { class: "action", onclick: () => this._toggleQueueEdit() }, icon("mdi:check"), this._t("done"))];
+    }
     return [
       modes.shuffle,
       modes.repeat,
       el("button", { class: "action", onclick: () => this._confirmClear() }, icon("mdi:delete-sweep"), this._t("clear")),
       el("button", { class: "action", onclick: () => this._askSaveName() }, icon("mdi:content-save"), this._t("save_as_playlist")),
+      el("button", { class: "action", onclick: () => this._toggleQueueEdit() }, icon("mdi:pencil"), this._t("edit")),
     ];
   }
 
@@ -1279,7 +1490,9 @@ class BluOSCompanionPanel extends HTMLElement {
     const player = this._player;
     const current = player ? player.queue_position : null;
     this._grid.replaceChildren(
-      ...(this._queue || []).map((item, index) => this._queueRow(item, index, this._queue.length, current)),
+      ...(this._queue || []).map((item, index) =>
+        this._queueEdit ? this._queueEditRow(item) : this._queueRow(item, index, this._queue.length, current),
+      ),
     );
     this._message.textContent = this._queue && !this._queue.length ? this._t("queue_empty") : "";
     this._actionRow.replaceChildren(...this._queueActionButtons(this._queueModes));
@@ -2291,7 +2504,7 @@ class BluOSCompanionPanel extends HTMLElement {
 
   // Whether the page lists albums to browse (and so offers the display and the sort), not the albums of a search
   _isAlbumList(level) {
-    if (!level || level.search || level.queue || level.type === "album" || !this._groups) return false;
+    if (!level || level.search || level.queue || level.editor || level.type === "album" || !this._groups) return false;
     const letters = this._sectionItems();
     if (letters) return letters.some((item) => item.browse_key && item.browse_key.startsWith("LocalMusic:S:Album/"));
     return this._groups.length === 1 && !this._isLandingLevel(level) && this._groups[0].items.some((item) => item.type === "album");
@@ -2660,13 +2873,17 @@ class BluOSCompanionPanel extends HTMLElement {
     this._buttons.queue.classList.toggle("on", this._inQueue);
     // A list of letters already on screen stays, with what it has loaded
     const view = this._sectionedView;
-    if (view && view.kind === "server" && view.groups === this._groups && !this._inQueue && this._grid.contains(view.root)) return;
+    if (view && view.kind === "server" && view.groups === this._groups && !this._inQueue && !this._inEditor && this._grid.contains(view.root)) return;
     this._clearSectioned();
     this._grid.replaceChildren();
     this._message.textContent = "";
-    this._searchForm.hidden = !this._player || this._inQueue;
+    this._searchForm.hidden = !this._player || this._inQueue || this._inEditor;
     if (this._inQueue) {
       this._renderQueue();
+      return;
+    }
+    if (this._inEditor) {
+      this._renderEditor();
       return;
     }
     if (!this._player) {
@@ -2741,15 +2958,21 @@ class BluOSCompanionPanel extends HTMLElement {
           ].filter(Boolean)
         : []),
     );
-    if (level && level.queue) return;
+    this._actionRow.classList.remove("editor");
+    if (level && (level.queue || level.editor)) return;
     if (level && level.type === "album") {
       this._actionRow.hidden = true;
       this._renderAlbumActions();
       return;
     }
     const actions = level ? this._levelActions : [];
-    this._actionRow.replaceChildren(...actions.map((action) => this._actionButton(action, level.title)));
-    this._actionRow.hidden = !actions.length;
+    const buttons = actions.map((action) => this._actionButton(action, level.title));
+    // A saved playlist can be edited (order, tracks) without playing it
+    if (level && level.type === "playlist" && (level.key || "").startsWith("BluOS:")) {
+      buttons.push(el("button", { class: "action", onclick: () => this._editPlaylist(level) }, icon("mdi:pencil"), this._t("edit")));
+    }
+    this._actionRow.replaceChildren(...buttons);
+    this._actionRow.hidden = !buttons.length;
   }
 
   _tile(item) {
