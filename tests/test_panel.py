@@ -1312,3 +1312,83 @@ async def test_playlist_save_keeps_the_playlist_when_no_file_is_found(
     assert (await client.receive_json())["success"] is False
     assert "/Delete" not in [call[0] for call in calls(player_api)]
     assert "/Save" not in [call[0] for call in calls(player_api)]
+
+
+async def test_playlists_are_listed_in_order(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The names of the saved playlists come sorted, to pick one."""
+    respond(
+        player_api,
+        f"{BASE}/Playlists",
+        text="<playlists><name>tuning</name><name>Par cœur</name><name>NEW</name></playlists>",
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/playlists", "entry_id": init_integration.entry_id}
+    )
+    assert (await client.receive_json())["result"] == {"names": ["NEW", "Par cœur", "tuning"]}
+
+
+@pytest.mark.parametrize(
+    ("target", "query"),
+    [
+        ({"file": "/a.m4a"}, {"songid": "/a.m4a"}),
+        ({"album": "Skyfall", "artist": "ADELE"}, {"album": "Skyfall", "artist": "ADELE"}),
+        ({"position": 1}, {"songid": "/queued.m4a"}),
+    ],
+)
+async def test_add_to_playlist(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    target: dict[str, Any],
+    query: dict[str, str],
+) -> None:
+    """A track, an album or a track of the queue is added to the end of a playlist."""
+    player_api.get(f"{BASE}/AddToPlaylist", text='<addToPlaylist service="BluOS"></addToPlaylist>')
+    respond(
+        player_api,
+        f"{BASE}/Playlist",
+        text='<playlist length="2"><song service="LocalMusic" id="1"><fn>/queued.m4a</fn></song></playlist>',
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/add_to_playlist",
+            "entry_id": init_integration.entry_id,
+            "name": "NEW",
+            **target,
+        }
+    )
+    assert (await client.receive_json())["success"]
+    assert calls(player_api)[-1] == (
+        "/AddToPlaylist",
+        {"sourceService": "LocalMusic", "name": "NEW", **query},
+    )
+
+
+@pytest.mark.parametrize("target", [{}, {"album": "Skyfall"}, {"artist": "ADELE"}])
+async def test_add_to_playlist_needs_something_to_add(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    target: dict[str, str],
+) -> None:
+    """Nothing reaches the player without a track or an album."""
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/add_to_playlist",
+            "entry_id": init_integration.entry_id,
+            "name": "NEW",
+            **target,
+        }
+    )
+    assert (await client.receive_json())["success"] is False
+    assert "/AddToPlaylist" not in [call[0] for call in calls(player_api)]

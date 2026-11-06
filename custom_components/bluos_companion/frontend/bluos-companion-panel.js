@@ -599,6 +599,7 @@ const ACTION_ICONS = {
   "add-last": "mdi:playlist-plus",
   "addAll-last": "mdi:playlist-plus",
   add: "mdi:playlist-plus",
+  "add-to-playlist": "mdi:playlist-music",
 };
 
 // The player words its actions in English whatever the language: they are translated by type
@@ -610,6 +611,7 @@ const ACTION_TEXTS = {
   "addAll-next": "action_add_next",
   "add-last": "action_add_last",
   "addAll-last": "action_add_last",
+  "add-to-playlist": "add_to_playlist",
 };
 
 function formatTime(seconds) {
@@ -947,12 +949,54 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
 
+  // Add a track or an album (what `target` says) to a saved playlist: pick one, or make a new one
+  async _pickPlaylist(target) {
+    const result = await this._call({ type: "bluos_companion/playlists", entry_id: this._playerId });
+    if (!result) return;
+    const add = async (name) => {
+      this._dialog.close();
+      const done = await this._call({ type: "bluos_companion/add_to_playlist", entry_id: this._playerId, name, ...target });
+      if (done !== undefined) this._notify(this._t("added_to_playlist", { name }));
+    };
+    const create = el("button", { class: "action", onclick: () => this._askNewPlaylist(add) }, icon("mdi:plus"), this._t("new_playlist"));
+    this._dialog.replaceChildren(
+      el("h2", {}, this._t("select_playlist")),
+      el(
+        "div",
+        { class: "list" },
+        create,
+        ...result.names.map((name) => el("button", { class: "action", onclick: () => add(name) }, icon("mdi:playlist-music"), name)),
+      ),
+    );
+    if (!this._dialog.open) this._dialog.showModal();
+  }
+
+  _askNewPlaylist(add) {
+    const input = el("input", { type: "text", placeholder: this._t("playlist_name"), maxlength: 100 });
+    const submit = () => {
+      const name = input.value.trim();
+      if (name) add(name);
+    };
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") submit();
+    });
+    this._dialog.replaceChildren(
+      el("h2", {}, this._t("new_playlist")),
+      el("p", {}, this._t("new_playlist_text")),
+      input,
+      el("div", { class: "list" }, el("button", { class: "action", onclick: submit }, icon("mdi:content-save"), this._t("save"))),
+    );
+    input.focus();
+  }
+
   _actionButton(action, label, after) {
     return el(
       "button",
       {
         class: "action",
         onclick: () => {
+          // Picking a playlist goes on in the same dialog
+          if (action.target) return this._pickPlaylist(action.target);
           this._runAction(action, label);
           if (after) after();
         },
@@ -1255,6 +1299,12 @@ class BluOSCompanionPanel extends HTMLElement {
       item.position > 0 ? this._menuRow("mdi:chevron-up", this._t("move_up"), () => move(item.position - 1)) : null,
       index < count - 1 ? this._menuRow("mdi:chevron-down", this._t("move_down"), () => move(item.position + 1)) : null,
     ].filter(Boolean);
+    const toPlaylist = el(
+      "button",
+      { class: "action", onclick: () => this._pickPlaylist({ position: item.position }) },
+      icon("mdi:playlist-music"),
+      this._t("add_to_playlist"),
+    );
     const more = el(
       "button",
       {
@@ -1262,7 +1312,7 @@ class BluOSCompanionPanel extends HTMLElement {
           this._itemMenu({
             title: item.title,
             subtitle: [item.artist, item.album].filter(Boolean).join(" - "),
-            extra: moves,
+            extra: [toPlaylist, ...moves],
             names: item,
             info: { type: "track", artist: item.artist, album: item.album, technical_request: { position: item.position } },
           }),

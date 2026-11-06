@@ -137,8 +137,9 @@ async def test_the_actions_offer_the_favourite_that_fits(
     )
     actions = (await client.receive_json())["result"]["actions"]
 
-    assert [action["type"] for action in actions] == ["add-now", "favourite"]
-    favourite = actions[1]
+    assert [action["type"] for action in actions] == ["add-now", "add-to-playlist", "favourite"]
+    assert actions[1]["target"]["album"] in ("Promesse", "Elsewhere")
+    favourite = actions[2]
     assert favourite["on"] is on
     assert favourite["favourite"]["kind"] == "album"
     assert favourite["favourite"]["album"] in ("Promesse", "Elsewhere")

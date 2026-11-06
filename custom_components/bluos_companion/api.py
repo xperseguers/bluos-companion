@@ -695,6 +695,21 @@ class BluOSClient:
             if item.get("actionURL")
         ]
 
+    async def async_add_to_playlist(
+        self,
+        name: str,
+        file: str | None = None,
+        album: str | None = None,
+        artist: str | None = None,
+    ) -> None:
+        """Add a track (its file) or a whole album of the library to the end of a saved playlist."""
+        params = {"sourceService": "LocalMusic", "name": name}
+        if file:
+            params["songid"] = file
+        else:
+            params.update(album=album or "", artist=artist or "")
+        await self._get_xml("/AddToPlaylist", params)
+
     async def async_get_playlist_names(self) -> list[str]:
         """Return the names of the playlists saved on the player."""
         root = await self._get_xml("/Playlists", {"service": "BluOS"})

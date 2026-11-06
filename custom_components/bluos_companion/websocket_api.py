@@ -70,6 +70,8 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_translations)
     websocket_api.async_register_command(hass, ws_playlist_covers)
     websocket_api.async_register_command(hass, ws_playlist_tracks)
+    websocket_api.async_register_command(hass, ws_playlists)
+    websocket_api.async_register_command(hass, ws_add_to_playlist)
     websocket_api.async_register_command(hass, ws_playlist_save)
     websocket_api.async_register_command(hass, ws_move)
     websocket_api.async_register_command(hass, ws_group_volumes)
@@ -480,6 +482,10 @@ async def ws_actions(
         for action in actions
         if is_play_path(action.path)
     ]
+    # The tracks and albums of the library can be added to a saved playlist
+    target = _playlist_target(actions)
+    if target:
+        result.append({"type": "add-to-playlist", "title": "", "target": target})
     # The player offers to add the item as a favourite: offer the one that fits what it is now
     favourite = next(
         (
@@ -509,6 +515,18 @@ async def ws_actions(
                 }
             )
     connection.send_result(msg["id"], {"actions": result})
+
+
+def _playlist_target(actions: list[Any]) -> dict[str, str] | None:
+    """Return what the menu of an item adds to a playlist: a track of the library or an album."""
+    for action in actions:
+        if action.type != "favourite-add" or not (found := Favourite.from_path(action.path)):
+            continue
+        if found.kind == "song" and found.file:
+            return {"file": found.file}
+        if found.kind == "album" and found.album and found.artist:
+            return {"album": found.album, "artist": found.artist}
+    return None
 
 
 @websocket_api.websocket_command(
@@ -1142,3 +1160,47 @@ async def ws_playlist_save(
 
     queued = await _async_call(save())
     connection.send_result(msg["id"], {"saved": queued, "missing": len(msg["paths"]) - queued})
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "bluos_companion/playlists", vol.Required("entry_id"): str}
+)
+@websocket_api.async_response
+async def ws_playlists(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the names of the saved playlists, to pick the one a track is added to."""
+    client = _coordinator(hass, msg["entry_id"]).client
+    names = await _async_call(client.async_get_playlist_names())
+    connection.send_result(msg["id"], {"names": sorted(names, key=str.casefold)})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/add_to_playlist",
+        vol.Required("entry_id"): str,
+        vol.Required("name"): vol.All(str, vol.Strip, vol.Length(min=1, max=100)),
+        # A track of the library (its file) or of the queue (its position), or an album
+        vol.Optional("file"): vol.All(str, vol.Length(min=1)),
+        vol.Optional("position"): vol.All(int, vol.Range(min=0)),
+        vol.Optional("album"): vol.All(str, vol.Length(min=1)),
+        vol.Optional("artist"): vol.All(str, vol.Length(min=1)),
+    }
+)
+@websocket_api.async_response
+async def ws_add_to_playlist(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Add a track or an album of the library to the end of a saved playlist (created if new)."""
+    client = _coordinator(hass, msg["entry_id"]).client
+    file = msg.get("file")
+    if "position" in msg:
+        file = await _async_call(client.async_get_queue_file(msg["position"]))
+        if not file:
+            raise HomeAssistantError("Only tracks of the library can be added to a playlist")
+    elif not file and not (msg.get("album") and msg.get("artist")):
+        raise HomeAssistantError("Missing what to add")
+    await _async_call(
+        client.async_add_to_playlist(msg["name"], file, msg.get("album"), msg.get("artist"))
+    )
+    connection.send_result(msg["id"])
