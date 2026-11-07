@@ -38,6 +38,7 @@ afterwards:
   standby, and the speaker outputs, checked against what the amplifier itself answers.
 - **Mute switch**: the Mute switch of a player flipped with one tap from a dashboard tile on the Pulse mini 2i,
   and put back.
+- **Clear queue button**: pressed from a dashboard tile on the Pulse mini 2i with a queue loaded.
 - **Groups**: muting a whole group from each of its members, and the own volume and mute of a secondary player.
 - **Favourites**: adding and removing an album, an artist and a song, the players sharing them, the backup, and the
   restore (including a favourite the library does not have); adding and removing a favourite by hand in the sidebar
