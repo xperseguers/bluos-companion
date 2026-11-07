@@ -22,6 +22,12 @@
       }
     },
     "switch": {
+      "mute": {
+        "default": "mdi:volume-high",
+        "state": {
+          "on": "mdi:volume-off"
+        }
+      },
       "amplifier_power": {
         "default": "mdi:power"
       },

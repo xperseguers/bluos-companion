@@ -86,6 +86,9 @@
       }
     },
     "switch": {
+      "mute": {
+        "name": "Mute"
+      },
       "amplifier_speaker_a": {
         "name": "Speaker A"
       },

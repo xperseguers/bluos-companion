@@ -7,13 +7,15 @@ from typing import Any
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .amplifier import BluOSAmplifier
+from .api import BluOSError
 from .const import DOMAIN
-from .coordinator import BluOSConfigEntry
+from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .settings import BluOSSettingEntity
 
 
@@ -23,6 +25,10 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the on/off settings of the player."""
+    coordinator = entry.runtime_data
+    if coordinator.volume_level >= 0:
+        # A player with a fixed volume cannot be muted
+        async_add_entities([BluOSMuteSwitch(coordinator)])
     settings = entry.runtime_data.settings
     async_add_entities(
         BluOSSettingSwitch(settings, setting)
@@ -36,6 +42,43 @@ async def async_setup_entry(
             for name in ("power", "speaker_a", "speaker_b")
             if getattr(amplifier.data, name) is not None
         )
+
+
+class BluOSMuteSwitch(CoordinatorEntity[BluOSCoordinator], SwitchEntity):
+    """The mute of the player itself, to flip with one tap (a media player has no toggle).
+
+    In a group it is the mute of this player only, not of the group.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "mute"
+
+    def __init__(self, coordinator: BluOSCoordinator) -> None:
+        """Initialize the entity."""
+        super().__init__(coordinator)
+        entry = coordinator.config_entry
+        identifier = entry.unique_id or entry.entry_id
+        self._attr_unique_id = f"{identifier}_mute"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, identifier)}, name=entry.title)
+
+    @property
+    def is_on(self) -> bool:
+        """Return whether the player is muted."""
+        return self.coordinator.is_muted
+
+    async def _async_mute(self, mute: bool) -> None:
+        try:
+            await self.coordinator.client.async_set_mute(mute)
+        except BluOSError as err:
+            raise HomeAssistantError(f"BluOS player error: {err}") from err
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Mute the player."""
+        await self._async_mute(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Unmute the player."""
+        await self._async_mute(False)
 
 
 class BluOSSettingSwitch(BluOSSettingEntity, SwitchEntity):

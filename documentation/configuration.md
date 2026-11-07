@@ -86,6 +86,9 @@ script:
 - A **media player** entity: play, pause, stop, previous, next, seek, volume (set, up, down), mute,
   shuffle, repeat, play media, select source, clear the queue, group and ungroup, and search media (for
   [voice and AI](voice-and-ai.md)). It shows the title, artist, album, cover and position.
+- A **Mute** switch, the mute of the player itself (in a group, of that player only): on mutes, off unmutes, and
+  `switch.toggle` flips it, which a media player cannot do, so one dashboard button or tile is enough. A player
+  with a fixed volume has no such switch.
 - A **sleep timer** select entity (off, 15, 30, 45, 60 or 90 minutes).
 - An **Amplifier power** switch, for a player built into an amplifier that accepts network control (the NAD
   C368 with its BluOS module, for example): on, or off for standby. A **Speaker A** and a **Speaker B** switch
