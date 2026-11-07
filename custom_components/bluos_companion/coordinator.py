@@ -222,11 +222,16 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
             raise HomeAssistantError(f"Genre {genre} is ambiguous: {', '.join(found)}")
         return genre_play_path(found[0], shuffle)
 
-    async def async_play_genre(self, genre: str, shuffle: bool = False) -> None:
-        """Play a genre of the library, in order or shuffled."""
+    async def async_play_genre(
+        self, genre: str, shuffle: bool = False, clear_queue: bool = False
+    ) -> None:
+        """Play a genre of the library, in order or shuffled, after the queue is emptied or not."""
+        # The genre is looked up first: an unknown one must not empty the queue
         path = await self.async_genre_path(genre, shuffle)
         await self.async_prepare_playback()
         try:
+            if clear_queue:
+                await self.client.async_clear_queue()
             await self.client.async_command(path)
         except BluOSError as err:
             raise HomeAssistantError(f"BluOS player error: {err}") from err

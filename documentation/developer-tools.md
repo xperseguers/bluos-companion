@@ -91,13 +91,15 @@ action: bluos_companion.play_genre
 data:
   entity_id: media_player.living_room
   genre: Dance
-  shuffle: true     # optional, off by default
+  shuffle: true       # optional, off by default
+  clear_queue: true   # optional, off by default: replace the queue instead of adding to it
 ```
 
 A name is understood without its case or accents, and a word of it is enough when only one genre has it
 (`country` for *Folk, World, & Country*); the exact name always wins (*Alternative* is not ambiguous with
 *Alternative & Punk*). When the name fits several genres or none, the action fails and says so. The genre is added
-to the queue and starts playing, in a group for the whole group. `media_player.play_media` does the same with
+to the queue and starts playing, or replaces the queue with `clear_queue: true` (an unknown genre never empties
+it), in a group for the whole group. `media_player.play_media` does the same with
 `media_content_type: genre` and the name as `media_content_id`.
 
 ### Choosing an input

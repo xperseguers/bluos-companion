@@ -298,6 +298,10 @@
         "shuffle": {
           "name": "Aléatoire",
           "description": "Jouer les morceaux du genre dans un ordre aléatoire."
+        },
+        "clear_queue": {
+          "name": "Effacer la file d'attente",
+          "description": "Vider d'abord la file d'attente, pour que le genre la remplace au lieu d'y être ajouté."
         }
       }
     },

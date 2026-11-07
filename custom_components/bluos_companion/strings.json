@@ -298,6 +298,10 @@
         "shuffle": {
           "name": "Shuffle",
           "description": "Play the songs of the genre in random order."
+        },
+        "clear_queue": {
+          "name": "Clear the queue",
+          "description": "Empty the queue first, so that the genre replaces it instead of being added to it."
         }
       }
     },

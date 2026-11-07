@@ -298,6 +298,10 @@
         "shuffle": {
           "name": "Zufällig",
           "description": "Die Titel des Genres in zufälliger Reihenfolge abspielen."
+        },
+        "clear_queue": {
+          "name": "Warteschlange löschen",
+          "description": "Die Warteschlange zuerst leeren, damit das Genre sie ersetzt, statt hinzugefügt zu werden."
         }
       }
     },

@@ -69,6 +69,10 @@ play_genre:
       default: false
       selector:
         boolean:
+    clear_queue:
+      default: false
+      selector:
+        boolean:
 
 import_playlists:
   fields:

@@ -136,3 +136,31 @@ async def test_a_failing_player_is_an_error(
         await hass.services.async_call(
             DOMAIN, "play_genre", {"entity_id": ENTITY_ID, "genre": "Dance"}, blocking=True
         )
+
+
+async def test_the_queue_can_be_emptied_first(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """With clear_queue the genre replaces the queue: it is emptied, then the genre starts."""
+    await hass.services.async_call(
+        DOMAIN,
+        "play_genre",
+        {"entity_id": ENTITY_ID, "genre": "Dance", "clear_queue": True},
+        blocking=True,
+    )
+    paths = [path for path, _ in calls(player_api)]
+    assert paths == ["/Genres", "/Clear", "/Add"]
+
+
+async def test_an_unknown_genre_leaves_the_queue_alone(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """The genre is looked up before anything is emptied."""
+    with pytest.raises(HomeAssistantError, match="Unknown genre"):
+        await hass.services.async_call(
+            DOMAIN,
+            "play_genre",
+            {"entity_id": ENTITY_ID, "genre": "Metal", "clear_queue": True},
+            blocking=True,
+        )
+    assert "/Clear" not in [path for path, _ in calls(player_api)]

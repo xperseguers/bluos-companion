@@ -111,7 +111,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def play_genre(call: ServiceCall) -> None:
         """Play a genre of the library on a player, in order or shuffled."""
         await loaded_entry(call.data["entity_id"]).runtime_data.async_play_genre(
-            call.data["genre"], call.data["shuffle"]
+            call.data["genre"], call.data["shuffle"], call.data["clear_queue"]
         )
 
     async def mute_group(call: ServiceCall) -> None:
@@ -196,6 +196,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 vol.Required("entity_id"): cv.entity_id,
                 vol.Required("genre"): cv.string,
                 vol.Optional("shuffle", default=False): cv.boolean,
+                vol.Optional("clear_queue", default=False): cv.boolean,
             }
         ),
     )
