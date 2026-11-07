@@ -6,6 +6,9 @@
       }
     },
     "button": {
+      "clear_queue": {
+        "default": "mdi:playlist-remove"
+      },
       "reindex": {
         "default": "mdi:database-refresh"
       },

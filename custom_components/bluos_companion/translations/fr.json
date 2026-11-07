@@ -70,6 +70,9 @@
       }
     },
     "button": {
+      "clear_queue": {
+        "name": "Effacer la file d'attente"
+      },
       "reindex": {
         "name": "Réindexer la bibliothèque musicale"
       },

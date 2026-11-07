@@ -34,6 +34,11 @@ async def _start_cover_check(coordinator: BluOSCoordinator) -> None:
 
 BUTTONS = (
     BluOSButtonDescription(
+        key="clear_queue",
+        translation_key="clear_queue",
+        press_fn=lambda coordinator: coordinator.client.async_clear_queue(),
+    ),
+    BluOSButtonDescription(
         key="reindex",
         translation_key="reindex",
         entity_category=EntityCategory.CONFIG,
@@ -65,7 +70,7 @@ async def async_setup_entry(
 
 
 class BluOSButton(ButtonEntity):
-    """Ask the player to reindex its library or to restart."""
+    """Ask the player to clear its queue, reindex its library or restart."""
 
     _attr_has_entity_name = True
     entity_description: BluOSButtonDescription

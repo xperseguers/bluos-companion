@@ -89,6 +89,8 @@ script:
 - A **Mute** switch, the mute of the player itself (in a group, of that player only): on mutes, off unmutes, and
   `switch.toggle` flips it, which a media player cannot do, so one dashboard button or tile is enough. A player
   with a fixed volume has no such switch.
+- A **Clear queue** button, which empties the queue of the player (the standard `media_player.clear_playlist`
+  service does the same, with no confirmation, so use either from an automation).
 - A **sleep timer** select entity (off, 15, 30, 45, 60 or 90 minutes).
 - An **Amplifier power** switch, for a player built into an amplifier that accepts network control (the NAD
   C368 with its BluOS module, for example): on, or off for standby. A **Speaker A** and a **Speaker B** switch
