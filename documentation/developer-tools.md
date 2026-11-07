@@ -258,26 +258,11 @@ Besides the standard attributes of a media player (`media_title`, `media_artist`
 {{ state_attr('media_player.living_room', 'media_title') }}
 ```
 
-## An automation
+## Automations
 
-Start a radio preset in the morning, at a modest volume, without a tablet:
-
-```yaml
-automation:
-  - alias: Radio at 7
-    triggers:
-      - trigger: time
-        at: "07:00:00"
-    actions:
-      - action: media_player.volume_set
-        target: { entity_id: media_player.kitchen }
-        data: { volume_level: 0.2 }
-      - action: media_player.play_media
-        target: { entity_id: media_player.kitchen }
-        data:
-          media_content_type: music
-          media_content_id: media-source://bluos_companion/<entry id>/preset/1
-```
+Examples to copy, with the actions above, are on their own page: [Automation examples](automation-examples.md)
+(radio when you arrive, a genre every morning, music everywhere, mute for the doorbell, announce what plays, clearing
+the history at night, archiving a playlist...).
 
 And a sleep timer for the evening: use the `select` entity of the player (`select.living_room_sleep_timer`)
 with `select.select_option`.

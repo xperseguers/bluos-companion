@@ -84,7 +84,8 @@ Download the latest [release](https://github.com/xperseguers/bluos-companion/rel
 | [Configuration](documentation/configuration.md) | options of a player, entities, services |
 | [Playlist and favourites backup, restore and import](documentation/backup-and-restore.md) | text files, restoring, importing from Apple Music, moving your music share |
 | [Voice and AI](documentation/voice-and-ai.md) | sentences, typos, volume, AI agents |
-| [Developer tools and automations](documentation/developer-tools.md) | actions, attributes, examples |
+| [Developer tools](documentation/developer-tools.md) | actions, attributes, the answer to what is playing |
+| [Automation examples](documentation/automation-examples.md) | music when you arrive, mute for the doorbell, announce what plays... |
 | [Troubleshooting](documentation/troubleshooting.md) | if something does not work |
 | [How it was tested](documentation/how-it-was-tested.md) | tested devices, automated tests, what is not tested |
 | [Development](documentation/development.md) | run it, test it, contribute |

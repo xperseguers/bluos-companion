@@ -13,7 +13,7 @@ models or firmware may behave differently: please report what you find.
 
 ## Automated tests
 
-More than 550 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
+More than 560 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
 (no real device is needed), on **Home Assistant 2025.6** (the oldest supported version) and on the latest one,
 for every change. They cover the client, the setup and the options, the media player entity and
 the media browser, the data and commands of the sidebar player and the cards, the search (with typos), the
@@ -69,6 +69,12 @@ afterwards:
   the amplifier (the copy checked track by track, the old one gone, a text file of it written), a name that
   exists already was refused, and the playlist was deleted again by its name in another case. The ⋮ menu of the panel
   (edit, rename, delete) was tried by hand. A rename of a playlist of moderate length was tried by hand as well; the rename of a very long playlist (hundreds of tracks) was not.
+- **Automation examples**: every example of the page was loaded as an automation or a script in the Home Assistant of
+  the development setup (so that its structure is accepted), and the templates were evaluated on the real players.
+  Two were run: the announcement (with a notification instead of the speech, on the amplifier) and the mute for the
+  doorbell (the Pulse mini 2i stayed muted while a test switch was on and was unmuted when it went off). The ones
+  that start music, clear lists, rename or delete were not run as automations: the actions they use were tried one
+  by one.
 - **What is playing**: the `now_playing` answer asked of both players while one played a song and the other was paused
   on a radio station (read-only): the song with its artist, album, CD quality and position, the station with its
   stream format, and the group left empty.

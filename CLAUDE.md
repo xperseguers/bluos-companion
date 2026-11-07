@@ -93,5 +93,5 @@ requests) at the feature level:
 
 See the local `TODO.md`. Done: panel, search, queue, playlists (edit, rename, delete), home page, grouping, move
 playback, cards (presets, player, play button), playlist backup and restore, voice and AI search (genres included),
-translations, HACS, the `now_playing` answer for scripts. Next: more automation examples.
+translations, HACS, the `now_playing` answer for scripts, automation examples.
 Later: let library items play on any player (today items are tied to the player browsed from, by design).
