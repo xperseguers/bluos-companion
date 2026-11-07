@@ -283,6 +283,24 @@
         }
       }
     },
+    "play_genre": {
+      "name": "Lancer un genre",
+      "description": "Lance un genre de la bibliothèque musicale, donné par son nom, compris sans tenir compte des majuscules ni des accents, ou à partir d'un mot. Le genre est ajouté à la file d'attente et commence à jouer. Dans un groupe, la musique joue pour tout le groupe.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur sur lequel jouer le genre."
+        },
+        "genre": {
+          "name": "Genre",
+          "description": "Le nom du genre, par exemple Dance."
+        },
+        "shuffle": {
+          "name": "Aléatoire",
+          "description": "Jouer les morceaux du genre dans un ordre aléatoire."
+        }
+      }
+    },
     "import_playlists": {
       "name": "Importer des listes de lecture exportées d'un autre lecteur de musique",
       "description": "Convertit les listes de lecture (fichiers .m3u8) exportées d'Apple Musique ou d'un autre lecteur de musique et placées dans le dossier bluos_companion/import de la configuration de Home Assistant, pour que les fichiers soient ceux du partage de musique tels que le lecteur les connaît, puis les crée sur le lecteur. La file d'attente de ce lecteur est vidée et remplie pour chaque liste : utilisez un lecteur qui ne joue pas. Une liste qui existe déjà est laissée telle quelle, sauf si vous demandez de la remplacer.",

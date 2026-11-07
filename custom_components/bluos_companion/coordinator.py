@@ -15,7 +15,15 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import BluOSClient, BluOSError, Source, Status, SyncStatus, VolumeState
+from .api import (
+    BluOSClient,
+    BluOSError,
+    Source,
+    Status,
+    SyncStatus,
+    VolumeState,
+    genre_play_path,
+)
 from .amplifier import BluOSAmplifier
 from .cover_check import CoverCheck, async_check_covers
 from .names import match_inputs, match_presets, normalize
@@ -195,6 +203,31 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         await self.async_prepare_playback()
         try:
             await self.client.async_load_preset(chosen[0].id)
+        except BluOSError as err:
+            raise HomeAssistantError(f"BluOS player error: {err}") from err
+
+    async def async_genre_path(self, genre: str, shuffle: bool = False) -> str:
+        """Return the play path of a genre of the library, given by its name.
+
+        The name is understood without its case or accents, or from a word of it.
+        """
+        try:
+            genres = await self.client.async_get_genres()
+        except BluOSError as err:
+            raise HomeAssistantError(f"BluOS player error: {err}") from err
+        found = match_presets(genre, genres)
+        if not found:
+            raise HomeAssistantError(f"Unknown genre: {genre}")
+        if len(found) > 1:
+            raise HomeAssistantError(f"Genre {genre} is ambiguous: {', '.join(found)}")
+        return genre_play_path(found[0], shuffle)
+
+    async def async_play_genre(self, genre: str, shuffle: bool = False) -> None:
+        """Play a genre of the library, in order or shuffled."""
+        path = await self.async_genre_path(genre, shuffle)
+        await self.async_prepare_playback()
+        try:
+            await self.client.async_command(path)
         except BluOSError as err:
             raise HomeAssistantError(f"BluOS player error: {err}") from err
 

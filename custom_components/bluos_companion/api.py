@@ -444,6 +444,14 @@ def _genre_context_key(item: ET.Element) -> str | None:
     return f"LocalMusic:CM/LocalMusic-Genre?{browse_key.split('?', 1)[1]}"
 
 
+def genre_play_path(genre: str, shuffle: bool = False) -> str:
+    """Return the play path of a genre of the library, in order or shuffled."""
+    params = {"genre": genre, "playnow": "1", "service": "LocalMusic", "shuffle": "1" if shuffle else "0"}
+    if not shuffle:
+        params = {"clear": "0", **params}
+    return f"/Add?{urlencode(sorted(params.items()))}"
+
+
 def starts_playback(path: str) -> bool:
     """Return whether a play path starts something (adding to the queue, without playing, does not)."""
     if path.startswith("/Add?"):
@@ -720,6 +728,11 @@ class BluOSClient:
         """Return the names of the playlists saved on the player."""
         root = await self._get_xml("/Playlists", {"service": "BluOS"})
         return [name.text for name in root.iter("name") if name.text]
+
+    async def async_get_genres(self) -> list[str]:
+        """Return the genres of the music library."""
+        root = await self._get_xml("/Genres", {"service": "LocalMusic"})
+        return [genre.text for genre in root.iter("genre") if genre.text]
 
     async def async_get_favourites(self) -> Favourites:
         """Return the favourite albums, artists and songs of the library."""

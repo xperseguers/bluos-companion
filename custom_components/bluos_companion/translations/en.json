@@ -283,6 +283,24 @@
         }
       }
     },
+    "play_genre": {
+      "name": "Play a genre",
+      "description": "Plays a genre of the music library, given by its name, which is understood without its case or accents, or from a word of it. The genre is added to the queue and starts playing. In a group, the music plays for the whole group.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player to play the genre on."
+        },
+        "genre": {
+          "name": "Genre",
+          "description": "The name of the genre, such as Dance."
+        },
+        "shuffle": {
+          "name": "Shuffle",
+          "description": "Play the songs of the genre in random order."
+        }
+      }
+    },
     "import_playlists": {
       "name": "Import playlists exported from another music player",
       "description": "Converts the playlists (.m3u8 files) you exported from Apple Music or another music player and put in the bluos_companion/import folder of the Home Assistant configuration, so that the files are the ones of the music share as the player knows them, then builds them on the player. The queue of that player is emptied and refilled for each playlist, so use a player that is not playing. A playlist that exists already is left alone unless you ask to replace it.",

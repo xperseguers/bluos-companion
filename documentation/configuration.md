@@ -32,7 +32,7 @@ instance) cannot switch it on nor choose its input. Choose a Home Assistant **sc
 integration runs it first, and **waits until it has finished** before the player is asked to play.
 
 - It applies to anything that starts playing: a preset, an album or a song from the sidebar player or the cards, a
-  track of the queue, the play button, the `bluos_companion.play_preset` service and `media_player.play_media` /
+  track of the queue, the play button, the `bluos_companion.play_preset` and `bluos_companion.play_genre` services and `media_player.play_media` /
   `media_player.media_play`. Adding to the queue without playing does not run it.
 - It does **not** run while the player is already playing (the amplifier is then on), so changing track is not slowed
   down.

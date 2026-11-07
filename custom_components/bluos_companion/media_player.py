@@ -351,6 +351,10 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
                 self.hass, media_id, self.entity_id
             )
             media_id = play_item.url
+        elif str(media_type).lower() == MediaType.GENRE:
+            path = await self.coordinator.async_genre_path(media_id)
+            await self._async_call(self._client.async_command(path))
+            return
         elif not media_id.startswith(("http://", "https://", "/")):
             # A name, as AI agents ask for: play the best match of a search.
             results = await self.async_search_media(

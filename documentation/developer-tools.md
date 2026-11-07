@@ -81,6 +81,25 @@ A name is understood without its case or accents, and a word of it is enough whe
 (`rouge`). A number is the number of the preset on the player. When the name fits several presets or none, the
 action fails and says which presets there are. In a group, the music plays for the whole group.
 
+### Playing a genre
+
+`bluos_companion.play_genre` plays a genre of the music library by its **name**, the same as *Play now* (or
+*Shuffle*) on the page of a genre in the sidebar player:
+
+```yaml
+action: bluos_companion.play_genre
+data:
+  entity_id: media_player.living_room
+  genre: Dance
+  shuffle: true     # optional, off by default
+```
+
+A name is understood without its case or accents, and a word of it is enough when only one genre has it
+(`country` for *Folk, World, & Country*); the exact name always wins (*Alternative* is not ambiguous with
+*Alternative & Punk*). When the name fits several genres or none, the action fails and says so. The genre is added
+to the queue and starts playing, in a group for the whole group. `media_player.play_media` does the same with
+`media_content_type: genre` and the name as `media_content_id`.
+
 ### Choosing an input
 
 `media_player.select_source` takes the exact name of an input (the `source_list` attribute), but also the name

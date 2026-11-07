@@ -52,6 +52,24 @@ play_preset:
       selector:
         text:
 
+play_genre:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+    genre:
+      required: true
+      example: Dance
+      selector:
+        text:
+    shuffle:
+      default: false
+      selector:
+        boolean:
+
 import_playlists:
   fields:
     entity_id:
