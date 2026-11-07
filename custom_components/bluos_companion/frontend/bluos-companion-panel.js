@@ -1642,6 +1642,7 @@ class BluOSCompanionPanel extends HTMLElement {
       ),
     );
     this._message.textContent = this._queue && !this._queue.length ? this._t("queue_empty") : "";
+    this._actionRow.classList.add("editor");
     this._actionRow.replaceChildren(...this._queueActionButtons(this._queueModes));
     this._actionRow.hidden = !(this._queue && this._queue.length);
   }
