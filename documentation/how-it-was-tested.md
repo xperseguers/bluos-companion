@@ -36,6 +36,8 @@ afterwards:
   (about 1,900 albums) and its sensor.
 - **Amplifier**: switching it on and off (about six seconds to switch on), the player staying reachable in
   standby, and the speaker outputs, checked against what the amplifier itself answers.
+- **Mute switch**: the Mute switch of a player flipped with one tap from a dashboard tile on the Pulse mini 2i,
+  and put back.
 - **Groups**: muting a whole group from each of its members, and the own volume and mute of a secondary player.
 - **Favourites**: adding and removing an album, an artist and a song, the players sharing them, the backup, and the
   restore (including a favourite the library does not have); adding and removing a favourite by hand in the sidebar
