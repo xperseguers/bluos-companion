@@ -126,7 +126,7 @@ When a name fits several inputs (`tv` with two TV inputs), the action fails and 
 
 ## Searching
 
-`media_player.search_media` returns what a name matches, best match first (artists, albums, songs, saved
+`media_player.search_media` returns what a name matches, best match first (artists, albums, songs, genres, saved
 playlists and presets), without playing anything. It is what Assist uses, see [Voice and AI](voice-and-ai.md).
 
 ```yaml

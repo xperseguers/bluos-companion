@@ -22,7 +22,8 @@ backup carries along.
   a library you browse as in the BluOS app (letters you jump to, albums as a list or a grid, pages for an artist or a
   genre), search, a full-screen view with the blurred cover, the queue, playlists with covers, group and volume of
   each player, move the music to another player. [Read more](documentation/panel.md)
-- **Dashboard cards**: the presets of a player as a grid, and a compact player.
+- **Dashboard cards**: the presets of a player as a grid, a compact player, and play buttons for a genre, a preset or
+  a playlist.
   [Read more](documentation/cards.md)
 - **Voice and AI**: "play Adele on Kitchen" through Assist or an AI agent, with tolerance for typos.
   [Read more](documentation/voice-and-ai.md)
@@ -71,7 +72,7 @@ Download the latest [release](https://github.com/xperseguers/bluos-companion/rel
    enter its IP address ([add it directly](https://my.home-assistant.io/redirect/config_flow_start/?domain=bluos_companion)). Repeat for each player (a player is identified by its MAC address, so a new IP address just
    updates the existing entry).
 2. Open **BluOS Companion** in the sidebar. Pick the player with the button in the bottom bar.
-3. On a dashboard, **Add card** and pick *BluOS Companion presets* or *BluOS Companion player*.
+3. On a dashboard, **Add card** and pick *BluOS Companion presets*, *BluOS Companion player* or *BluOS Companion play button*.
 4. Optional: expose the players to Assist, then type or say "play Adele on Kitchen".
 
 ## Documentation
@@ -79,7 +80,7 @@ Download the latest [release](https://github.com/xperseguers/bluos-companion/rel
 | | |
 |---|---|
 | [The sidebar player](documentation/panel.md) | home, library, search, queue, groups, kiosk use |
-| [Dashboard cards](documentation/cards.md) | the presets card and the player card, with their options |
+| [Dashboard cards](documentation/cards.md) | the presets card, the player card and the play button card, with their options |
 | [Configuration](documentation/configuration.md) | options of a player, entities, services |
 | [Playlist and favourites backup, restore and import](documentation/backup-and-restore.md) | text files, restoring, importing from Apple Music, moving your music share |
 | [Voice and AI](documentation/voice-and-ai.md) | sentences, typos, volume, AI agents |

@@ -56,6 +56,7 @@ PRESETS = """<presets prid="0">
 </presets>"""
 
 
+LIBRARY_GENRES = "<genres><genre>Jazz</genre><genre>Dance</genre><genre>Chanson française</genre></genres>"
 SOURCES = """<radiotime service="Capture">
   <item text="Bluetooth" id="input1" type="audio" inputType="bluetooth" URL="Capture%3Abluez%3Abluetooth" typeIndex="bluetooth-1"></item>
   <item text="No index" type="audio" URL="x"></item>
@@ -196,6 +197,7 @@ def player_api(aioclient_mock: AiohttpClientMocker) -> AiohttpClientMocker:
     aioclient_mock.get(f"{BASE}/Status", text=status_xml())
     aioclient_mock.get(f"{BASE}/ui/Home", text=HOME)
     aioclient_mock.get(f"{BASE}/Presets", text=PRESETS)
+    aioclient_mock.get(f"{BASE}/Genres", text=LIBRARY_GENRES)
     aioclient_mock.get(f"{BASE}/Albums", text=RECENT)
     aioclient_mock.get(f"{BASE}/RadioBrowse", text=SOURCES)
     aioclient_mock.get(f"{BASE}/Playlist", text=QUEUE)

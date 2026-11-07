@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import parse_qs, urlparse
+
 import pytest
 from homeassistant.components.media_player import (
     ATTR_MEDIA_CONTENT_ID,
@@ -341,3 +343,45 @@ async def test_play_media_by_name_without_a_match(
             blocking=True,
         )
     assert [path for path, _ in calls(library) if path in ("/Add", "/Play", "/Load", "/Preset")] == []
+
+
+@pytest.mark.parametrize(
+    ("query", "title"),
+    [("dance", "Dance"), ("jazz", "Jazz"), ("chanson francaise", "Chanson française"), ("dnace", "Dance")],
+)
+async def test_search_finds_a_genre(
+    hass: HomeAssistant, init_integration: MockConfigEntry, library: AiohttpClientMocker, query: str, title: str
+) -> None:
+    """A genre of the library is a result, found by its name, without accents, or with a typo."""
+    [first, *_] = await _search(hass, query)
+    assert (first.title, first.media_class) == (title, MediaClass.GENRE)
+    path = play_path_from_media_id(first.media_content_id)[1]
+    assert path.startswith("/Add?")
+    assert parse_qs(urlparse(path).query)["genre"] == [title]
+
+
+async def test_the_genre_filter_only_returns_genres(
+    hass: HomeAssistant, init_integration: MockConfigEntry, library: AiohttpClientMocker
+) -> None:
+    """Asking for genres finds genres only, and no search of the library is made."""
+    results = await _search(hass, "jazz", [MediaClass.GENRE])
+    assert [(result.title, result.media_class) for result in results] == [("Jazz", MediaClass.GENRE)]
+    assert not [path for path, _ in calls(library) if path == "/Browse"]
+    # Asking for something else leaves the genres out
+    assert [r.media_class for r in await _search(hass, "jazz", [MediaClass.ALBUM])] == []
+
+
+async def test_play_media_plays_the_genre_a_name_stands_for(
+    hass: HomeAssistant, init_integration: MockConfigEntry, library: AiohttpClientMocker
+) -> None:
+    """"Play dance" starts the genre, with the shuffle off, as the genre page does."""
+    await hass.services.async_call(
+        MEDIA_PLAYER_DOMAIN,
+        SERVICE_PLAY_MEDIA,
+        {ATTR_ENTITY_ID: ENTITY_ID, ATTR_MEDIA_CONTENT_ID: "dance", ATTR_MEDIA_CONTENT_TYPE: "music"},
+        blocking=True,
+    )
+    assert calls(library)[-1] == (
+        "/Add",
+        {"clear": "0", "genre": "Dance", "playnow": "1", "service": "LocalMusic", "shuffle": "0"},
+    )

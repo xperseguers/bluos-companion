@@ -46,6 +46,7 @@ SEARCH_CLASSES = {
     "album": [MediaClass.ALBUM],
     "track": [MediaClass.TRACK],
     "playlist": [MediaClass.PLAYLIST],
+    "genre": [MediaClass.GENRE],
 }
 REPEAT_TO_BLUOS = {RepeatMode.ALL: 0, RepeatMode.ONE: 1, RepeatMode.OFF: 2}
 REPEAT_FROM_BLUOS = {value: key for key, value in REPEAT_TO_BLUOS.items()}
@@ -323,7 +324,7 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
         return entry
 
     async def async_search_media(self, query: SearchMediaQuery) -> SearchMedia:
-        """Search the library, the saved playlists and the presets (Assist, AI agents)."""
+        """Search the library, the genres, the saved playlists and the presets (Assist, AI agents)."""
         return await async_search(self._client, self.coordinator.config_entry.entry_id, query)
 
     async def async_browse_media(

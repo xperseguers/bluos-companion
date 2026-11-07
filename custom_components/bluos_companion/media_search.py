@@ -18,7 +18,7 @@ from homeassistant.components.media_player import (
     SearchMediaQuery,
 )
 
-from .api import BluOSClient, BluOSError, Node, Preset
+from .api import BluOSClient, BluOSError, Node, Preset, genre_play_path
 from .media_source import URI_PREFIX, _encode, is_play_path
 from .names import normalize
 
@@ -33,6 +33,7 @@ CATEGORIES = {
 # over an artist, an album and a song.
 PLAYLIST_BONUS = 3
 STATION_BONUS = 3
+GENRE_BONUS = 3
 # A typo tolerant search only runs when the exact one finds nothing.
 FUZZY_THRESHOLD = 0.8
 FUZZY_MIN_LENGTH = 4
@@ -133,6 +134,8 @@ async def _library(
     client: BluOSClient, query: str, wanted: set[MediaClass]
 ) -> list[tuple[Node, str]]:
     """Return the entries of the library that match, with their category."""
+    if wanted and not wanted & {media_class for media_class, _, _ in CATEGORIES.values()}:
+        return []
     menu = await client.async_browse_page(SEARCH_KEY, query, 1)
     categories = [
         node
@@ -157,6 +160,7 @@ def _candidates(
     entries: list[tuple[Node, str]],
     playlist_names: list[str],
     presets: list[Preset],
+    genres: list[str],
     wanted: set[MediaClass],
     score_of: Callable[[str, str], int],
 ) -> list[Candidate]:
@@ -184,6 +188,13 @@ def _candidates(
             path = "/Load?" + urlencode({"service": "BluOS", "name": name})
             candidates.append(
                 Candidate(name, MediaClass.PLAYLIST, MediaType.PLAYLIST, path, score + PLAYLIST_BONUS)
+            )
+    for name in genres:
+        if score := score_of(name, ""):
+            candidates.append(
+                Candidate(
+                    name, MediaClass.GENRE, MediaType.GENRE, genre_play_path(name), score + GENRE_BONUS
+                )
             )
     for preset in presets:
         is_playlist = preset.url.startswith("/Load")
@@ -227,7 +238,7 @@ async def _entries(
 async def async_search(
     client: BluOSClient, entry_id: str, query: SearchMediaQuery
 ) -> SearchMedia:
-    """Search the library, the saved playlists and the presets of a player."""
+    """Search the library, the genres, the saved playlists and the presets of a player."""
     text = query.search_query.strip()
     wanted = set(query.media_filter_classes or [])
     if MediaClass.MUSIC in wanted:
@@ -238,6 +249,11 @@ async def async_search(
         else []
     )
     presets = await _safe(client.async_get_presets())
+    genres = (
+        await _safe(client.async_get_genres())
+        if not wanted or MediaClass.GENRE in wanted
+        else []
+    )
 
     # The player's own search fails on punctuation (a hyphen), so retry on the longest word.
     words = re.findall(r"\w+", text)
@@ -245,12 +261,17 @@ async def async_search(
     terms = [text] + ([longest] if longest != text else [])
     entries = await _entries(client, terms, wanted, merge=False)
     candidates = _candidates(
-        entries, playlist_names, presets, wanted, lambda title, sub: match_score(title, sub, text)
+        entries,
+        playlist_names,
+        presets,
+        genres,
+        wanted,
+        lambda title, sub: match_score(title, sub, text),
     )
     if not candidates and len(normalize(text)) >= FUZZY_MIN_LENGTH:
         entries = await _entries(client, _probes(text), wanted, merge=True)
         candidates = _candidates(
-            entries, playlist_names, presets, wanted, lambda title, _: fuzzy_score(title, text)
+            entries, playlist_names, presets, genres, wanted, lambda title, _: fuzzy_score(title, text)
         )
 
     candidates.sort(key=lambda candidate: candidate.score, reverse=True)

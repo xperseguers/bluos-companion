@@ -3,10 +3,10 @@
 BluOS Companion players work with Home Assistant's **Assist**, by voice or by typing, and with
 AI conversation agents that use Assist. You can ask for music by name:
 
-> *Play Adele on Living room.* — *Play the album 21 on Kitchen.* — *Play Radio Swiss Jazz.*
+> *Play Adele on Living room.* — *Play the album 21 on Kitchen.* — *Play Radio Swiss Jazz.* — *Play some Dance.*
 
-The integration searches the player's music library, its saved playlists and its radio presets, and
-starts the best match.
+The integration searches the player's music library, its genres, its saved playlists and its radio presets,
+and starts the best match.
 
 ## Set up
 
@@ -29,13 +29,14 @@ The music really starts, so mind the volume of the player you choose.
 | an artist | all the songs of the artist in your library |
 | an album | the album |
 | a song | that song |
+| a genre | the songs of the genre (*Dance*, *Jazz*), as *Play now* on the page of the genre does |
 | a saved playlist | the playlist |
 | a radio preset | the station |
 
 When several things match, the best match is played: an exact name first, then names that start
-with what you said, then names that contain it. For the same quality of match a playlist or a
-station wins over an artist, an album and a song. Say what you mean if a name is ambiguous
-("the album Hello", "the artist Santa", "the playlist Tuning").
+with what you said, then names that contain it. For the same quality of match a playlist, a
+station or a genre wins over an artist, an album and a song (*Jazz* is the genre, not an artist of that name). Say what you mean if a name is ambiguous
+("the album Hello", "the artist Santa", "the playlist Tuning", "the genre Dance").
 
 ### Spelling mistakes
 
