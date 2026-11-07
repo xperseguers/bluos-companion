@@ -65,6 +65,9 @@ class Status:
     preset_name: str | None = None
     can_move: bool = False
     indexing: int = 0
+    service_name: str | None = None
+    stream_format: str | None = None
+    quality: str | None = None
 
 
 SONG_CONTEXT_PREFIX = "LocalMusic:CM/LocalMusic-Song?"
@@ -615,6 +618,9 @@ class BluOSClient:
             preset_name=root.findtext("preset_name"),
             can_move=root.findtext("canMovePlayback") == "true",
             indexing=_int(root.findtext("indexing")),
+            service_name=root.findtext("serviceName"),
+            stream_format=root.findtext("streamFormat"),
+            quality=root.findtext("quality"),
             queue_position=(
                 _int(song) if (song := root.findtext("song")) is not None else None
             ),

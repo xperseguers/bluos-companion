@@ -99,6 +99,23 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
         )
         self._position_updated_at: datetime | None = None
 
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        """Return what the player says of what it plays, for scripts and dashboards.
+
+        Only what the player reports: the service (TuneIn, LocalMusic...) and its name, the
+        stream format, the quality (cd, hd, or a bit rate) and the name of the preset playing.
+        """
+        status = self.coordinator.data
+        attributes = {
+            "service": status.service,
+            "service_name": status.service_name,
+            "stream_format": status.stream_format,
+            "quality": status.quality,
+            "preset_name": status.preset_name,
+        }
+        return {key: value for key, value in attributes.items() if value}
+
     def _handle_coordinator_update(self) -> None:
         self._position_updated_at = dt_util.utcnow()
         super()._handle_coordinator_update()

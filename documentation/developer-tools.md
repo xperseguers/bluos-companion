@@ -66,6 +66,25 @@ value the picker gives you.
 `album`, `track` or `playlist` narrows it, `music` does not). It fails with "No results found" when nothing
 matches.
 
+### What the player is playing
+
+Besides the usual media player attributes (title, artist, album, volume...), the media player entity tells what the
+player says of what it plays. An attribute is missing when the player does not give it.
+
+| Attribute | Example | What it is |
+|---|---|---|
+| `service` | `TuneIn`, `LocalMusic`, `Deezer` | the music service or the library |
+| `service_name` | `TuneIn`, `Library` | the name the player gives it |
+| `stream_format` | `AAC 128 kb/s`, `Apple Lossless 16/44.1` | the format of the stream or the file |
+| `quality` | `cd`, `hd`, `128` | `cd` and `hd` for lossless music, otherwise a bit rate |
+| `preset_name` | `Rouge FM` | the preset that is playing, when one is |
+
+```yaml
+# In a template: say when a station or a CD quality song plays
+{{ state_attr('media_player.living_room', 'service') == 'TuneIn' }}
+{{ state_attr('media_player.living_room', 'quality') in ['cd', 'hd'] }}
+```
+
 ### Playing a preset
 
 `bluos_companion.play_preset` starts a preset by its **number** or its **name**, with nothing to look up first:

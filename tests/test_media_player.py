@@ -92,6 +92,38 @@ async def test_state_attributes(hass: HomeAssistant) -> None:
     assert state.attributes["entity_picture"].startswith(f"/api/media_player_proxy/{ENTITY_ID}")
 
 
+async def test_what_the_player_says_of_what_it_plays(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """The service, the stream format, the quality and the preset are attributes, only when the player gives them."""
+    attributes = hass.states.get(ENTITY_ID).attributes
+    assert attributes["service"] == "LocalMusic"
+    for missing in ("service_name", "stream_format", "quality", "preset_name"):
+        assert missing not in attributes
+
+    await _refresh(
+        hass,
+        init_integration,
+        player_api,
+        status_xml(
+            "stream",
+            service="TuneIn",
+            serviceName="TuneIn",
+            streamFormat="AAC 128 kb/s",
+            quality="128",
+            preset_name="Rouge FM",
+        ),
+    )
+    attributes = hass.states.get(ENTITY_ID).attributes
+    assert (
+        attributes["service"],
+        attributes["service_name"],
+        attributes["stream_format"],
+        attributes["quality"],
+        attributes["preset_name"],
+    ) == ("TuneIn", "TuneIn", "AAC 128 kb/s", "128", "Rouge FM")
+
+
 @pytest.mark.parametrize(
     ("bluos_state", "expected"),
     [
