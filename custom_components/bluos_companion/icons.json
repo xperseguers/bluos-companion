@@ -67,6 +67,12 @@
     "clear_history": {
       "service": "mdi:history"
     },
+    "delete_playlist": {
+      "service": "mdi:playlist-remove"
+    },
+    "rename_playlist": {
+      "service": "mdi:playlist-edit"
+    },
     "import_playlists": {
       "service": "mdi:playlist-plus"
     },

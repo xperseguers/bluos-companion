@@ -140,6 +140,16 @@
     "panel_clear_history_stations_title": "Letzte Sender löschen?",
     "panel_clear_history_played_title": "Zuletzt Gespieltes löschen?",
     "panel_clear_history_text": "Die Liste wird auf dem Player geleert, für alle, die ihn benutzen.",
+    "panel_rename": "Umbenennen",
+    "panel_delete_playlist": "Wiedergabeliste löschen",
+    "panel_delete_playlist_title": "Die Wiedergabeliste {name} löschen?",
+    "panel_delete_playlist_text": "Das lässt sich im Panel nicht rückgängig machen. Eine Textdatei der Liste bleibt erhalten, und der Dienst restore_playlists kann sie wiederherstellen.",
+    "panel_playlist_deleted": "{name} gelöscht",
+    "panel_rename_playlist_title": "Wiedergabeliste umbenennen",
+    "panel_rename_playlist_text": "Wählen Sie einen neuen Namen. Die Liste wird unter diesem Namen kopiert, geprüft, und die alte wird gelöscht, was bei einer langen Liste Minuten dauert. Die Wiedergabe bleibt unberührt.",
+    "panel_renaming": "{name} wird umbenannt…",
+    "panel_renaming_text": "Die Liste wird kopiert. Das kann bei einer langen Liste einige Minuten dauern: bitte warten.",
+    "panel_playlist_renamed": "Umbenannt in {name}",
     "panel_save_as_playlist": "Speichern",
     "panel_save_queue_title": "Warteschlange als Wiedergabeliste speichern",
     "panel_playlist_name": "Name der Wiedergabeliste",
@@ -399,6 +409,38 @@
         "what": {
           "name": "Was gelöscht wird",
           "description": "Die letzten Sender, das zuletzt Gespielte oder beides."
+        }
+      }
+    },
+    "delete_playlist": {
+      "name": "Wiedergabeliste löschen",
+      "description": "Löscht eine auf dem Player gespeicherte Wiedergabeliste, ohne Bestätigung. Zuvor wird eine Textdatei der Liste in den Ordner der Wiedergabelisten-Sicherung geschrieben, damit sie mit restore_playlists wiederhergestellt werden kann.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, auf dem die Wiedergabeliste gespeichert ist."
+        },
+        "playlist": {
+          "name": "Wiedergabeliste",
+          "description": "Der genaue Name der Wiedergabeliste (Groß- und Kleinschreibung und Akzente spielen keine Rolle)."
+        }
+      }
+    },
+    "rename_playlist": {
+      "name": "Wiedergabeliste umbenennen",
+      "description": "Benennt eine auf dem Player gespeicherte Wiedergabeliste um. Der Player kann das nicht: die Liste wird unter dem neuen Namen kopiert, Titel für Titel geprüft, und erst danach wird die alte gelöscht, es geht also nichts verloren, wenn die Kopie scheitert. Eine lange Liste braucht Minuten. Die Warteschlange und die Wiedergabe bleiben unberührt. Nur Titel der Musikbibliothek bleiben erhalten.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, auf dem die Wiedergabeliste gespeichert ist."
+        },
+        "playlist": {
+          "name": "Wiedergabeliste",
+          "description": "Der genaue Name der Wiedergabeliste (Groß- und Kleinschreibung und Akzente spielen keine Rolle)."
+        },
+        "new_name": {
+          "name": "Neuer Name",
+          "description": "Der neue Name der Wiedergabeliste."
         }
       }
     }

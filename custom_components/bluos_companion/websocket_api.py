@@ -24,6 +24,7 @@ from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .covers import async_playlist_covers, async_preset_images, image_path
 from .http import THUMB_WIDTH, async_artwork_url
 from .playlist_backup import async_build_playlist
+from .playlist_edit import async_delete_playlist, async_rename_playlist
 from .media_source import (
     async_get_titles,
     is_play_path,
@@ -80,6 +81,8 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_presets)
     websocket_api.async_register_command(hass, ws_play_button_items)
     websocket_api.async_register_command(hass, ws_clear_history)
+    websocket_api.async_register_command(hass, ws_playlist_delete)
+    websocket_api.async_register_command(hass, ws_playlist_rename)
     websocket_api.async_register_command(hass, ws_queue)
     websocket_api.async_register_command(hass, ws_queue_action)
     websocket_api.async_register_command(hass, ws_play)
@@ -775,6 +778,41 @@ async def ws_clear_history(
     """Clear the recent stations or the recently played of a player."""
     await _coordinator(hass, msg["entry_id"]).async_clear_history(msg["what"])
     connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/playlist_delete",
+        vol.Required("entry_id"): str,
+        vol.Required("name"): vol.All(str, vol.Length(min=1, max=100)),
+    }
+)
+@websocket_api.async_response
+async def ws_playlist_delete(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Delete a saved playlist (its text file is kept)."""
+    entry = _coordinator(hass, msg["entry_id"]).config_entry
+    await async_delete_playlist(hass, entry, msg["name"])
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/playlist_rename",
+        vol.Required("entry_id"): str,
+        vol.Required("name"): vol.All(str, vol.Length(min=1, max=100)),
+        vol.Required("new_name"): vol.All(str, vol.Strip, vol.Length(min=1, max=100)),
+    }
+)
+@websocket_api.async_response
+async def ws_playlist_rename(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Rename a saved playlist: it is copied, checked and the old one deleted, which takes a while."""
+    entry = _coordinator(hass, msg["entry_id"]).config_entry
+    count = await async_rename_playlist(hass, entry, msg["name"], msg["new_name"])
+    connection.send_result(msg["id"], {"count": count})
 
 
 HOME_ALBUMS = 12

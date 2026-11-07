@@ -1034,10 +1034,12 @@ class BluOSCompanionPanel extends HTMLElement {
     if (artist) names.artist = artist;
     names.artists = [...new Set([artist, albumArtist].filter(Boolean))];
     const onAlbum = Boolean(level && level.type === "album");
+    const saved = item.type === "playlist" && (item.browse_key || "").startsWith("BluOS:");
     this._itemMenu({
       title: onAlbum ? item.title.replace(/^\d+\.\s+/, "") : item.title,
       subtitle: item.subtitle || (level && level.type === "album" && item.type === "track" ? level.title : ""),
       actions,
+      extra: saved ? this._playlistEntries(item.title) : [],
       names,
       info: {
         type: item.type,
@@ -1449,6 +1451,81 @@ class BluOSCompanionPanel extends HTMLElement {
   get _inEditor() {
     const level = this._stack[this._stack.length - 1];
     return Boolean(level && level.editor);
+  }
+
+  // What can be done to a saved playlist besides playing it, in its ⋮ menu: edit, rename, delete
+  _playlistEntries(name) {
+    return [
+      this._menuRow("mdi:pencil", this._t("edit"), () => this._editPlaylist({ title: name })),
+      this._menuRow("mdi:rename", this._t("rename"), () => this._askRenamePlaylist(name)),
+      this._menuRow("mdi:delete", this._t("delete_playlist"), () => this._confirmDeletePlaylist(name)),
+    ];
+  }
+
+  // After a playlist went or changed its name: leave its page, or reload the list it is in
+  _playlistChanged(name) {
+    const level = this._stack[this._stack.length - 1];
+    if (level && level.type === "playlist" && level.title === name) this._up();
+    else this._browse();
+  }
+
+  _confirmDeletePlaylist(name) {
+    this._dialog.replaceChildren(
+      el("h2", {}, this._t("delete_playlist_title", { name })),
+      el("p", {}, this._t("delete_playlist_text")),
+      el(
+        "div",
+        { class: "list" },
+        el(
+          "button",
+          {
+            class: "action",
+            onclick: async () => {
+              this._dialog.close();
+              const done = await this._call({ type: "bluos_companion/playlist_delete", entry_id: this._playerId, name });
+              if (done === undefined) return;
+              this._notify(this._t("playlist_deleted", { name }));
+              this._playlistChanged(name);
+            },
+          },
+          icon("mdi:delete"),
+          this._t("delete_playlist"),
+        ),
+      ),
+    );
+    if (!this._dialog.open) this._dialog.showModal();
+  }
+
+  _askRenamePlaylist(name) {
+    const input = el("input", { type: "text", maxlength: 100, value: name });
+    const submit = async () => {
+      const newName = input.value.trim();
+      if (!newName || newName === name) return;
+      // A long playlist is copied track by track: say so while it takes minutes
+      this._dialog.replaceChildren(el("h2", {}, this._t("renaming", { name })), el("p", {}, this._t("renaming_text")));
+      const done = await this._call({
+        type: "bluos_companion/playlist_rename",
+        entry_id: this._playerId,
+        name,
+        new_name: newName,
+      });
+      this._dialog.close();
+      if (done === undefined) return;
+      this._notify(this._t("playlist_renamed", { name: newName }));
+      this._playlistChanged(name);
+    };
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") submit();
+    });
+    this._dialog.replaceChildren(
+      el("h2", {}, this._t("rename_playlist_title")),
+      el("p", {}, this._t("rename_playlist_text")),
+      input,
+      el("div", { class: "list" }, el("button", { class: "action", onclick: submit }, icon("mdi:rename"), this._t("rename"))),
+    );
+    if (!this._dialog.open) this._dialog.showModal();
+    input.focus();
+    input.select();
   }
 
   _editPlaylist(level) {
@@ -3067,7 +3144,19 @@ class BluOSCompanionPanel extends HTMLElement {
     const buttons = actions.map((action) => this._actionButton(action, level.title));
     // A saved playlist can be edited (order, tracks) without playing it
     if (level && level.type === "playlist" && (level.key || "").startsWith("BluOS:")) {
-      buttons.push(el("button", { class: "action", onclick: () => this._editPlaylist(level) }, icon("mdi:pencil"), this._t("edit")));
+      const name = new URLSearchParams(level.key.split("?")[1] || "").get("playlist") || level.title;
+      buttons.push(
+        el(
+          "button",
+          {
+            class: "action",
+            title: this._t("more"),
+            "aria-label": this._t("more"),
+            onclick: () => this._itemMenu({ title: name, subtitle: "", extra: this._playlistEntries(name) }),
+          },
+          icon("mdi:dots-vertical"),
+        ),
+      );
     }
     this._actionRow.replaceChildren(...buttons);
     this._actionRow.hidden = !buttons.length;

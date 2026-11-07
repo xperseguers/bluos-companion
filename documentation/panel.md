@@ -92,9 +92,20 @@ here, since they belong to a queue, not to a single track. **Clear** empties the
 playlist under a name. **Edit** switches the queue to an edit mode: drag a track by its handle to move it, tap the
 cross to remove it, then **Done**.
 
-To change a saved playlist without playing it first, open it and press **Edit**: reorder and remove tracks the same
-way, then **Save**. The playlist is replaced by the edited list. To save it, the player rebuilds its queue, so what it
-plays at that moment stops.
+A saved playlist has a **⋮ menu** (on its page, and on its tile or row in the lists) with **Edit**, **Rename** and
+**Delete playlist**, so that the page itself keeps what you do most: play, shuffle, add next, add last.
+
+- **Edit** changes a saved playlist without playing it first: reorder and remove tracks the same way, then
+  **Save**. The playlist is replaced by the edited list. To save it, the player rebuilds its queue, so what it plays
+  at that moment stops.
+- **Rename**: the player cannot rename a playlist, so it is copied under the new name, checked track by track, and
+  only then is the old one deleted (a copy that is not complete is thrown away and the old playlist stays). What plays
+  is not touched. A short playlist takes a second, a long one (hundreds of tracks) some tens of seconds. Only tracks
+  of the music library are kept, and the new name must be free.
+- **Delete playlist** asks for a confirmation. A text file of the playlist is written first, in the folder of the
+  playlist backup, so that [`restore_playlists`](backup-and-restore.md) can bring it back.
+
+The same is possible from an automation, see [Developer tools](developer-tools.md).
 
 ![The queue](images/panel-queue.jpg)
 

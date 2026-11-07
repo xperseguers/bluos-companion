@@ -152,6 +152,26 @@ data:
 It is cleared for everyone who uses the player, so a nightly automation is a way to start every day with a clean
 home page.
 
+### Renaming and deleting a playlist
+
+```yaml
+action: bluos_companion.rename_playlist
+data:
+  entity_id: media_player.living_room
+  playlist: Morning Jazz
+  new_name: Jazz for the morning
+---
+action: bluos_companion.delete_playlist
+data:
+  entity_id: media_player.living_room
+  playlist: Jazz for the morning
+```
+
+The name of the playlist must be the exact one (its case and accents do not matter). `rename_playlist` copies the
+playlist under the new name and deletes the old one only when the copy has the same tracks in the same order,
+otherwise it fails and the old playlist stays. `delete_playlist` has no confirmation. Both write a text file of the
+playlist first, in the folder of the [playlist backup](backup-and-restore.md).
+
 ### Choosing an input
 
 `media_player.select_source` takes the exact name of an input (the `source_list` attribute), but also the name

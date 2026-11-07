@@ -140,6 +140,16 @@
     "panel_clear_history_stations_title": "Effacer les stations récentes ?",
     "panel_clear_history_played_title": "Effacer ce qui a été joué récemment ?",
     "panel_clear_history_text": "La liste est vidée sur le lecteur, pour tous ceux qui l'utilisent.",
+    "panel_rename": "Renommer",
+    "panel_delete_playlist": "Supprimer la liste de lecture",
+    "panel_delete_playlist_title": "Supprimer la liste de lecture {name} ?",
+    "panel_delete_playlist_text": "Cela ne peut pas être annulé depuis le panneau. Un fichier texte de la liste est conservé, et le service restore_playlists peut la rétablir.",
+    "panel_playlist_deleted": "{name} supprimée",
+    "panel_rename_playlist_title": "Renommer la liste de lecture",
+    "panel_rename_playlist_text": "Choisissez un nouveau nom. La liste est copiée sous ce nom, vérifiée, puis l'ancienne est supprimée, ce qui prend des minutes pour une longue liste. La lecture n'est pas touchée.",
+    "panel_renaming": "Renommage de {name}…",
+    "panel_renaming_text": "La liste est en cours de copie. Cela peut prendre quelques minutes pour une longue liste : patientez.",
+    "panel_playlist_renamed": "Renommée en {name}",
     "panel_save_as_playlist": "Sauvegarder",
     "panel_save_queue_title": "Sauvegarder la file d'attente comme liste de lecture",
     "panel_playlist_name": "Nom de la liste de lecture",
@@ -399,6 +409,38 @@
         "what": {
           "name": "Quoi effacer",
           "description": "Les stations récentes, les titres joués récemment, ou les deux."
+        }
+      }
+    },
+    "delete_playlist": {
+      "name": "Supprimer une liste de lecture",
+      "description": "Supprime une liste de lecture enregistrée sur le lecteur, sans confirmation. Un fichier texte de la liste est d'abord écrit dans le dossier de la sauvegarde des listes, pour pouvoir la restaurer avec restore_playlists.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur sur lequel la liste est enregistrée."
+        },
+        "playlist": {
+          "name": "Liste de lecture",
+          "description": "Le nom exact de la liste (sans tenir compte des majuscules ni des accents)."
+        }
+      }
+    },
+    "rename_playlist": {
+      "name": "Renommer une liste de lecture",
+      "description": "Renomme une liste de lecture enregistrée sur le lecteur. Le lecteur ne sait pas renommer : la liste est copiée sous le nouveau nom, vérifiée morceau par morceau, et seulement ensuite l'ancienne est supprimée, donc rien n'est perdu si la copie échoue. Une longue liste prend des minutes. La file d'attente et la lecture ne sont pas touchées. Seuls les morceaux de la bibliothèque musicale sont conservés.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur sur lequel la liste est enregistrée."
+        },
+        "playlist": {
+          "name": "Liste de lecture",
+          "description": "Le nom exact de la liste (sans tenir compte des majuscules ni des accents)."
+        },
+        "new_name": {
+          "name": "Nouveau nom",
+          "description": "Le nouveau nom de la liste de lecture."
         }
       }
     }

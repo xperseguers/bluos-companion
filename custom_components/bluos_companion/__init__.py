@@ -30,6 +30,7 @@ from .panel import (
 )
 from .favourites_backup import async_backup_favourites, async_restore_favourites
 from .playlist_backup import async_backup_playlists, async_restore_playlists
+from .playlist_edit import async_delete_playlist, async_rename_playlist
 from .playlist_import import async_import_playlists
 from .websocket_api import async_setup_websocket_api
 
@@ -124,6 +125,21 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         """Clear the recent stations and/or the recently played of a player."""
         await loaded_entry(call.data["entity_id"]).runtime_data.async_clear_history(
             call.data["what"]
+        )
+
+    async def delete_playlist(call: ServiceCall) -> None:
+        """Delete a saved playlist of a player (a text file of it is kept)."""
+        await async_delete_playlist(
+            hass, loaded_entry(call.data["entity_id"]), call.data["playlist"]
+        )
+
+    async def rename_playlist(call: ServiceCall) -> None:
+        """Rename a saved playlist of a player."""
+        await async_rename_playlist(
+            hass,
+            loaded_entry(call.data["entity_id"]),
+            call.data["playlist"],
+            call.data["new_name"],
         )
 
     async def mute_group(call: ServiceCall) -> None:
@@ -233,6 +249,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             {
                 vol.Required("entity_id"): cv.entity_id,
                 vol.Optional("what", default="both"): vol.In(["stations", "played", "both"]),
+            }
+        ),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "delete_playlist",
+        delete_playlist,
+        schema=vol.Schema(
+            {vol.Required("entity_id"): cv.entity_id, vol.Required("playlist"): cv.string}
+        ),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "rename_playlist",
+        rename_playlist,
+        schema=vol.Schema(
+            {
+                vol.Required("entity_id"): cv.entity_id,
+                vol.Required("playlist"): cv.string,
+                vol.Required("new_name"): cv.string,
             }
         ),
     )

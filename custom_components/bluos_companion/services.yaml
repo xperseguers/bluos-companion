@@ -114,6 +114,39 @@ clear_history:
             - played
             - both
 
+delete_playlist:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+    playlist:
+      required: true
+      example: Relaxing
+      selector:
+        text:
+
+rename_playlist:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+    playlist:
+      required: true
+      example: Relaxing
+      selector:
+        text:
+    new_name:
+      required: true
+      example: Relaxing evening
+      selector:
+        text:
+
 import_playlists:
   fields:
     entity_id:

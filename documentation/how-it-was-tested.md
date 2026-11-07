@@ -62,6 +62,10 @@ afterwards:
   BluOS app.
 - **Import**: a real playlist of 134 tracks exported from Apple Music, with accents written the way a Mac does, built
   on the player in its order; the tracks the player's library did not know were reported.
+- **Renaming and deleting a playlist**: a playlist of 10 tracks made for the test was renamed through the service on
+  the amplifier (the copy checked track by track, the old one gone, a text file of it written), a name that
+  exists already was refused, and the playlist was deleted again by its name in another case. The panel menu and the
+  rename of a long playlist were not tried.
 - **Genres in the search**: searching the library of the Pulse mini 2i for *dance*, *jazz*, *eurodance* and a typo
   (*dnace*) returns the genre first, and a typed Assist request (*play dance on mini 2i*) starts the genre shuffled,
   so it no longer begins with the same song.

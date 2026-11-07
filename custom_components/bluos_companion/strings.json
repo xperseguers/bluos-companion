@@ -140,6 +140,16 @@
     "panel_clear_history_stations_title": "Clear the recent stations?",
     "panel_clear_history_played_title": "Clear what was recently played?",
     "panel_clear_history_text": "The list is emptied on the player, for everyone who uses it.",
+    "panel_rename": "Rename",
+    "panel_delete_playlist": "Delete playlist",
+    "panel_delete_playlist_title": "Delete the playlist {name}?",
+    "panel_delete_playlist_text": "This cannot be undone from the panel. A text file of the playlist is kept, and the service restore_playlists can bring it back.",
+    "panel_playlist_deleted": "Deleted {name}",
+    "panel_rename_playlist_title": "Rename the playlist",
+    "panel_rename_playlist_text": "Choose a new name. The playlist is copied under it, checked, and the old one is deleted, which takes minutes for a long playlist. What plays is not touched.",
+    "panel_renaming": "Renaming {name}…",
+    "panel_renaming_text": "The playlist is being copied. This can take a few minutes for a long playlist: please wait.",
+    "panel_playlist_renamed": "Renamed to {name}",
     "panel_save_as_playlist": "Save as playlist",
     "panel_save_queue_title": "Save the queue as a playlist",
     "panel_playlist_name": "Playlist name",
@@ -399,6 +409,38 @@
         "what": {
           "name": "What to clear",
           "description": "The recent stations, the recently played, or both."
+        }
+      }
+    },
+    "delete_playlist": {
+      "name": "Delete a playlist",
+      "description": "Deletes a playlist saved on the player. There is no confirmation. A text file of the playlist is written first, in the folder of the playlist backup, so that it can be restored with restore_playlists.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player the playlist is saved on."
+        },
+        "playlist": {
+          "name": "Playlist",
+          "description": "The exact name of the playlist (case and accents do not matter)."
+        }
+      }
+    },
+    "rename_playlist": {
+      "name": "Rename a playlist",
+      "description": "Renames a playlist saved on the player. The player has no rename: the playlist is copied under the new name, checked track by track, and only then is the old one deleted, so nothing is lost if the copy fails. A long playlist takes minutes. The queue and what plays are not touched. Only tracks of the music library are kept.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player the playlist is saved on."
+        },
+        "playlist": {
+          "name": "Playlist",
+          "description": "The exact name of the playlist (case and accents do not matter)."
+        },
+        "new_name": {
+          "name": "New name",
+          "description": "The new name of the playlist."
         }
       }
     }
