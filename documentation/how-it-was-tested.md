@@ -13,12 +13,15 @@ models or firmware may behave differently: please report what you find.
 
 ## Automated tests
 
-More than 490 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
+More than 550 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
 (no real device is needed), on **Home Assistant 2025.6** (the oldest supported version) and on the latest one,
 for every change. They cover the client, the setup and the options, the media player entity and
 the media browser, the data and commands of the sidebar player and the cards, the search (with typos), the
-playlist and favourites backup and restore, the import of playlists, the cover check, the amplifier switches
-(against a small simulated amplifier), and that every translation has the same keys.
+playlist and favourites backup and restore, the import of playlists, renaming and deleting a playlist (against a
+simulated player that keeps playlists), the cover check, the amplifier switches (against a small simulated
+amplifier), the services (play a genre, a playlist or a preset, clear the history, mute), the mute switch and the
+clear queue button, the status attributes, the cards' scripts (they must parse and use services and texts that exist),
+and that every translation has the same keys.
 
 ```
 python3.14 -m venv .venv
@@ -64,8 +67,8 @@ afterwards:
   on the player in its order; the tracks the player's library did not know were reported.
 - **Renaming and deleting a playlist**: a playlist of 10 tracks made for the test was renamed through the service on
   the amplifier (the copy checked track by track, the old one gone, a text file of it written), a name that
-  exists already was refused, and the playlist was deleted again by its name in another case. The panel menu and the
-  rename of a long playlist were not tried.
+  exists already was refused, and the playlist was deleted again by its name in another case. The ⋮ menu of the panel
+  (edit, rename, delete) was tried by hand. The rename of a long playlist was not tried.
 - **Genres in the search**: searching the library of the Pulse mini 2i for *dance*, *jazz*, *eurodance* and a typo
   (*dnace*) returns the genre first, and a typed Assist request (*play dance on mini 2i*) starts the genre shuffled,
   so it no longer begins with the same song.

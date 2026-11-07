@@ -25,11 +25,13 @@ needed to work here.
   `http.py`: signed artwork proxy (the player is HTTP only).
 - `select.py`: sleep timer.
 - `panel.py` + `frontend/bluos-companion-panel.js`: sidebar panel (plain JS custom element, no build
-  step, for every user, aimed at a kiosk tablet). `frontend/bluos-companion-presets-card.js` and
-  `frontend/bluos-companion-player-card.js`: dashboard cards, loaded by the integration itself.
+  step, for every user, aimed at a kiosk tablet). `frontend/bluos-companion-presets-card.js`,
+  `frontend/bluos-companion-player-card.js` and `frontend/bluos-companion-play-button-card.js`: dashboard cards, loaded by
+  the integration itself.
   `websocket_api.py`: the `bluos_companion/*` commands they use.
 - `playlist_backup.py` + `backup.py`: playlists saved as `.m3u8` text files before every Home Assistant
-  backup, and the services `backup_playlists` / `restore_playlists`.
+  backup, and the services `backup_playlists` / `restore_playlists`. `playlist_edit.py`: rename and delete of a saved
+  playlist.
 - `strings.json`, `translations/{en,fr,de}.json`: config flow, options, services and `common` (browse titles and, as `common.panel_*`, the texts of the panel and the cards, served by the `translations` websocket command; the scripts contain no English).
 - `icons/*.svg`: tiles served from `/bluos_companion/icons/`.
 - `TODO.md`: the plan, a local file that is not committed (gitignored).
@@ -89,7 +91,7 @@ requests) at the feature level:
 
 ## Roadmap
 
-See the local `TODO.md`. Done: panel, search, queue, playlists, home page, grouping, move playback, cards, playlist
-backup and restore. Next: voice and AI search, panel translations, A-Z bar, documentation, HACS submission.
-Later: a "Clear queue" `button` entity (only `media_player.clear_playlist` exists, no UI button),
-let library items play on any player (today items are tied to the player browsed from, by design).
+See the local `TODO.md`. Done: panel, search, queue, playlists (edit, rename, delete), home page, grouping, move
+playback, cards (presets, player, play button), playlist backup and restore, voice and AI search (genres included),
+translations, HACS. Next: a "now playing" answer for scripts and more automation examples.
+Later: let library items play on any player (today items are tied to the player browsed from, by design).
