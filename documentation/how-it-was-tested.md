@@ -63,7 +63,10 @@ afterwards:
 - **Import**: a real playlist of 134 tracks exported from Apple Music, with accents written the way a Mac does, built
   on the player in its order; the tracks the player's library did not know were reported.
 - **Genres in the search**: searching the library of the Pulse mini 2i for *dance*, *jazz*, *eurodance* and a typo
-  (*dnace*) returns the genre first (nothing was played; the voice request itself was not tried).
+  (*dnace*) returns the genre first, and a typed Assist request (*play dance on mini 2i*) starts the genre shuffled,
+  so it no longer begins with the same song.
+- **Clear history**: the Clear buttons of the recent stations and of the recently played rows of the home page, with
+  their confirmation, on the Pulse mini 2i.
 - **Presets and inputs by name**: a preset by a word of its name, inputs by common names, and the error for a name
   that fits several inputs.
 
