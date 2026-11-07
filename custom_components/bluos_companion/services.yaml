@@ -74,6 +74,28 @@ play_genre:
       selector:
         boolean:
 
+play_playlist:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+    playlist:
+      required: true
+      example: Relaxing
+      selector:
+        text:
+    shuffle:
+      default: false
+      selector:
+        boolean:
+    clear_queue:
+      default: false
+      selector:
+        boolean:
+
 import_playlists:
   fields:
     entity_id:

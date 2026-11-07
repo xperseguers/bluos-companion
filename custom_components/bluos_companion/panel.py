@@ -12,7 +12,11 @@ from .const import CARD_ELEMENT, PANEL_ELEMENT, PANEL_PATH, PANEL_URL
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 MODULE = f"{PANEL_ELEMENT}.js"
-CARD_MODULES = (f"{CARD_ELEMENT}.js", "bluos-companion-player-card.js")
+CARD_MODULES = (
+    f"{CARD_ELEMENT}.js",
+    "bluos-companion-player-card.js",
+    "bluos-companion-play-button-card.js",
+)
 # The cards load this one themselves, with their own version
 CARD_SHARED = ("bluos-companion-card-controls.js",)
 

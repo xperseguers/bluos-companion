@@ -179,6 +179,24 @@
     "panel_editor_source_entity": "Entrées d'une autre entité",
     "panel_editor_power_entity": "Alimentation d'une autre entité (lecteur multimédia, interrupteur)",
     "panel_editor_show_power": "Afficher le bouton d'alimentation de l'amplificateur",
+    "panel_play_button_choose": "Choisissez ce que ce bouton lance.",
+    "panel_play_button_play": "Lancer",
+    "panel_play_button_unknown": "{item} n'est pas sur ce lecteur.",
+    "panel_editor_mode": "Ce que le bouton lance",
+    "panel_editor_mode_genre": "Un genre",
+    "panel_editor_mode_preset": "Un préréglage",
+    "panel_editor_mode_playlist": "Une liste de lecture",
+    "panel_editor_item": "Élément",
+    "panel_editor_shuffle": "Aléatoire (genre et liste de lecture)",
+    "panel_editor_clear_queue": "Remplacer la file d'attente au lieu d'y ajouter (genre et liste de lecture)",
+    "panel_editor_layout": "Disposition",
+    "panel_editor_layout_tile": "Tuile : la pochette avec le nom dessous",
+    "panel_editor_layout_row": "Ligne : une petite pochette avec le nom à côté",
+    "panel_editor_layout_cover": "Pochette : le nom sur la pochette",
+    "panel_editor_show_image": "Afficher la pochette",
+    "panel_editor_show_name": "Afficher le nom",
+    "panel_editor_name": "Nom (facultatif, remplace le nom de l'élément)",
+    "panel_editor_icon": "Icône (facultatif, sans pochette)",
     "panel_power": "Alimentation de l'amplificateur",
     "panel_open_control_panel": "Ouvrir le panneau de contrôle",
     "panel_input": "Entrée",
@@ -302,6 +320,28 @@
         "clear_queue": {
           "name": "Effacer la file d'attente",
           "description": "Vider d'abord la file d'attente, pour que le genre la remplace au lieu d'y être ajouté."
+        }
+      }
+    },
+    "play_playlist": {
+      "name": "Lancer une liste de lecture",
+      "description": "Lance une liste de lecture enregistrée sur le lecteur, donnée par son nom, compris sans tenir compte des majuscules ni des accents, ou à partir d'un mot. La liste est ajoutée à la file d'attente et commence à jouer. Dans un groupe, la musique joue pour tout le groupe.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur sur lequel jouer la liste de lecture."
+        },
+        "playlist": {
+          "name": "Liste de lecture",
+          "description": "Le nom de la liste de lecture."
+        },
+        "shuffle": {
+          "name": "Aléatoire",
+          "description": "Jouer les morceaux de la liste dans un ordre aléatoire."
+        },
+        "clear_queue": {
+          "name": "Effacer la file d'attente",
+          "description": "Vider d'abord la file d'attente, pour que la liste la remplace au lieu d'y être ajoutée."
         }
       }
     },

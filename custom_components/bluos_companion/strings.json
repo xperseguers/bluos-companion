@@ -179,6 +179,24 @@
     "panel_editor_source_entity": "Inputs of another entity",
     "panel_editor_power_entity": "Power of another entity (media player, switch)",
     "panel_editor_show_power": "Show the power button of the amplifier",
+    "panel_play_button_choose": "Choose what this button plays.",
+    "panel_play_button_play": "Play",
+    "panel_play_button_unknown": "{item} is not on this player.",
+    "panel_editor_mode": "What the button plays",
+    "panel_editor_mode_genre": "A genre",
+    "panel_editor_mode_preset": "A preset",
+    "panel_editor_mode_playlist": "A playlist",
+    "panel_editor_item": "Item",
+    "panel_editor_shuffle": "Shuffle (genre and playlist)",
+    "panel_editor_clear_queue": "Replace the queue instead of adding to it (genre and playlist)",
+    "panel_editor_layout": "Layout",
+    "panel_editor_layout_tile": "Tile: the cover with the name below",
+    "panel_editor_layout_row": "Row: a small cover with the name beside it",
+    "panel_editor_layout_cover": "Cover: the name over the cover",
+    "panel_editor_show_image": "Show the cover",
+    "panel_editor_show_name": "Show the name",
+    "panel_editor_name": "Name (optional, replaces the name of the item)",
+    "panel_editor_icon": "Icon (optional, when there is no cover)",
     "panel_power": "Amplifier power",
     "panel_open_control_panel": "Open control panel",
     "panel_input": "Input",
@@ -302,6 +320,28 @@
         "clear_queue": {
           "name": "Clear the queue",
           "description": "Empty the queue first, so that the genre replaces it instead of being added to it."
+        }
+      }
+    },
+    "play_playlist": {
+      "name": "Play a playlist",
+      "description": "Plays a playlist saved on the player, given by its name, which is understood without its case or accents, or from a word of it. The playlist is added to the queue and starts playing. In a group, the music plays for the whole group.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player to play the playlist on."
+        },
+        "playlist": {
+          "name": "Playlist",
+          "description": "The name of the playlist."
+        },
+        "shuffle": {
+          "name": "Shuffle",
+          "description": "Play the songs of the playlist in random order."
+        },
+        "clear_queue": {
+          "name": "Clear the queue",
+          "description": "Empty the queue first, so that the playlist replaces it instead of being added to it."
         }
       }
     },

@@ -23,6 +23,7 @@ from .api import (
     SyncStatus,
     VolumeState,
     genre_play_path,
+    playlist_play_path,
 )
 from .amplifier import BluOSAmplifier
 from .cover_check import CoverCheck, async_check_covers
@@ -206,28 +207,25 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         except BluOSError as err:
             raise HomeAssistantError(f"BluOS player error: {err}") from err
 
-    async def async_genre_path(self, genre: str, shuffle: bool = False) -> str:
-        """Return the play path of a genre of the library, given by its name.
-
-        The name is understood without its case or accents, or from a word of it.
-        """
+    async def _async_find_name(self, kind: str, wanted: str, names: Awaitable[list[str]]) -> str:
+        """Return the name a user means, understood without its case or accents, or from a word."""
         try:
-            genres = await self.client.async_get_genres()
+            available = await names
         except BluOSError as err:
             raise HomeAssistantError(f"BluOS player error: {err}") from err
-        found = match_presets(genre, genres)
+        found = match_presets(wanted, available)
         if not found:
-            raise HomeAssistantError(f"Unknown genre: {genre}")
+            raise HomeAssistantError(f"Unknown {kind}: {wanted}")
         if len(found) > 1:
-            raise HomeAssistantError(f"Genre {genre} is ambiguous: {', '.join(found)}")
-        return genre_play_path(found[0], shuffle)
+            raise HomeAssistantError(f"The {kind} {wanted} is ambiguous: {', '.join(found)}")
+        return found[0]
 
-    async def async_play_genre(
-        self, genre: str, shuffle: bool = False, clear_queue: bool = False
-    ) -> None:
-        """Play a genre of the library, in order or shuffled, after the queue is emptied or not."""
-        # The genre is looked up first: an unknown one must not empty the queue
-        path = await self.async_genre_path(genre, shuffle)
+    async def async_genre_path(self, genre: str, shuffle: bool = False) -> str:
+        """Return the play path of a genre of the library, given by its name."""
+        name = await self._async_find_name("genre", genre, self.client.async_get_genres())
+        return genre_play_path(name, shuffle)
+
+    async def _async_play_path(self, path: str, clear_queue: bool) -> None:
         await self.async_prepare_playback()
         try:
             if clear_queue:
@@ -235,6 +233,22 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
             await self.client.async_command(path)
         except BluOSError as err:
             raise HomeAssistantError(f"BluOS player error: {err}") from err
+
+    async def async_play_genre(
+        self, genre: str, shuffle: bool = False, clear_queue: bool = False
+    ) -> None:
+        """Play a genre of the library, in order or shuffled, after the queue is emptied or not."""
+        # The genre is looked up first: an unknown one must not empty the queue
+        await self._async_play_path(await self.async_genre_path(genre, shuffle), clear_queue)
+
+    async def async_play_playlist(
+        self, playlist: str, shuffle: bool = False, clear_queue: bool = False
+    ) -> None:
+        """Play a saved playlist, in order or shuffled, after the queue is emptied or not."""
+        name = await self._async_find_name(
+            "playlist", playlist, self.client.async_get_playlist_names()
+        )
+        await self._async_play_path(playlist_play_path(name, shuffle), clear_queue)
 
     def group_primary(self) -> BluOSCoordinator:
         """Return the player that leads the group (itself if alone or leading).

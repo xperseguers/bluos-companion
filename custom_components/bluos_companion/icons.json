@@ -61,6 +61,9 @@
     "play_genre": {
       "service": "mdi:music-box-multiple"
     },
+    "play_playlist": {
+      "service": "mdi:playlist-play"
+    },
     "import_playlists": {
       "service": "mdi:playlist-plus"
     },

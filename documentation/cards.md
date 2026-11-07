@@ -1,8 +1,8 @@
 # Dashboard cards
 
-The integration adds two cards to the card picker of your dashboards, with no resource to register:
-**BluOS Companion presets** and **BluOS Companion player**. Both follow one BluOS Companion player
-(the `media_player` entity of that player) and have a visual editor.
+The integration adds three cards to the card picker of your dashboards, with no resource to register:
+**BluOS Companion presets**, **BluOS Companion player** and **BluOS Companion play button**. They all follow one
+BluOS Companion player (the `media_player` entity of that player) and have a visual editor.
 
 ![The two cards](images/cards-dashboard.jpg)
 
@@ -85,3 +85,37 @@ another entity, and the volume buttons there move by 2 %.
 - Cards are loaded by the integration. After an update, reload the page (a tablet in kiosk mode: reload or
   clear its cache) to get the new version of a card.
 - You do not need the cards to use the sidebar player, and the other way round.
+
+## Play button card
+
+One button that plays **a genre, a preset or a saved playlist** on a player: tap it and it starts. Put several of
+them on a dashboard for the things you play every day.
+
+In the visual editor: choose the player, what the button plays (a genre, a preset or a playlist), then pick the
+item in a list of everything the player has. The other options are those of a button:
+
+- **Layout**: *tile* (the cover with the name below), *row* (a small cover with the name beside it, one line high)
+  or *cover* (the name over the cover). The size is the size you give the card on the dashboard.
+- **Show the cover** and **show the name**: turn either off for a plain text button or a plain picture. A
+  genre has no cover and shows an icon, so does a playlist or a preset without one; choose the icon yourself with
+  **icon**.
+- **Name**: a name of your own instead of the one of the item.
+- **Shuffle** and **replace the queue** (genre and playlist): the button plays shuffled, and/or empties the queue
+  first instead of adding to it. A preset starts as it is.
+
+The button does exactly what the services [`play_genre`, `play_preset` and `play_playlist`](developer-tools.md)
+do, so everything it can do an automation can do too.
+
+```yaml
+type: custom:bluos-companion-play-button-card
+entity: media_player.living_room
+mode: genre         # genre, preset (item is its number) or playlist
+item: Dance
+layout: tile        # tile, row or cover
+show_image: true
+show_name: true
+name: Dance party   # optional
+icon: mdi:party-popper   # optional, when there is no cover
+shuffle: true       # genre and playlist
+clear_queue: true   # genre and playlist: replace the queue
+```

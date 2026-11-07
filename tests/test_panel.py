@@ -51,7 +51,12 @@ async def test_panel_is_registered_for_everyone_and_removed(
 
 
 @pytest.mark.parametrize(
-    "module", ["bluos-companion-presets-card.js", "bluos-companion-player-card.js"]
+    "module",
+    [
+        "bluos-companion-presets-card.js",
+        "bluos-companion-player-card.js",
+        "bluos-companion-play-button-card.js",
+    ],
 )
 async def test_card_modules_are_loaded_by_the_frontend(
     hass: HomeAssistant, init_integration: MockConfigEntry, module: str

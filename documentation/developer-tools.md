@@ -102,6 +102,21 @@ to the queue and starts playing, or replaces the queue with `clear_queue: true` 
 it), in a group for the whole group. `media_player.play_media` does the same with
 `media_content_type: genre` and the name as `media_content_id`.
 
+### Playing a playlist
+
+`bluos_companion.play_playlist` plays a saved playlist by its **name**, the same way as `play_genre` (case and
+accents are not needed, a word is enough when only one playlist has it, the options `shuffle` and `clear_queue` are
+the same):
+
+```yaml
+action: bluos_companion.play_playlist
+data:
+  entity_id: media_player.living_room
+  playlist: Morning Jazz
+  shuffle: true
+  clear_queue: true
+```
+
 ### Choosing an input
 
 `media_player.select_source` takes the exact name of an input (the `source_list` attribute), but also the name

@@ -78,6 +78,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_home)
     websocket_api.async_register_command(hass, ws_locate)
     websocket_api.async_register_command(hass, ws_presets)
+    websocket_api.async_register_command(hass, ws_play_button_items)
     websocket_api.async_register_command(hass, ws_queue)
     websocket_api.async_register_command(hass, ws_queue_action)
     websocket_api.async_register_command(hass, ws_play)
@@ -689,6 +690,74 @@ async def ws_presets(
             ]
         },
     )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/play_button_items",
+        vol.Required("entity_id"): str,
+        vol.Required("mode"): vol.In(["preset", "playlist", "genre"]),
+        vol.Optional("item"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_play_button_items(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the presets, playlists or genres of a player, for the play button card.
+
+    The editor lists them all, without artwork. The card asks for its own item, with its artwork.
+    """
+    entity = er.async_get(hass).async_get(msg["entity_id"])
+    entry_id = entity.config_entry_id if entity else None
+    coordinator = _coordinator(hass, entry_id or "")
+    client, wanted = coordinator.client, msg.get("item")
+
+    def chosen(value: str) -> bool:
+        return wanted is None or wanted.casefold() == value.casefold()
+
+    items: list[dict[str, Any]] = []
+    if msg["mode"] == "preset":
+        presets = await _async_call(client.async_get_presets())
+        presets = [preset for preset in presets if chosen(str(preset.id))]
+        images = await async_preset_images(coordinator, presets) if wanted and presets else {}
+        items = [
+            {
+                "value": str(preset.id),
+                "name": preset.name,
+                "image": images.get(preset.id)
+                and async_artwork_url(hass, entry_id, images[preset.id], THUMB_WIDTH),
+            }
+            for preset in presets
+        ]
+    elif msg["mode"] == "playlist":
+        page = await _async_call(client.async_browse_page("BluOS:", None, 1))
+        nodes = sorted(
+            (node for node in page.nodes if node.type == "playlist" and chosen(node.title)),
+            key=lambda node: node.title.casefold(),
+        )
+        covers = (
+            await async_playlist_covers(coordinator, [node.browse_key for node in nodes])
+            if wanted and nodes
+            else {}
+        )
+        items = [
+            {
+                "value": node.title,
+                "name": node.title,
+                "image": covers.get(node.browse_key)
+                and async_artwork_url(hass, entry_id, covers[node.browse_key], THUMB_WIDTH),
+            }
+            for node in nodes
+        ]
+    else:
+        genres = await _async_call(client.async_get_genres())
+        items = [
+            {"value": name, "name": name, "image": None}
+            for name in sorted(genres, key=str.casefold)
+            if chosen(name)
+        ]
+    connection.send_result(msg["id"], {"items": items})
 
 
 HOME_ALBUMS = 12

@@ -179,6 +179,24 @@
     "panel_editor_source_entity": "Eingänge einer anderen Entität",
     "panel_editor_power_entity": "Ein/Aus einer anderen Entität (Mediaplayer, Schalter)",
     "panel_editor_show_power": "Ein/Aus-Taste des Verstärkers anzeigen",
+    "panel_play_button_choose": "Wählen Sie, was diese Taste abspielt.",
+    "panel_play_button_play": "Abspielen",
+    "panel_play_button_unknown": "{item} ist nicht auf diesem Player.",
+    "panel_editor_mode": "Was die Taste abspielt",
+    "panel_editor_mode_genre": "Ein Genre",
+    "panel_editor_mode_preset": "Ein Preset",
+    "panel_editor_mode_playlist": "Eine Wiedergabeliste",
+    "panel_editor_item": "Eintrag",
+    "panel_editor_shuffle": "Zufällige Wiedergabe (Genre und Wiedergabeliste)",
+    "panel_editor_clear_queue": "Warteschlange ersetzen statt hinzuzufügen (Genre und Wiedergabeliste)",
+    "panel_editor_layout": "Darstellung",
+    "panel_editor_layout_tile": "Kachel: das Cover mit dem Namen darunter",
+    "panel_editor_layout_row": "Zeile: ein kleines Cover mit dem Namen daneben",
+    "panel_editor_layout_cover": "Cover: der Name über dem Cover",
+    "panel_editor_show_image": "Cover anzeigen",
+    "panel_editor_show_name": "Namen anzeigen",
+    "panel_editor_name": "Name (optional, ersetzt den Namen des Eintrags)",
+    "panel_editor_icon": "Symbol (optional, ohne Cover)",
     "panel_power": "Verstärker ein/aus",
     "panel_open_control_panel": "Bedienfeld öffnen",
     "panel_input": "Eingang",
@@ -302,6 +320,28 @@
         "clear_queue": {
           "name": "Warteschlange löschen",
           "description": "Die Warteschlange zuerst leeren, damit das Genre sie ersetzt, statt hinzugefügt zu werden."
+        }
+      }
+    },
+    "play_playlist": {
+      "name": "Wiedergabeliste abspielen",
+      "description": "Spielt eine auf dem Player gespeicherte Wiedergabeliste ab, angegeben durch ihren Namen, der ohne Groß- und Kleinschreibung und Akzente verstanden wird, oder durch ein Wort daraus. Die Wiedergabeliste wird zur Warteschlange hinzugefügt und beginnt zu spielen. In einer Gruppe spielt die Musik für die ganze Gruppe.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, auf dem die Wiedergabeliste abgespielt wird."
+        },
+        "playlist": {
+          "name": "Wiedergabeliste",
+          "description": "Der Name der Wiedergabeliste."
+        },
+        "shuffle": {
+          "name": "Zufällig",
+          "description": "Die Titel der Wiedergabeliste in zufälliger Reihenfolge abspielen."
+        },
+        "clear_queue": {
+          "name": "Warteschlange löschen",
+          "description": "Die Warteschlange zuerst leeren, damit die Wiedergabeliste sie ersetzt, statt hinzugefügt zu werden."
         }
       }
     },

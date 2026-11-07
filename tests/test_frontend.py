@@ -37,3 +37,23 @@ def test_other_entities_are_read_under_their_group(script: str) -> None:
     """The entities of another player are only read under `other_entities`, as the card editor saves them."""
     source = (FRONTEND / script).read_text()
     assert not re.search(r"_config\.(volume|source|power)_entity", source)
+
+
+def test_the_play_button_card_uses_what_exists() -> None:
+    """The card calls services that exist and shows texts that are translated."""
+    import json
+
+    source = (FRONTEND / "bluos-companion-play-button-card.js").read_text()
+    component = FRONTEND.parent
+    services = json.loads((component / "strings.json").read_text())["services"]
+    english = json.loads((component / "translations" / "en.json").read_text())["common"]
+    called = re.search(r"const SERVICES = (\{.*?\});", source).group(1)
+    assert set(re.findall(r'"?(\w+)"?:\s*"(\w+)"', called)) >= {("genre", "play_genre")}
+    for service in re.findall(r':\s*"(play_\w+)"', called):
+        assert service in services
+    texts = set(re.findall(r'_t\(\s*[`"](\w+?)[`"]', source))
+    texts |= {f"editor_mode_{mode}" for mode in ("genre", "preset", "playlist")}
+    texts |= {f"editor_layout_{layout}" for layout in ("tile", "row", "cover")}
+    assert texts
+    for text in texts:
+        assert f"panel_{text}" in english, text

@@ -444,12 +444,22 @@ def _genre_context_key(item: ET.Element) -> str | None:
     return f"LocalMusic:CM/LocalMusic-Genre?{browse_key.split('?', 1)[1]}"
 
 
-def genre_play_path(genre: str, shuffle: bool = False) -> str:
-    """Return the play path of a genre of the library, in order or shuffled."""
-    params = {"genre": genre, "playnow": "1", "service": "LocalMusic", "shuffle": "1" if shuffle else "0"}
+def _add_path(kind: str, name: str, service: str, shuffle: bool) -> str:
+    """Return the play path of a genre or of a saved playlist, in order or shuffled."""
+    params = {kind: name, "playnow": "1", "service": service, "shuffle": "1" if shuffle else "0"}
     if not shuffle:
         params = {"clear": "0", **params}
     return f"/Add?{urlencode(sorted(params.items()))}"
+
+
+def genre_play_path(genre: str, shuffle: bool = False) -> str:
+    """Return the play path of a genre of the library, in order or shuffled."""
+    return _add_path("genre", genre, "LocalMusic", shuffle)
+
+
+def playlist_play_path(playlist: str, shuffle: bool = False) -> str:
+    """Return the play path of a saved playlist, in order or shuffled."""
+    return _add_path("playlist", playlist, "BluOS", shuffle)
 
 
 def starts_playback(path: str) -> bool:
