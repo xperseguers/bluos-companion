@@ -147,6 +147,15 @@ rename_playlist:
       selector:
         text:
 
+now_playing:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+
 import_playlists:
   fields:
     entity_id:

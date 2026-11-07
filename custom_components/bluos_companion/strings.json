@@ -251,7 +251,9 @@
     "panel_repeat": "Repeat",
     "panel_volume": "Volume",
     "panel_close": "Close",
-    "panel_sleep_timer": "Sleep timer"
+    "panel_sleep_timer": "Sleep timer",
+    "now_playing_by": "{title} by {artist}",
+    "now_playing_nothing": "Nothing is playing"
   },
   "services": {
     "backup_playlists": {
@@ -441,6 +443,16 @@
         "new_name": {
           "name": "New name",
           "description": "The new name of the playlist."
+        }
+      }
+    },
+    "now_playing": {
+      "name": "What is playing",
+      "description": "Returns what a player plays, for scripts and automations: its state, the title, artist, album, service, stream format, quality, preset, position, queue position, volume, the players it is grouped with, and a ready to speak sentence in the language of Home Assistant (for a text to speech announcement). Nothing is changed on the player.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player to ask."
         }
       }
     }

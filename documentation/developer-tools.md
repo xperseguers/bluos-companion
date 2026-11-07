@@ -85,6 +85,40 @@ player says of what it plays. An attribute is missing when the player does not g
 {{ state_attr('media_player.living_room', 'quality') in ['cd', 'hd'] }}
 ```
 
+### Asking what is playing
+
+`bluos_companion.now_playing` answers what a player plays, as data a script can use, with nothing changed on the
+player. It is an action with a **response**, so use `response_variable`:
+
+```yaml
+action: bluos_companion.now_playing
+data:
+  entity_id: media_player.living_room
+response_variable: playing
+```
+
+`playing` then holds: `player` (its name), `state` (`playing`, `paused`, `buffering` or `idle`), `title`, `artist`,
+`album`, `service`, `service_name`, `stream_format`, `quality`, `preset_name`, `position` and `duration` (seconds),
+`queue_position` (from 1), `shuffle`, `repeat` (`off`, `all` or `one`), `volume` (0 to 100, `none` for a fixed volume),
+`muted`, `group_name` and `grouped_with` (the names of the other players of the group). Every key is always there,
+`none` when the player does not say (a radio has no album). `text` is a sentence ready to speak, in the language of
+Home Assistant: *Skyfall by Adele*, the name of the station, or *Nothing is playing*.
+
+```yaml
+# Announce what plays in the kitchen on a speaker of your choice
+sequence:
+  - action: bluos_companion.now_playing
+    data:
+      entity_id: media_player.kitchen
+    response_variable: playing
+  - action: tts.speak
+    target:
+      entity_id: tts.home_assistant_cloud
+    data:
+      media_player_entity_id: media_player.living_room
+      message: "{{ playing.text }}"
+```
+
 ### Playing a preset
 
 `bluos_companion.play_preset` starts a preset by its **number** or its **name**, with nothing to look up first:

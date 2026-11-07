@@ -30,6 +30,7 @@ from .panel import (
 )
 from .favourites_backup import async_backup_favourites, async_restore_favourites
 from .playlist_backup import async_backup_playlists, async_restore_playlists
+from .now_playing import async_now_playing
 from .playlist_edit import async_delete_playlist, async_rename_playlist
 from .playlist_import import async_import_playlists
 from .websocket_api import async_setup_websocket_api
@@ -141,6 +142,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             call.data["playlist"],
             call.data["new_name"],
         )
+
+    async def now_playing(call: ServiceCall) -> dict[str, object]:
+        """Say what a player plays."""
+        return await async_now_playing(hass, loaded_entry(call.data["entity_id"]).runtime_data)
 
     async def mute_group(call: ServiceCall) -> None:
         """Mute or unmute all the players of the group of a player."""
@@ -271,6 +276,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 vol.Required("new_name"): cv.string,
             }
         ),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "now_playing",
+        now_playing,
+        schema=vol.Schema({vol.Required("entity_id"): cv.entity_id}),
+        supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
         DOMAIN,

@@ -251,7 +251,9 @@
     "panel_repeat": "Wiederholen",
     "panel_volume": "Lautstärke",
     "panel_close": "Schließen",
-    "panel_sleep_timer": "Sleep-Timer"
+    "panel_sleep_timer": "Sleep-Timer",
+    "now_playing_by": "{title} von {artist}",
+    "now_playing_nothing": "Es läuft nichts"
   },
   "services": {
     "backup_playlists": {
@@ -441,6 +443,16 @@
         "new_name": {
           "name": "Neuer Name",
           "description": "Der neue Name der Wiedergabeliste."
+        }
+      }
+    },
+    "now_playing": {
+      "name": "Was gerade spielt",
+      "description": "Gibt zurück, was ein Player spielt, für Skripte und Automatisierungen: Zustand, Titel, Interpret, Album, Dienst, Stream-Format, Qualität, Preset, Position, Position in der Warteschlange, Lautstärke, die gruppierten Player und einen sprechfertigen Satz in der Sprache von Home Assistant (für eine Sprachansage). Am Player wird nichts verändert.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, der gefragt wird."
         }
       }
     }

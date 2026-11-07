@@ -251,7 +251,9 @@
     "panel_repeat": "Répéter",
     "panel_volume": "Volume",
     "panel_close": "Fermer",
-    "panel_sleep_timer": "Minuterie"
+    "panel_sleep_timer": "Minuterie",
+    "now_playing_by": "{title} de {artist}",
+    "now_playing_nothing": "Rien n'est en cours de lecture"
   },
   "services": {
     "backup_playlists": {
@@ -441,6 +443,16 @@
         "new_name": {
           "name": "Nouveau nom",
           "description": "Le nouveau nom de la liste de lecture."
+        }
+      }
+    },
+    "now_playing": {
+      "name": "Ce qui joue",
+      "description": "Retourne ce que joue un lecteur, pour les scripts et les automatisations : son état, le titre, l'artiste, l'album, le service, le format du flux, la qualité, le préréglage, la position, la position dans la file, le volume, les lecteurs avec lesquels il est groupé, et une phrase prête à dire dans la langue de Home Assistant (pour une annonce par synthèse vocale). Rien n'est modifié sur le lecteur.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur à interroger."
         }
       }
     }

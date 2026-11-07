@@ -73,6 +73,9 @@
     "rename_playlist": {
       "service": "mdi:playlist-edit"
     },
+    "now_playing": {
+      "service": "mdi:music-note"
+    },
     "import_playlists": {
       "service": "mdi:playlist-plus"
     },
