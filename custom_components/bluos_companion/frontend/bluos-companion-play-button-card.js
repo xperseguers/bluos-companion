@@ -210,7 +210,8 @@ class BluOSCompanionPlayButtonCard extends HTMLElement {
     // An item that the player does not have (any more) says so instead of staying blank
     const unknown = this._missing ? this._t("play_button_unknown", { item: String(item) }) : "";
     const name = this._config.name || (this._item && this._item.name) || unknown || (mode === "preset" ? "" : item) || "";
-    const image = this._item && this._item.image;
+    // Our own picture wins over the cover of the player
+    const image = this._config.image || (this._item && this._item.image);
     const artwork = showImage !== false;
     const layoutName = ["row", "tile", "cover"].includes(layout) ? layout : "tile";
 
@@ -350,6 +351,7 @@ class BluOSCompanionPlayButtonCardEditor extends HTMLElement {
       { name: "show_image", selector: { boolean: {} } },
       { name: "show_name", selector: { boolean: {} } },
       { name: "name", selector: { text: {} } },
+      { name: "image", selector: { text: {} } },
       { name: "icon", selector: { icon: {} } },
     ];
   }
@@ -371,6 +373,7 @@ class BluOSCompanionPlayButtonCardEditor extends HTMLElement {
       show_image: "editor_show_image",
       show_name: "editor_show_name",
       name: "editor_name",
+      image: "editor_image",
       icon: "editor_icon",
     };
     const data = {

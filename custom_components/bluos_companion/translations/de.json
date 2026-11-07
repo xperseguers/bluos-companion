@@ -209,6 +209,7 @@
     "panel_editor_show_image": "Cover anzeigen",
     "panel_editor_show_name": "Namen anzeigen",
     "panel_editor_name": "Name (optional, ersetzt den Namen des Eintrags)",
+    "panel_editor_image": "Bild (optional, URL oder Pfad wie /local/jazz.jpg, ersetzt das Cover)",
     "panel_editor_icon": "Symbol (optional, ohne Cover)",
     "panel_power": "Verstärker ein/aus",
     "panel_open_control_panel": "Bedienfeld öffnen",

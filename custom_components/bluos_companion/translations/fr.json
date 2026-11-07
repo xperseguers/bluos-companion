@@ -209,6 +209,7 @@
     "panel_editor_show_image": "Afficher la pochette",
     "panel_editor_show_name": "Afficher le nom",
     "panel_editor_name": "Nom (facultatif, remplace le nom de l'élément)",
+    "panel_editor_image": "Image (facultatif, URL ou chemin tel que /local/jazz.jpg, remplace la pochette)",
     "panel_editor_icon": "Icône (facultatif, sans pochette)",
     "panel_power": "Alimentation de l'amplificateur",
     "panel_open_control_panel": "Ouvrir le panneau de contrôle",

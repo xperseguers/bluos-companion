@@ -209,6 +209,7 @@
     "panel_editor_show_image": "Show the cover",
     "panel_editor_show_name": "Show the name",
     "panel_editor_name": "Name (optional, replaces the name of the item)",
+    "panel_editor_image": "Image (optional, URL or path such as /local/jazz.jpg, replaces the cover)",
     "panel_editor_icon": "Icon (optional, when there is no cover)",
     "panel_power": "Amplifier power",
     "panel_open_control_panel": "Open control panel",

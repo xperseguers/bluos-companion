@@ -99,6 +99,8 @@ item in a list of everything the player has. The other options are those of a bu
 - **Show the cover** and **show the name**: turn either off for a plain text button or a plain picture. A
   genre has no cover and shows an icon, so does a playlist or a preset without one; choose the icon yourself with
   **icon**.
+- **Image**: a picture of your own (a URL, or a path such as `/local/jazz.jpg`) instead of the cover. It also
+  stands in when there is no cover, and wins over **icon**.
 - **Name**: a name of your own instead of the one of the item.
 - **Shuffle** and **replace the queue** (genre and playlist): the button plays shuffled, and/or empties the queue
   first instead of adding to it. A preset starts as it is.
@@ -115,7 +117,8 @@ layout: tile        # tile, row or cover
 show_image: true
 show_name: true
 name: Dance party   # optional
-icon: mdi:party-popper   # optional, when there is no cover
+image: /local/dance.jpg  # optional, replaces the cover
+icon: mdi:party-popper   # optional, when there is no cover and no image
 shuffle: true       # genre and playlist
 clear_queue: true   # genre and playlist: replace the queue
 ```
