@@ -68,7 +68,7 @@ afterwards:
 - **Renaming and deleting a playlist**: a playlist of 10 tracks made for the test was renamed through the service on
   the amplifier (the copy checked track by track, the old one gone, a text file of it written), a name that
   exists already was refused, and the playlist was deleted again by its name in another case. The ⋮ menu of the panel
-  (edit, rename, delete) was tried by hand. The rename of a long playlist was not tried.
+  (edit, rename, delete) was tried by hand. A rename of a playlist of moderate length was tried by hand as well; the rename of a very long playlist (hundreds of tracks) was not.
 - **Genres in the search**: searching the library of the Pulse mini 2i for *dance*, *jazz*, *eurodance* and a typo
   (*dnace*) returns the genre first, and a typed Assist request (*play dance on mini 2i*) starts the genre shuffled,
   so it no longer begins with the same song.
