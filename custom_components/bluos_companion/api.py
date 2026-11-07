@@ -828,6 +828,12 @@ class BluOSClient:
                 rows.append(HomeRow(row.get("id", ""), row.get("title", ""), items))
         return rows
 
+    async def async_clear_history(self, stations: bool = False, played: bool = False) -> None:
+        """Clear the list of recent stations and/or of what was recently played."""
+        for name, wanted in (("stations", stations), ("queued", played)):
+            if wanted:
+                await self._get("/ui/clearUsageHistory", {name: "1"}, headers=UI_HEADERS)
+
     async def async_get_recent_albums(self) -> list[Album]:
         """Return the most recently added albums of the library."""
         root = await self._get_xml("/Albums", {"service": "LocalMusic", "recent": "1"})

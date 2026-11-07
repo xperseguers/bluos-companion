@@ -64,6 +64,9 @@
     "play_playlist": {
       "service": "mdi:playlist-play"
     },
+    "clear_history": {
+      "service": "mdi:history"
+    },
     "import_playlists": {
       "service": "mdi:playlist-plus"
     },

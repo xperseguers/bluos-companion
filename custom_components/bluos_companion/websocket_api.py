@@ -79,6 +79,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_locate)
     websocket_api.async_register_command(hass, ws_presets)
     websocket_api.async_register_command(hass, ws_play_button_items)
+    websocket_api.async_register_command(hass, ws_clear_history)
     websocket_api.async_register_command(hass, ws_queue)
     websocket_api.async_register_command(hass, ws_queue_action)
     websocket_api.async_register_command(hass, ws_play)
@@ -758,6 +759,22 @@ async def ws_play_button_items(
             if chosen(name)
         ]
     connection.send_result(msg["id"], {"items": items})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/clear_history",
+        vol.Required("entry_id"): str,
+        vol.Required("what"): vol.In(["stations", "played"]),
+    }
+)
+@websocket_api.async_response
+async def ws_clear_history(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Clear the recent stations or the recently played of a player."""
+    await _coordinator(hass, msg["entry_id"]).async_clear_history(msg["what"])
+    connection.send_result(msg["id"])
 
 
 HOME_ALBUMS = 12

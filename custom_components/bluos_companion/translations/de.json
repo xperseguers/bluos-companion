@@ -137,6 +137,9 @@
     "panel_clear": "Löschen",
     "panel_clear_queue_title": "Warteschlange löschen?",
     "panel_clear_queue_text": "Alle Titel werden aus der Warteschlange entfernt.",
+    "panel_clear_history_stations_title": "Letzte Sender löschen?",
+    "panel_clear_history_played_title": "Zuletzt Gespieltes löschen?",
+    "panel_clear_history_text": "Die Liste wird auf dem Player geleert, für alle, die ihn benutzen.",
     "panel_save_as_playlist": "Speichern",
     "panel_save_queue_title": "Warteschlange als Wiedergabeliste speichern",
     "panel_playlist_name": "Name der Wiedergabeliste",
@@ -383,6 +386,29 @@
           "name": "Player",
           "description": "Der Player, dem die Favoriten hinzugefügt werden."
         }
+      }
+    },
+    "clear_history": {
+      "name": "Verlauf löschen",
+      "description": "Löscht die Liste der zuletzt gehörten Sender und/oder des zuletzt Gespielten auf dem Player, wie die Löschen-Taste der BluOS-App. Sie wird für alle gelöscht, die den Player benutzen, ohne Bestätigung.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "Der Player, dessen Verlauf gelöscht wird."
+        },
+        "what": {
+          "name": "Was gelöscht wird",
+          "description": "Die letzten Sender, das zuletzt Gespielte oder beides."
+        }
+      }
+    }
+  },
+  "selector": {
+    "clear_history_what": {
+      "options": {
+        "stations": "Letzte Sender",
+        "played": "Zuletzt gespielt",
+        "both": "Beides"
       }
     }
   }

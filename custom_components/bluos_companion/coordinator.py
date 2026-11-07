@@ -225,6 +225,15 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         name = await self._async_find_name("genre", genre, self.client.async_get_genres())
         return genre_play_path(name, shuffle)
 
+    async def async_clear_history(self, what: str = "both") -> None:
+        """Clear the recent stations, the recently played, or both (what: stations, played, both)."""
+        try:
+            await self.client.async_clear_history(
+                stations=what in ("stations", "both"), played=what in ("played", "both")
+            )
+        except BluOSError as err:
+            raise HomeAssistantError(f"BluOS player error: {err}") from err
+
     async def _async_play_path(self, path: str, clear_queue: bool) -> None:
         await self.async_prepare_playback()
         try:

@@ -34,6 +34,10 @@ Deezer, and inputs such as Bluetooth). The titles come from the player, in your 
 (its name shows when you hover it). Services you do not use can
 be hidden, see [Configuration](configuration.md).
 
+The **recently played** and **recent stations** rows have a **Clear** button, as in the BluOS app: after a
+confirmation the list is emptied on the player, for everyone who uses it. The same is possible from an automation,
+see [Developer tools](developer-tools.md).
+
 Presets belong to a player: a player without presets has no presets row.
 
 ## Browsing

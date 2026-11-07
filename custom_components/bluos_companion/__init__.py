@@ -120,6 +120,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             call.data["playlist"], call.data["shuffle"], call.data["clear_queue"]
         )
 
+    async def clear_history(call: ServiceCall) -> None:
+        """Clear the recent stations and/or the recently played of a player."""
+        await loaded_entry(call.data["entity_id"]).runtime_data.async_clear_history(
+            call.data["what"]
+        )
+
     async def mute_group(call: ServiceCall) -> None:
         """Mute or unmute all the players of the group of a player."""
         await loaded_entry(call.data["entity_id"]).runtime_data.async_mute_group(call.data["mute"])
@@ -216,6 +222,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 vol.Required("playlist"): cv.string,
                 vol.Optional("shuffle", default=False): cv.boolean,
                 vol.Optional("clear_queue", default=False): cv.boolean,
+            }
+        ),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "clear_history",
+        clear_history,
+        schema=vol.Schema(
+            {
+                vol.Required("entity_id"): cv.entity_id,
+                vol.Optional("what", default="both"): vol.In(["stations", "played", "both"]),
             }
         ),
     )

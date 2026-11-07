@@ -118,6 +118,21 @@ data:
   clear_queue: true
 ```
 
+### Clearing the history
+
+`bluos_companion.clear_history` empties the list of **recent stations** and/or of what was **recently played** on a
+player, like the *Clear* buttons of the home page (which ask for a confirmation: the action does not):
+
+```yaml
+action: bluos_companion.clear_history
+data:
+  entity_id: media_player.living_room
+  what: both    # stations, played or both (the default)
+```
+
+It is cleared for everyone who uses the player, so a nightly automation is a way to start every day with a clean
+home page.
+
 ### Choosing an input
 
 `media_player.select_source` takes the exact name of an input (the `source_list` attribute), but also the name

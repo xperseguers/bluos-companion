@@ -283,6 +283,7 @@ const STYLE = `
   .lsec-head { display: flex; align-items: center; gap: 8px; min-height: 48px; margin-bottom: 12px; }
   .lsec-head h3 { margin: 0; flex: 1; font-size: 18px; font-weight: 500; cursor: pointer; }
   .lsec-head button.viewall { border-radius: 16px; padding: 6px 14px; font: inherit; font-size: 13px; text-transform: uppercase; background: rgba(127, 127, 127, 0.15); }
+  .lsec-head button.clearall { border-radius: 16px; padding: 6px 14px; font: inherit; font-size: 13px; text-transform: uppercase; background: rgba(127, 127, 127, 0.15); }
   .lsec-head button.arrow { padding: 4px; min-width: 40px; min-height: 40px; --mdc-icon-size: 22px; background: rgba(127, 127, 127, 0.15); }
   .lsec .rows { margin-bottom: 0; border-top: none; }
   .lsec .lrow.link { height: 48px; }
@@ -2464,7 +2465,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   // A card with a row of tiles to scroll sideways, and View all when there is more behind
-  _rowCard(title, items, viewAll) {
+  _rowCard(title, items, viewAll, onClear = null) {
     const head = el("div", { class: "lsec-head" }, el("h3", { onclick: viewAll }, title));
     const scroller = el("div", { class: "hscroll" }, ...items.map((item) => this._tile(item)));
     const scrollBy = (direction) => scroller.scrollBy({ left: direction * scroller.clientWidth * 0.8, behavior: "smooth" });
@@ -2473,7 +2474,34 @@ class BluOSCompanionPanel extends HTMLElement {
       el("button", { class: "arrow", onclick: () => scrollBy(1) }, icon("mdi:chevron-right")),
     );
     if (viewAll) head.append(el("button", { class: "viewall", onclick: viewAll }, this._t("view_all")));
+    if (onClear) head.append(el("button", { class: "clearall", onclick: onClear }, this._t("clear")));
     return el("section", { class: "lsec" }, head, scroller);
+  }
+
+  // Empties the recent stations or the recently played of the player, after a confirmation
+  _confirmClearHistory(what) {
+    this._dialog.replaceChildren(
+      el("h2", {}, this._t(`clear_history_${what}_title`)),
+      el("p", {}, this._t("clear_history_text")),
+      el(
+        "div",
+        { class: "list" },
+        el(
+          "button",
+          {
+            class: "action",
+            onclick: async () => {
+              this._dialog.close();
+              await this._call({ type: "bluos_companion/clear_history", entry_id: this._playerId, what });
+              this._browse();
+            },
+          },
+          icon("mdi:delete-sweep"),
+          this._t("clear"),
+        ),
+      ),
+    );
+    this._dialog.showModal();
   }
 
   // The start page: rows to scroll (the presets, what was played...) and a row of shortcuts into the library
@@ -2505,7 +2533,8 @@ class BluOSCompanionPanel extends HTMLElement {
             this._open({ title: view.title, browse_key: view.key, type: "link" });
           }
         : null;
-      root.append(this._rowCard(group.title, group.items, viewAll));
+      const what = { "recent-stations": "stations", recent: "played" }[group.kind];
+      root.append(this._rowCard(group.title, group.items, viewAll, what ? () => this._confirmClearHistory(what) : null));
     }
     this._grid.append(root);
   }

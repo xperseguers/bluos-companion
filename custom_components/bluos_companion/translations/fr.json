@@ -137,6 +137,9 @@
     "panel_clear": "Effacer",
     "panel_clear_queue_title": "Effacer la file d'attente ?",
     "panel_clear_queue_text": "Tous les morceaux sont retirés de la file d'attente.",
+    "panel_clear_history_stations_title": "Effacer les stations récentes ?",
+    "panel_clear_history_played_title": "Effacer ce qui a été joué récemment ?",
+    "panel_clear_history_text": "La liste est vidée sur le lecteur, pour tous ceux qui l'utilisent.",
     "panel_save_as_playlist": "Sauvegarder",
     "panel_save_queue_title": "Sauvegarder la file d'attente comme liste de lecture",
     "panel_playlist_name": "Nom de la liste de lecture",
@@ -383,6 +386,29 @@
           "name": "Lecteur",
           "description": "Le lecteur auquel ajouter les favoris."
         }
+      }
+    },
+    "clear_history": {
+      "name": "Effacer l'historique",
+      "description": "Efface la liste des stations récentes et/ou de ce qui a été joué récemment sur le lecteur, comme le bouton Effacer de l'application BluOS. Elle est effacée pour tous ceux qui utilisent le lecteur, sans confirmation.",
+      "fields": {
+        "entity_id": {
+          "name": "Lecteur",
+          "description": "Le lecteur dont l'historique est effacé."
+        },
+        "what": {
+          "name": "Quoi effacer",
+          "description": "Les stations récentes, les titres joués récemment, ou les deux."
+        }
+      }
+    }
+  },
+  "selector": {
+    "clear_history_what": {
+      "options": {
+        "stations": "Stations récentes",
+        "played": "Joué récemment",
+        "both": "Les deux"
       }
     }
   }

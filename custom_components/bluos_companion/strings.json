@@ -137,6 +137,9 @@
     "panel_clear": "Clear",
     "panel_clear_queue_title": "Clear the queue?",
     "panel_clear_queue_text": "All the tracks are removed from the queue.",
+    "panel_clear_history_stations_title": "Clear the recent stations?",
+    "panel_clear_history_played_title": "Clear what was recently played?",
+    "panel_clear_history_text": "The list is emptied on the player, for everyone who uses it.",
     "panel_save_as_playlist": "Save as playlist",
     "panel_save_queue_title": "Save the queue as a playlist",
     "panel_playlist_name": "Playlist name",
@@ -383,6 +386,29 @@
           "name": "Player",
           "description": "The player to add the favourites to."
         }
+      }
+    },
+    "clear_history": {
+      "name": "Clear the history",
+      "description": "Clears the list of recent stations and/or of what was recently played on the player, as the Clear button of the BluOS app does. It is cleared for everyone who uses the player, and there is no confirmation.",
+      "fields": {
+        "entity_id": {
+          "name": "Player",
+          "description": "The player whose history is cleared."
+        },
+        "what": {
+          "name": "What to clear",
+          "description": "The recent stations, the recently played, or both."
+        }
+      }
+    }
+  },
+  "selector": {
+    "clear_history_what": {
+      "options": {
+        "stations": "Recent stations",
+        "played": "Recently played",
+        "both": "Both"
       }
     }
   }

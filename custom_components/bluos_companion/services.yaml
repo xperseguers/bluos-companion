@@ -96,6 +96,24 @@ play_playlist:
       selector:
         boolean:
 
+clear_history:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: bluos_companion
+          domain: media_player
+    what:
+      default: both
+      selector:
+        select:
+          translation_key: clear_history_what
+          options:
+            - stations
+            - played
+            - both
+
 import_playlists:
   fields:
     entity_id:
