@@ -353,7 +353,8 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
             )
             media_id = play_item.url
         elif str(media_type).lower() == MediaType.GENRE:
-            path = await self.coordinator.async_genre_path(media_id)
+            # Shuffled, as for a genre asked by name: the same first song every time is no fun
+            path = await self.coordinator.async_genre_path(media_id, shuffle=True)
             await self._async_call(self._client.async_command(path))
             return
         elif not media_id.startswith(("http://", "https://", "/")):

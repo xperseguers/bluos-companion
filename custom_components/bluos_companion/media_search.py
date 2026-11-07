@@ -193,7 +193,12 @@ def _candidates(
         if score := score_of(name, ""):
             candidates.append(
                 Candidate(
-                    name, MediaClass.GENRE, MediaType.GENRE, genre_play_path(name), score + GENRE_BONUS
+                    name,
+                    MediaClass.GENRE,
+                    MediaType.GENRE,
+                    # Asked for by name ("play dance"), a genre is a mood: shuffled, not the same first song
+                    genre_play_path(name, shuffle=True),
+                    score + GENRE_BONUS,
                 )
             )
     for preset in presets:

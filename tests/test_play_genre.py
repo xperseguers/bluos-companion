@@ -110,7 +110,7 @@ async def test_a_word_in_several_genres_is_ambiguous(
 async def test_play_media_plays_a_genre(
     hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
 ) -> None:
-    """media_player.play_media with the type genre plays the genre."""
+    """media_player.play_media with the type genre plays the genre, shuffled."""
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_PLAY_MEDIA,
@@ -123,7 +123,7 @@ async def test_play_media_plays_a_genre(
     )
     assert calls(player_api)[-1] == (
         "/Add",
-        {"clear": "0", "genre": "Dance", "playnow": "1", "service": "LocalMusic", "shuffle": "0"},
+        {"genre": "Dance", "playnow": "1", "service": "LocalMusic", "shuffle": "1"},
     )
 
 

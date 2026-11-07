@@ -374,7 +374,7 @@ async def test_the_genre_filter_only_returns_genres(
 async def test_play_media_plays_the_genre_a_name_stands_for(
     hass: HomeAssistant, init_integration: MockConfigEntry, library: AiohttpClientMocker
 ) -> None:
-    """"Play dance" starts the genre, with the shuffle off, as the genre page does."""
+    """"Play dance" starts the genre shuffled, not with the same first song every time."""
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_PLAY_MEDIA,
@@ -383,5 +383,5 @@ async def test_play_media_plays_the_genre_a_name_stands_for(
     )
     assert calls(library)[-1] == (
         "/Add",
-        {"clear": "0", "genre": "Dance", "playnow": "1", "service": "LocalMusic", "shuffle": "0"},
+        {"genre": "Dance", "playnow": "1", "service": "LocalMusic", "shuffle": "1"},
     )

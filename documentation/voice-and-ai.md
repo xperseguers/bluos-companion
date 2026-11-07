@@ -29,7 +29,7 @@ The music really starts, so mind the volume of the player you choose.
 | an artist | all the songs of the artist in your library |
 | an album | the album |
 | a song | that song |
-| a genre | the songs of the genre (*Dance*, *Jazz*), as *Play now* on the page of the genre does |
+| a genre | the songs of the genre (*Dance*, *Jazz*), **shuffled**, as *Shuffle* on the page of the genre does, so it does not start with the same song every time |
 | a saved playlist | the playlist |
 | a radio preset | the station |
 

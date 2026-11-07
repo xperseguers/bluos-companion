@@ -100,7 +100,8 @@ A name is understood without its case or accents, and a word of it is enough whe
 *Alternative & Punk*). When the name fits several genres or none, the action fails and says so. The genre is added
 to the queue and starts playing, or replaces the queue with `clear_queue: true` (an unknown genre never empties
 it), in a group for the whole group. `media_player.play_media` does the same with
-`media_content_type: genre` and the name as `media_content_id`.
+`media_content_type: genre` and the name as `media_content_id`, but always shuffled (as voice and AI do), where
+`play_genre` plays in order unless you ask for `shuffle`.
 
 ### Playing a playlist
 
