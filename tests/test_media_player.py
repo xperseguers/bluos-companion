@@ -100,6 +100,7 @@ async def test_what_the_player_says_of_what_it_plays(
     assert attributes["service"] == "LocalMusic"
     for missing in ("service_name", "stream_format", "quality", "preset_name"):
         assert missing not in attributes
+    assert attributes["preset_playing"] == "no"
 
     await _refresh(
         hass,
@@ -122,6 +123,7 @@ async def test_what_the_player_says_of_what_it_plays(
         attributes["quality"],
         attributes["preset_name"],
     ) == ("TuneIn", "TuneIn", "AAC 128 kb/s", "128", "Rouge FM")
+    assert attributes["preset_playing"] == "yes"
 
 
 @pytest.mark.parametrize(

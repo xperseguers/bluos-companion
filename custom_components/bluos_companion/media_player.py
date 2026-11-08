@@ -105,6 +105,8 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
 
         Only what the player reports: the service (TuneIn, LocalMusic...) and its name, the
         stream format, the quality (cd, hd, or a bit rate) and the name of the preset playing.
+        ``preset_playing`` is always there ("yes" or "no"), so that a dashboard card can be shown
+        or hidden with a visibility condition on it.
         """
         status = self.coordinator.data
         attributes = {
@@ -114,7 +116,9 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
             "quality": status.quality,
             "preset_name": status.preset_name,
         }
-        return {key: value for key, value in attributes.items() if value}
+        found = {key: value for key, value in attributes.items() if value}
+        found["preset_playing"] = "yes" if status.preset_name else "no"
+        return found
 
     def _handle_coordinator_update(self) -> None:
         self._position_updated_at = dt_util.utcnow()
