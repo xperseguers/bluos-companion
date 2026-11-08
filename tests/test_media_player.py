@@ -126,6 +126,16 @@ async def test_what_the_player_says_of_what_it_plays(
     assert attributes["preset_playing"] == "yes"
 
 
+async def test_preset_playing_without_a_preset_name(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """Some players flag a preset without giving its name."""
+    await _refresh(hass, init_integration, player_api, status_xml("stream", is_preset="1"))
+    attributes = hass.states.get(ENTITY_ID).attributes
+    assert attributes["preset_playing"] == "yes"
+    assert "preset_name" not in attributes
+
+
 @pytest.mark.parametrize(
     ("bluos_state", "expected"),
     [

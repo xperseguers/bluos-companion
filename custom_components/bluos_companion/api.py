@@ -63,6 +63,7 @@ class Status:
     queue_position: int | None = None
     presets_id: str | None = None
     preset_name: str | None = None
+    is_preset: bool = False
     can_move: bool = False
     indexing: int = 0
     service_name: str | None = None
@@ -616,6 +617,7 @@ class BluOSClient:
             queue_id=root.findtext("pid"),
             presets_id=root.findtext("prid"),
             preset_name=root.findtext("preset_name"),
+            is_preset=root.findtext("is_preset") == "1",
             can_move=root.findtext("canMovePlayback") == "true",
             indexing=_int(root.findtext("indexing")),
             service_name=root.findtext("serviceName"),

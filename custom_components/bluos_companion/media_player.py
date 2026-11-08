@@ -118,7 +118,7 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
             "preset_name": status.preset_name,
         }
         found = {key: value for key, value in attributes.items() if value}
-        found["preset_playing"] = "yes" if status.preset_name else "no"
+        found["preset_playing"] = "yes" if status.is_preset or status.preset_name else "no"
         return found
 
     def _handle_coordinator_update(self) -> None:
