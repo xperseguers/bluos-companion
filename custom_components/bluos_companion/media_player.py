@@ -66,6 +66,7 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
 
     _attr_has_entity_name = True
     _attr_name = None
+    _attr_translation_key = "player"
     _attr_media_image_remotely_accessible = False
     _attr_supported_features = (
         MediaPlayerEntityFeature.PLAY

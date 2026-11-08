@@ -101,6 +101,30 @@
       "amplifier_power": {
         "name": "Amplifier power"
       }
+    },
+    "media_player": {
+      "player": {
+        "state_attributes": {
+          "service": {
+            "name": "Service"
+          },
+          "service_name": {
+            "name": "Service name"
+          },
+          "stream_format": {
+            "name": "Stream format"
+          },
+          "quality": {
+            "name": "Quality"
+          },
+          "preset_name": {
+            "name": "Preset name"
+          },
+          "preset_playing": {
+            "name": "Preset playing"
+          }
+        }
+      }
     }
   },
   "common": {

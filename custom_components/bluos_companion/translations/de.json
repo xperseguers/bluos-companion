@@ -101,6 +101,30 @@
       "amplifier_power": {
         "name": "Verstärker ein/aus"
       }
+    },
+    "media_player": {
+      "player": {
+        "state_attributes": {
+          "service": {
+            "name": "Dienst"
+          },
+          "service_name": {
+            "name": "Name des Dienstes"
+          },
+          "stream_format": {
+            "name": "Streamformat"
+          },
+          "quality": {
+            "name": "Qualität"
+          },
+          "preset_name": {
+            "name": "Preset-Name"
+          },
+          "preset_playing": {
+            "name": "Preset läuft"
+          }
+        }
+      }
     }
   },
   "common": {
