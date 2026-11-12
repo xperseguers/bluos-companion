@@ -107,7 +107,8 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
         Only what the player reports: the service (TuneIn, LocalMusic...) and its name, the
         stream format, the quality (cd, hd, or a bit rate) and the name of the preset playing.
         ``preset_playing`` is always there ("yes" or "no"), so that a dashboard card can be shown
-        or hidden with a visibility condition on it.
+        or hidden with a visibility condition on it. In the same way ``group_role`` is always
+        there ("primary", "secondary" or "none"), and ``group_name`` when the player is grouped.
         """
         status = self.coordinator.data
         attributes = {
@@ -119,6 +120,16 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
         }
         found = {key: value for key, value in attributes.items() if value}
         found["preset_playing"] = "yes" if status.is_preset or status.preset_name else "no"
+        sync = self.coordinator.sync
+        if sync is not None and sync.is_grouped:
+            found["group_role"] = "secondary" if sync.master is not None else "primary"
+            # A secondary does not know the name of the group: its primary does
+            primary = self._coordinator_of(sync.master.host) if sync.master else self.coordinator
+            group = sync.group or (primary.sync.group if primary and primary.sync else None)
+            if group:
+                found["group_name"] = group
+        else:
+            found["group_role"] = "none"
         return found
 
     def _handle_coordinator_update(self) -> None:

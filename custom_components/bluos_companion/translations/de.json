@@ -122,6 +122,12 @@
           },
           "preset_playing": {
             "name": "Preset läuft"
+          },
+          "group_role": {
+            "name": "Gruppenrolle"
+          },
+          "group_name": {
+            "name": "Gruppenname"
           }
         }
       }

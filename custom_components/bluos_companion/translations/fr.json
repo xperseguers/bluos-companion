@@ -122,6 +122,12 @@
           },
           "preset_playing": {
             "name": "Préréglage en lecture"
+          },
+          "group_role": {
+            "name": "Rôle dans le groupe"
+          },
+          "group_name": {
+            "name": "Nom du groupe"
           }
         }
       }

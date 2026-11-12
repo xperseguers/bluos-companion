@@ -78,6 +78,8 @@ player says of what it plays. An attribute is missing when the player does not g
 | `stream_format` | `AAC 128 kb/s`, `Apple Lossless 16/44.1` | the format of the stream or the file |
 | `quality` | `cd`, `hd`, `128` | `cd` and `hd` for lossless music, otherwise a bit rate |
 | `preset_name` | `Rouge FM` | the preset that is playing, when one is |
+| `group_role` | `primary`, `secondary`, `none` | the part of the player in a group (always there) |
+| `group_name` | `Living room+Kitchen` | the name of the group, when the player is grouped |
 
 ```yaml
 # In a template: say when a station or a CD quality song plays

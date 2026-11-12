@@ -452,6 +452,19 @@ async def test_group_members(
     expected = [ENTITY_ID, "media_player.pulse"]
     for entity_id in expected:
         assert hass.states.get(entity_id).attributes[ATTR_GROUP_MEMBERS] == expected
+    assert hass.states.get(ENTITY_ID).attributes["group_role"] == "primary"
+    assert hass.states.get(ENTITY_ID).attributes["group_name"] == "Séjour+Pulse"
+    assert hass.states.get("media_player.pulse").attributes["group_role"] == "secondary"
+    assert hass.states.get("media_player.pulse").attributes["group_name"] == "Séjour+Pulse"
+
+
+async def test_group_role_without_a_group(
+    hass: HomeAssistant, init_integration: MockConfigEntry
+) -> None:
+    """A player that is alone says so, so that a dashboard can test for it."""
+    attributes = hass.states.get(ENTITY_ID).attributes
+    assert attributes["group_role"] == "none"
+    assert "group_name" not in attributes
 
 
 @pytest.mark.parametrize(
