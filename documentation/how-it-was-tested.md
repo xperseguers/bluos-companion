@@ -13,7 +13,7 @@ models or firmware may behave differently: please report what you find.
 
 ## Automated tests
 
-More than 560 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
+More than 565 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
 (no real device is needed), on **Home Assistant 2025.6** (the oldest supported version) and on the latest one,
 for every change. They cover the client, the setup and the options, the media player entity and
 the media browser, the data and commands of the sidebar player and the cards, the search (with typos), the
@@ -78,6 +78,10 @@ afterwards:
 - **What is playing**: the `now_playing` answer asked of both players while one played a song and the other was paused
   on a radio station (read-only): the song with its artist, album, CD quality and position, the station with its
   stream format, and the group left empty.
+- **Track on air**: a radio station playing on the Pulse mini 2i, with its on-air track shown in the sidebar player, the
+  mini player and the media player entity, next to the native app. The "search the library for the artist" button
+  found the albums and tracks of an artist of the library, and gave only the "library only" notice between two songs
+  (when the station sends no artist).
 - **Genres in the search**: searching the library of the Pulse mini 2i for *dance*, *jazz*, *eurodance* and a typo
   (*dnace*) returns the genre first, and a typed Assist request (*play dance on mini 2i*) starts the genre shuffled,
   so it no longer begins with the same song.
