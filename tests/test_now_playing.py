@@ -147,3 +147,25 @@ async def test_the_group_is_listed(
     await _refresh(hass, init_integration, player_api, status_xml(syncStat="99"))
     answer = await _ask(hass)
     assert (answer["group_name"], answer["grouped_with"]) == ("Séjour+Pulse", ["Pulse"])
+
+
+async def test_a_station_tells_what_is_on_air(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """The second line of a station (the track on air) is shown as the artist line."""
+    await _refresh(
+        hass,
+        init_integration,
+        player_api,
+        status_xml(
+            "stream",
+            artist="",
+            album="",
+            name="Melody Radio Vintage",
+            title1="Melody Radio Vintage",
+            title2="STEVIE WONDER - DO I DO",
+        ),
+    )
+    state = hass.states.get(ENTITY_ID)
+    assert state is not None
+    assert state.attributes["media_artist"] == "STEVIE WONDER - DO I DO"

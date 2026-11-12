@@ -489,6 +489,12 @@ def _playlist_play_path(path: str | None, page_start: int) -> str | None:
     return re.sub(r"(?<=[?&]offset=)\d+", str(page_start), path)
 
 
+def _second_line(root: ET.Element, title: str | None) -> str | None:
+    """Return the second line of a stream (what a station has on air) unless it only repeats the title."""
+    line = root.findtext("title2")
+    return line if line and line != title else None
+
+
 def _int(value: str | None, default: int = 0) -> int:
     try:
         return int(value) if value is not None else default
@@ -596,11 +602,13 @@ class BluOSClient:
         root = await self._get_xml("/Status", params, timeout)
         position = root.findtext("secs")
         duration = root.findtext("totlen")
+        title = root.findtext("title1") or root.findtext("name")
         return Status(
             etag=root.get("etag"),
             state=root.findtext("state", "stop"),
-            title=root.findtext("title1") or root.findtext("name"),
-            artist=root.findtext("artist"),
+            title=title,
+            # A station has no artist: its second line tells what is on air
+            artist=root.findtext("artist") or _second_line(root, title),
             album=root.findtext("album"),
             service=root.findtext("service"),
             image=root.findtext("image"),
