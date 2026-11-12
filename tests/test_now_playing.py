@@ -169,3 +169,22 @@ async def test_a_station_tells_what_is_on_air(
     state = hass.states.get(ENTITY_ID)
     assert state is not None
     assert state.attributes["media_artist"] == "STEVIE WONDER - DO I DO"
+
+
+@pytest.mark.parametrize("line", ["-", " ", "", " - "])
+async def test_a_station_between_two_songs_has_no_artist(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    line: str,
+) -> None:
+    """A lone dash or blank line sent between two songs is not an artist."""
+    await _refresh(
+        hass,
+        init_integration,
+        player_api,
+        status_xml("stream", artist="", album="", title1="Melody Radio Vintage", title2=line),
+    )
+    state = hass.states.get(ENTITY_ID)
+    assert state is not None
+    assert "media_artist" not in state.attributes
