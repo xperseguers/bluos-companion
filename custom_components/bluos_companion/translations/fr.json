@@ -151,6 +151,7 @@
     "panel_album_label": "Album : {name}",
     "panel_artist_label": "Artiste : {name}",
     "panel_album_not_found": "Album introuvable dans la bibliothèque",
+    "panel_search_library": "Chercher {name} dans la bibliothèque",
     "panel_library_only": "Seuls les morceaux de la bibliothèque ont une page d'album et d'artiste",
     "panel_favourite_add": "Ajouter aux favoris",
     "panel_favourite_remove": "Retirer des favoris",

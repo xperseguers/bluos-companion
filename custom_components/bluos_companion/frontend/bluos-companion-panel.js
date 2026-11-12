@@ -796,7 +796,7 @@ class BluOSCompanionPanel extends HTMLElement {
     const player = this._player;
     if (!player || !player.title) return;
     if (player.service !== "LocalMusic") {
-      this._notify(this._t("library_only"));
+      this._showOnAir(player);
       return;
     }
     const options = {
@@ -811,6 +811,25 @@ class BluOSCompanionPanel extends HTMLElement {
       if (!result || !this._dialog.open) return;
       this._itemMenu({ ...options, actions: [{ favourite: result.favourite, on: result.on }] });
     });
+  }
+
+  // A station tells what is on air as "ARTIST - TITLE": offer to look for the artist in the library
+  _showOnAir(player) {
+    const artist = (player.artist || "").split(" - ")[0].trim();
+    if (!artist) {
+      this._notify(this._t("library_only"));
+      return;
+    }
+    const search = () => {
+      if (this._nowDialog.open) this._nowDialog.close();
+      this._search(artist);
+    };
+    this._dialog.replaceChildren(
+      el("h2", {}, player.title),
+      el("p", {}, player.artist),
+      el("div", { class: "list" }, this._menuRow("mdi:magnify", this._t("search_library", { name: artist }), search)),
+    );
+    if (!this._dialog.open) this._dialog.showModal();
   }
 
   async _jump(kind, names) {
