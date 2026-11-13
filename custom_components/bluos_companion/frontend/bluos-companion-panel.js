@@ -422,7 +422,7 @@ const STYLE = `
     color: var(--primary-text-color);
     padding: 16px;
     min-width: 260px;
-    max-width: 90vw;
+    max-width: min(90vw, 700px);
   }
   dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
   dialog h2 { margin: 0 0 4px; font-size: 18px; font-weight: 500; }
