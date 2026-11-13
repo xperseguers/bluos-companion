@@ -816,7 +816,7 @@ class BluOSCompanionPanel extends HTMLElement {
   // A station tells what is on air as "ARTIST - TITLE": offer to look for the artist in the library
   _showOnAir(player) {
     const artist = (player.artist || "").split(" - ")[0].trim();
-    if (!/[\p{L}\p{N}]/u.test(artist)) {
+    if (!/\p{L}/u.test(artist)) {
       this._notify(this._t("library_only"));
       return;
     }

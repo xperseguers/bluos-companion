@@ -492,8 +492,8 @@ def _playlist_play_path(path: str | None, page_start: int) -> str | None:
 def _second_line(root: ET.Element, title: str | None) -> str | None:
     """Return the second line of a stream (what a station has on air) unless it only repeats the title."""
     line = (root.findtext("title2") or "").strip()
-    # Between two songs a station sends a lone dash or nothing
-    return line if any(c.isalnum() for c in line) and line != title else None
+    # Between two songs a station sends a lone dash or nothing, and some send only digits as a placeholder
+    return line if any(c.isalpha() for c in line) and line != title else None
 
 
 def _int(value: str | None, default: int = 0) -> int:
