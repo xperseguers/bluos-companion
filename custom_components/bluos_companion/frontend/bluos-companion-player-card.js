@@ -27,6 +27,15 @@ const PLAYER_CARD_STYLE = CONTROLS_STYLE + `
   .info div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .title { font-weight: 500; font-size: 16px; }
   .sub { color: var(--secondary-text-color); font-size: 13px; }
+  /* A line that does not fit slowly scrolls to its end and back, instead of being cut */
+  .sub.scroll { text-overflow: clip; }
+  .sub span { display: inline-block; }
+  .sub.scroll span { animation: bluos-scroll var(--scroll-time, 10s) ease-in-out infinite alternate; }
+  @keyframes bluos-scroll {
+    0%, 15% { transform: translateX(0); }
+    85%, 100% { transform: translateX(var(--scroll-shift, 0)); }
+  }
+  @media (prefers-reduced-motion: reduce) { .sub.scroll span { animation: none; } }
   .where { color: var(--secondary-text-color); font-size: 12px; display: flex; align-items: center; gap: 4px; --mdc-icon-size: 14px; }
   dialog {
     border: none;
@@ -160,13 +169,29 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     return text;
   }
 
+  // Scroll the second line when it is wider than the card, at a slow and steady pace
+  _fitSub() {
+    const line = this._sub;
+    line.classList.remove("scroll");
+    const overflow = line.firstChild.offsetWidth - line.clientWidth;
+    if (overflow > 0) {
+      line.style.setProperty("--scroll-shift", `-${overflow}px`);
+      line.style.setProperty("--scroll-time", `${Math.max(6, overflow / 12)}s`);
+      line.classList.add("scroll");
+    }
+  }
+
   connectedCallback() {
     if (this._hass && this._strings && !this._unsubscribe) this._subscribe();
     this._ticker = setInterval(() => this._tick(), 1000);
+    // The width changes with the layout of the page: measure again
+    this._resizer = new ResizeObserver(() => this._sub && this._fitSub());
+    this._resizer.observe(this);
   }
 
   disconnectedCallback() {
     clearInterval(this._ticker);
+    if (this._resizer) this._resizer.disconnect();
     if (this._unsubscribe) {
       this._unsubscribe();
       this._unsubscribe = null;
@@ -212,7 +237,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
   _build() {
     this._cover = pel("div", { class: "cover" }, picon("mdi:music"));
     this._title = pel("div", { class: "title" });
-    this._sub = pel("div", { class: "sub" });
+    this._sub = pel("div", { class: "sub" }, pel("span"));
     this._where = pel("div", { class: "where" }, picon("mdi:speaker"), pel("span"));
     this._progress = pel("progress", { max: 1, value: 0 });
     this._prev = pel("button", { class: "icon", onclick: () => this._control("previous") }, picon("mdi:skip-previous"));
@@ -260,8 +285,12 @@ class BluOSCompanionPlayerCard extends HTMLElement {
       return;
     }
     this._title.textContent = player.title || player.name;
-    this._sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
-    this._sub.hidden = !this._sub.textContent;
+    const text = [player.artist, player.album].filter(Boolean).join(" - ");
+    this._sub.hidden = !text;
+    if (this._sub.firstChild.textContent !== text) {
+      this._sub.firstChild.textContent = text;
+      this._fitSub();
+    }
     this._where.lastChild.textContent = player.name;
     if (player.thumb) {
       this._cover.replaceWith((this._cover = pel("img", { class: "cover", src: player.thumb, alt: "" })));

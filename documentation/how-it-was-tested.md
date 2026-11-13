@@ -85,6 +85,8 @@ afterwards:
 - **Group attributes**: the Séjour joined to the Pulse mini 2i while it played a station, then taken out again. Both
   media players showed their role and the name of the group, and `none` and no name once alone again. The station was
   not interrupted. The Séjour went from paused to stopped, which changes nothing it plays.
+- **Long track line**: the second line of the mini player card, too long for a narrow column (an iPad with two
+  sections), scrolls slowly to its end and back instead of being cut, and stays still when it fits.
 - **Genres in the search**: searching the library of the Pulse mini 2i for *dance*, *jazz*, *eurodance* and a typo
   (*dnace*) returns the genre first, and a typed Assist request (*play dance on mini 2i*) starts the genre shuffled,
   so it no longer begins with the same song.
