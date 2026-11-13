@@ -99,12 +99,13 @@ data:
 response_variable: playing
 ```
 
-`playing` then holds: `player` (its name), `state` (`playing`, `paused`, `buffering` or `idle`), `title`, `artist`,
-`album`, `service`, `service_name`, `stream_format`, `quality`, `preset_name`, `position` and `duration` (seconds),
+`playing` then holds: `player` (its name), `state` (`playing`, `paused`, `buffering` or `idle`), `title`, `channel` (the name of a
+station), `artist`, `album`, `service`, `service_name`, `stream_format`, `quality`, `preset_name`, `position` and `duration` (seconds),
 `queue_position` (from 1), `shuffle`, `repeat` (`off`, `all` or `one`), `volume` (0 to 100, `none` for a fixed volume),
 `muted`, `group_name` and `grouped_with` (the names of the other players of the group). Every key is always there,
 `none` when the player does not say (a radio has no album). `text` is a sentence ready to speak, in the language of
-Home Assistant: *Skyfall by Adele*, the name of the station, or *Nothing is playing*.
+Home Assistant: *Skyfall by Adele*, *a song on Station* (what a station has on air, as it sends it), the name of the
+station, or *Nothing is playing*.
 
 ```yaml
 # Announce what plays in the kitchen on a speaker of your choice
@@ -252,6 +253,8 @@ Besides the standard attributes of a media player (`media_title`, `media_artist`
 `media_position`, `volume_level`, `is_volume_muted`, `shuffle`, `repeat`, `app_name`...):
 
 - `source_list` and `source`: the inputs, and the active one
+- `media_channel`: the name of the station, for a radio. Its `media_title` is then what the station has on air, exactly as
+  the station sends it (the artist and the title are not split: stations write them in too many ways)
 - `group_members`: the players that play together, the primary first (nothing when alone)
 
 ```jinja

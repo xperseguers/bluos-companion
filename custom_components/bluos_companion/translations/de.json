@@ -285,6 +285,7 @@
     "panel_close": "Schließen",
     "panel_sleep_timer": "Sleep-Timer",
     "now_playing_by": "{title} von {artist}",
+    "now_playing_on": "{track} auf {station}",
     "now_playing_nothing": "Es läuft nichts"
   },
   "services": {

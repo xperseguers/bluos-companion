@@ -285,6 +285,7 @@
     "panel_close": "Fermer",
     "panel_sleep_timer": "Minuterie",
     "now_playing_by": "{title} de {artist}",
+    "now_playing_on": "{track} sur {station}",
     "now_playing_nothing": "Rien n'est en cours de lecture"
   },
   "services": {

@@ -208,8 +208,15 @@ class BluOSMediaPlayer(CoordinatorEntity[BluOSCoordinator], MediaPlayerEntity):
 
     @property
     def media_title(self) -> str | None:
-        """Return the title of the current media."""
-        return self.coordinator.data.title
+        """Return the title of the current media: for a station, what it has on air."""
+        status = self.coordinator.data
+        return status.on_air or status.title
+
+    @property
+    def media_channel(self) -> str | None:
+        """Return the name of the station, for a radio."""
+        status = self.coordinator.data
+        return status.title if status.is_radio else None
 
     @property
     def media_artist(self) -> str | None:

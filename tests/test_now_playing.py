@@ -40,6 +40,7 @@ async def test_a_song(
         "state": "playing",
         "text": "Rolling In the Deep by Adele",
         "title": "Rolling In the Deep",
+        "channel": None,
         "artist": "Adele",
         "album": "21",
         "service": "LocalMusic",
@@ -152,7 +153,7 @@ async def test_the_group_is_listed(
 async def test_a_station_tells_what_is_on_air(
     hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
 ) -> None:
-    """The second line of a station (the track on air) is shown as the artist line."""
+    """A station is the channel, what it has on air (as sent, never split) is the title."""
     await _refresh(
         hass,
         init_integration,
@@ -163,12 +164,32 @@ async def test_a_station_tells_what_is_on_air(
             album="",
             name="Melody Radio Vintage",
             title1="Melody Radio Vintage",
-            title2="STEVIE WONDER - DO I DO",
+            title2="AC - DC - BACK IN BLACK",
+            serviceType="RadioService",
         ),
     )
-    state = hass.states.get(ENTITY_ID)
-    assert state is not None
-    assert state.attributes["media_artist"] == "STEVIE WONDER - DO I DO"
+    attributes = hass.states.get(ENTITY_ID).attributes
+    assert attributes["media_title"] == "AC - DC - BACK IN BLACK"
+    assert attributes["media_channel"] == "Melody Radio Vintage"
+    assert "media_artist" not in attributes
+    answer = await _ask(hass)
+    assert answer["text"] == "AC - DC - BACK IN BLACK on Melody Radio Vintage"
+    assert (answer["title"], answer["channel"]) == ("AC - DC - BACK IN BLACK", "Melody Radio Vintage")
+
+
+async def test_a_second_line_is_only_on_air_for_a_radio(
+    hass: HomeAssistant, init_integration: MockConfigEntry, player_api: AiohttpClientMocker
+) -> None:
+    """The second line of an input is not a track."""
+    await _refresh(
+        hass,
+        init_integration,
+        player_api,
+        status_xml("stream", artist="", album="", title1="Bluetooth", title2="Phone"),
+    )
+    attributes = hass.states.get(ENTITY_ID).attributes
+    assert attributes["media_title"] == "Bluetooth"
+    assert "media_channel" not in attributes
 
 
 @pytest.mark.parametrize("line", ["-", " ", "", " - ", "9999999 - 9999999"])
@@ -183,8 +204,15 @@ async def test_a_station_between_two_songs_has_no_artist(
         hass,
         init_integration,
         player_api,
-        status_xml("stream", artist="", album="", title1="Melody Radio Vintage", title2=line),
+        status_xml(
+            "stream",
+            artist="",
+            album="",
+            title1="Melody Radio Vintage",
+            title2=line,
+            serviceType="RadioService",
+        ),
     )
     state = hass.states.get(ENTITY_ID)
     assert state is not None
-    assert "media_artist" not in state.attributes
+    assert state.attributes["media_title"] == "Melody Radio Vintage"

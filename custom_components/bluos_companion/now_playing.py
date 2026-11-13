@@ -18,7 +18,7 @@ PREFIX = f"component.{DOMAIN}.common."
 async def async_now_playing(hass: HomeAssistant, coordinator: BluOSCoordinator) -> dict[str, Any]:
     """Return what a player plays, as data and as a sentence in the language of Home Assistant.
 
-    Every key is always there, with None when the player does not say (a radio has no album).
+    Every key is always there, with None when the player does not say (a radio has no album, and its name is the channel).
     """
     status = coordinator.data
     state = STATES.get(status.state, MediaPlayerState.IDLE)
@@ -32,6 +32,8 @@ async def async_now_playing(hass: HomeAssistant, coordinator: BluOSCoordinator) 
     texts = await async_get_translations(hass, hass.config.language, "common", [DOMAIN])
     if state == MediaPlayerState.IDLE or not status.title:
         text = texts[f"{PREFIX}now_playing_nothing"]
+    elif status.on_air:
+        text = texts[f"{PREFIX}now_playing_on"].format(track=status.on_air, station=status.title)
     elif status.artist:
         text = texts[f"{PREFIX}now_playing_by"].format(title=status.title, artist=status.artist)
     else:
@@ -40,7 +42,8 @@ async def async_now_playing(hass: HomeAssistant, coordinator: BluOSCoordinator) 
         "player": coordinator.config_entry.title,
         "state": str(state),
         "text": text,
-        "title": status.title or None,
+        "title": status.on_air or status.title or None,
+        "channel": status.title if status.is_radio else None,
         "artist": status.artist or None,
         "album": status.album or None,
         "service": status.service or None,

@@ -123,7 +123,8 @@ def _snapshot(
         "available": coordinator.last_update_success,
         "state": status.state,
         "title": status.title,
-        "artist": status.artist,
+        # The panel shows a station with what it has on air under its name, as the app does
+        "artist": status.artist or status.on_air,
         "album": status.album,
         "service": status.service,
         "image": status.image,

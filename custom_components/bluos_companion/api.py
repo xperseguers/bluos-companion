@@ -69,6 +69,10 @@ class Status:
     service_name: str | None = None
     stream_format: str | None = None
     quality: str | None = None
+    # A radio station: its name is the title, and what it has on air is a line the player gives
+    # as it is (the artist and the title cannot be told apart safely)
+    is_radio: bool = False
+    on_air: str | None = None
 
 
 SONG_CONTEXT_PREFIX = "LocalMusic:CM/LocalMusic-Song?"
@@ -604,12 +608,12 @@ class BluOSClient:
         position = root.findtext("secs")
         duration = root.findtext("totlen")
         title = root.findtext("title1") or root.findtext("name")
+        is_radio = root.findtext("serviceType") == "RadioService"
         return Status(
             etag=root.get("etag"),
             state=root.findtext("state", "stop"),
             title=title,
-            # A station has no artist: its second line tells what is on air
-            artist=root.findtext("artist") or _second_line(root, title),
+            artist=root.findtext("artist") or None,
             album=root.findtext("album"),
             service=root.findtext("service"),
             image=root.findtext("image"),
@@ -632,6 +636,8 @@ class BluOSClient:
             service_name=root.findtext("serviceName"),
             stream_format=root.findtext("streamFormat"),
             quality=root.findtext("quality"),
+            is_radio=is_radio,
+            on_air=_second_line(root, title) if is_radio and not root.findtext("artist") else None,
             queue_position=(
                 _int(song) if (song := root.findtext("song")) is not None else None
             ),
