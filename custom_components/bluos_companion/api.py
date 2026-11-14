@@ -87,6 +87,15 @@ def song_file_from_context_key(key: str) -> str | None:
 
 
 @dataclass(frozen=True, slots=True)
+class AlbumSong:
+    """A song of an album of the library, as the player lists it."""
+
+    title: str
+    composer: str
+    disc: int | None
+
+
+@dataclass(frozen=True, slots=True)
 class TechnicalInfo:
     """Technical details of a file of the library."""
 
@@ -909,17 +918,22 @@ class BluOSClient:
             self._albums_cache = (self._albums_cache[0], result)
         return result
 
-    async def async_get_discs(self, album_query: str) -> dict[str, int]:
-        """Return the disc number of each file of an album (the files without one are left out)."""
+    async def async_get_album_songs(self, album_query: str) -> dict[str, AlbumSong]:
+        """Return the songs of an album by file."""
         params = {k: v[0] for k, v in parse_qs(album_query).items()}
         params["service"] = "LocalMusic"
         root = await self._get_xml("/Songs", params)
-        discs = {}
+        songs = {}
         for song in root.iter("song"):
+            if not (file := song.findtext("fn")):
+                continue
             number = (song.findtext("discno") or "").split("/")[0].strip()
-            if number.isdigit() and int(number) > 0 and (file := song.findtext("fn")):
-                discs[file] = int(number)
-        return discs
+            songs[file] = AlbumSong(
+                song.findtext("title", ""),
+                song.findtext("composer", ""),
+                int(number) if number.isdigit() and int(number) > 0 else None,
+            )
+        return songs
 
     async def async_get_tracks(self, album_key: str) -> list[Track]:
         """Return the tracks of an album."""

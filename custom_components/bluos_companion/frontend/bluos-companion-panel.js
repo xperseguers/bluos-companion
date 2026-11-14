@@ -214,6 +214,9 @@ const STYLE = `
   .lrow .text { flex: 1; min-width: 0; }
   .lrow .text div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .disc { padding: 14px 12px 4px; font-size: 13px; font-weight: 600; color: var(--secondary-text-color); }
+  .work { padding: 14px 12px 4px; }
+  .work .sub { font-size: 13px; color: var(--secondary-text-color); }
+  .work .wtitle { font-weight: 600; }
   .lrow .sub { font-size: 12px; color: var(--secondary-text-color); }
   .lrow .time { color: var(--secondary-text-color); font-size: 13px; font-variant-numeric: tabular-nums; }
   .lrow button { --mdc-icon-size: 24px; padding: 6px; }
@@ -2422,6 +2425,7 @@ class BluOSCompanionPanel extends HTMLElement {
     let rows = null;
     let grid = null;
     let disc = null;
+    let work = null;
     for (const item of items) {
       if (ROW_TYPES.includes(item.type) || (item.type === "album" && this._albumRows)) {
         grid = null;
@@ -2430,6 +2434,15 @@ class BluOSCompanionPanel extends HTMLElement {
         if (album && item.disc && item.disc !== disc) {
           disc = item.disc;
           rows.append(el("div", { class: "disc" }, this._t("disc", { number: disc })));
+        }
+        // A classical work: its composer and name once, then its movements
+        if (album && item.work !== work) {
+          work = item.work;
+          if (work) {
+            rows.append(
+              el("div", { class: "work" }, item.composer ? el("div", { class: "sub" }, item.composer) : null, el("div", { class: "wtitle" }, work)),
+            );
+          }
         }
         rows.append(this._row(item, album));
       } else {
@@ -2447,6 +2460,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (album) {
       const found = /^(\d+)\.\s+(.*)$/.exec(title);
       if (found) [, number, title] = found;
+      if (item.movement) title = item.movement;
     }
     // An album also says how many tracks it has
     const subtitle =

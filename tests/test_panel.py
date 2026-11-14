@@ -1468,3 +1468,41 @@ async def test_browse_album_gives_tracks_their_disc(
     items = (await client.receive_json())["result"]["items"]
 
     assert [item.get("disc") for item in items] == expected
+
+
+async def test_browse_album_gives_movements_their_work(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The movements of a classical work carry the work, its composer and a roman number."""
+    key = "LocalMusic:MG/LocalMusic-Album?album=Mozart&artist=Pires&service=LocalMusic"
+    respond(
+        player_api,
+        browse_url(key),
+        text="""<browse>
+  <item type="track" text="1. K. 595: 1. Allegro" playURL="/Play?url=/Add?file=a" contextMenuKey="LocalMusic:CM/LocalMusic-Song?filename=a.m4a"/>
+  <item type="track" text="2. K. 595: 2. Larghetto" playURL="/Play?url=/Add?file=b" contextMenuKey="LocalMusic:CM/LocalMusic-Song?filename=b.m4a"/>
+</browse>""",
+    )
+    respond(
+        player_api,
+        f"{BASE}/Songs",
+        text="""<songs>
+  <song><fn>a.m4a</fn><title>K. 595: 1. Allegro</title><composer>Mozart</composer><discno>1/1</discno></song>
+  <song><fn>b.m4a</fn><title>K. 595: 2. Larghetto</title><composer>Mozart</composer><discno>1/1</discno></song>
+</songs>""",
+    )
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/browse", "entry_id": init_integration.entry_id, "key": key}
+    )
+    items = (await client.receive_json())["result"]["items"]
+
+    assert [(i["work"], i["movement"], i["composer"]) for i in items] == [
+        ("K. 595", "I. Allegro", "Mozart"),
+        ("K. 595", "II. Larghetto", "Mozart"),
+    ]
+    assert all("disc" not in item for item in items)

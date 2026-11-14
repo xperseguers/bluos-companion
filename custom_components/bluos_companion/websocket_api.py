@@ -19,6 +19,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.translation import async_get_translations
 
 from .api import LIBRARY_ALBUMS_KEY, SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket, song_file_from_context_key, starts_playback
+from .classical import split_movements
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
 from .covers import async_playlist_covers, async_preset_images, image_path
@@ -295,23 +296,30 @@ async def ws_control(
     connection.send_result(msg["id"])
 
 
-async def _async_add_discs(
+async def _async_add_album_details(
     client: BluOSClient, key: str | None, items: list[dict[str, Any]]
 ) -> None:
-    """Give the tracks of an album of the library their disc number, when it has several discs."""
+    """Tell the tracks of an album of the library their disc and, for a classical work, the work."""
     prefix = "LocalMusic:MG/LocalMusic-Album?"
     if not key or not key.startswith(prefix):
         return
     try:
-        discs = await client.async_get_discs(key.removeprefix(prefix))
+        songs = await client.async_get_album_songs(key.removeprefix(prefix))
     except BluOSError:
         return
-    if len(set(discs.values())) < 2:
-        return
+    tracks = []
     for item in items:
         file = song_file_from_context_key(item.get("context_key") or "")
-        if file in discs:
-            item["disc"] = discs[file]
+        if file in songs:
+            tracks.append((item, songs[file]))
+    if len({song.disc for _, song in tracks if song.disc}) >= 2:
+        for item, song in tracks:
+            item["disc"] = song.disc
+    movements = split_movements([song.title for _, song in tracks])
+    for (item, song), movement in zip(tracks, movements, strict=True):
+        if movement:
+            item["work"], item["movement"] = movement
+            item["composer"] = song.composer
 
 
 @websocket_api.websocket_command(
@@ -334,7 +342,7 @@ async def ws_browse(
         hidden = coordinator.config_entry.options.get(CONF_HIDDEN_SERVICES, [])
         nodes = [node for node in nodes if node.browse_key not in hidden]
     items = _items(hass, msg["entry_id"], nodes, titles)
-    await _async_add_discs(coordinator.client, msg.get("key"), items)
+    await _async_add_album_details(coordinator.client, msg.get("key"), items)
     connection.send_result(
         msg["id"],
         {
