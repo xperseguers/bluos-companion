@@ -213,6 +213,10 @@ const STYLE = `
   }
   .lrow .text { flex: 1; min-width: 0; }
   .lrow .text div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lrow.playing { background: color-mix(in srgb, var(--primary-color) 14%, transparent); }
+  .lrow.playing .title { color: var(--primary-color); font-weight: 600; }
+  .lrow.playing .num { color: var(--primary-color); --mdc-icon-size: 18px; display: inline-flex; justify-content: flex-end; align-items: center; }
+  .work.playing .wtitle { color: var(--primary-color); }
   .disc { padding: 14px 12px 4px; font-size: 13px; font-weight: 600; color: var(--secondary-text-color); }
   .work { display: flex; align-items: center; gap: 4px; padding: 14px 4px 4px 12px; }
   .work .wtext { flex: 1; min-width: 0; }
@@ -744,6 +748,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._renderNowPlaying();
     this._renderNow();
     this._refreshQueue();
+    if (this._grid) this._markPlaying();
   }
 
   _call(message) {
@@ -2462,6 +2467,27 @@ class BluOSCompanionPanel extends HTMLElement {
         grid.append(this._tile(item));
       }
     }
+    this._markPlaying();
+  }
+
+  // The track of the album on display that plays now: its row is highlighted, and its work
+  _markPlaying() {
+    const player = this._player;
+    const file = player && player.file && player.state !== "stop" ? player.file : null;
+    const icon_ = player && player.state === "play" ? "mdi:volume-high" : "mdi:pause";
+    let work = null;
+    for (const row of this._grid.querySelectorAll(".lrow[data-file]")) {
+      const on = Boolean(file) && row.dataset.file === file;
+      const state = on ? icon_ : "";
+      if (row._playing === state) continue;
+      row._playing = state;
+      row.classList.toggle("playing", on);
+      const num = row.querySelector(".num");
+      if (num) num.replaceChildren(...(on ? [icon(icon_)] : [document.createTextNode(num.dataset.num)]));
+    }
+    const playing = this._grid.querySelector(".lrow.playing");
+    if (playing) work = playing.dataset.work || null;
+    for (const head of this._grid.querySelectorAll(".work")) head.classList.toggle("playing", Boolean(work) && head.dataset.work === work);
   }
 
   // A classical work stands for its movements: its length, and play it or queue it as a whole
@@ -2472,7 +2498,7 @@ class BluOSCompanionPanel extends HTMLElement {
     }));
     return el(
       "div",
-      { class: "work" },
+      { class: "work", "data-work": name },
       el(
         "div",
         { class: "wtext" },
@@ -2515,8 +2541,13 @@ class BluOSCompanionPanel extends HTMLElement {
     const withCover = !album && (item.type === "track" || item.type === "album");
     return el(
       "div",
-      { class: "lrow", onclick: () => (item.browse_key ? this._open(item) : this._play(item)) },
-      album ? el("div", { class: "num" }, number || "") : null,
+      {
+        class: "lrow",
+        "data-file": album ? item.file : null,
+        "data-work": album ? item.work : null,
+        onclick: () => (item.browse_key ? this._open(item) : this._play(item)),
+      },
+      album ? el("div", { class: "num", "data-num": number || "" }, number || "") : null,
       withCover
         ? item.image
           ? el("img", { class: "cover", src: item.image, loading: "lazy", alt: "" })

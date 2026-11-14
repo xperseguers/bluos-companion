@@ -73,6 +73,8 @@ class Status:
     # as it is (the artist and the title cannot be told apart safely)
     is_radio: bool = False
     on_air: str | None = None
+    # The file of the track playing, for a track of the library
+    file: str | None = None
 
 
 SONG_CONTEXT_PREFIX = "LocalMusic:CM/LocalMusic-Song?"
@@ -650,6 +652,7 @@ class BluOSClient:
             queue_position=(
                 _int(song) if (song := root.findtext("song")) is not None else None
             ),
+            file=root.findtext("fn") if root.findtext("service") == "LocalMusic" else None,
         )
 
     async def async_browse(self, key: str | None) -> list[Node]:

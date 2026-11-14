@@ -141,6 +141,7 @@ def _snapshot(
         "sleep_options": list(SLEEP_OPTIONS),
         "queue_id": status.queue_id,
         "queue_position": status.queue_position,
+        "file": status.file,
         "can_move": status.can_move,
         "presets_id": status.presets_id,
         "stream_url": status.stream_url,
@@ -185,6 +186,7 @@ def _items(
                 "browse_key": node.browse_key if can_expand else None,
                 "play_path": node.play_path if can_play else None,
                 "context_key": node.context_key,
+                "file": song_file_from_context_key(node.context_key or ""),
                 "tracks": node.tracks,
                 "duration": node.duration,
             }

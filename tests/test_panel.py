@@ -575,6 +575,33 @@ async def test_snapshot_has_the_queue_position(
     assert (player["stream_url"], player["preset_name"]) == ("TuneIn:s170914", "NRJ")
 
 
+@pytest.mark.parametrize(
+    ("service", "expected"), [("LocalMusic", "/music/a.m4a"), ("TuneIn", None)]
+)
+async def test_subscribe_tells_the_file_of_a_track_of_the_library(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    service: str,
+    expected: str | None,
+) -> None:
+    """The panel marks the track playing in an album by its file (only for the library)."""
+    respond(
+        player_api,
+        f"{BASE}/Status",
+        text=status_xml(service=service, fn="/music/a.m4a"),
+    )
+    await init_integration.runtime_data.async_refresh()
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id({"type": "bluos_companion/subscribe"})
+    await client.receive_json()
+    [player] = (await client.receive_json())["event"]["players"]
+
+    assert player["file"] == expected
+
+
 async def test_locate_finds_the_album_and_the_artist(
     hass: HomeAssistant,
     hass_ws_client: WebSocketGenerator,
@@ -1501,6 +1528,7 @@ async def test_browse_album_gives_movements_their_work(
     )
     items = (await client.receive_json())["result"]["items"]
 
+    assert [item["file"] for item in items] == ["a.m4a", "b.m4a"]
     assert [(i["work"], i["movement"], i["composer"]) for i in items] == [
         ("K. 595", "I. Allegro", "Mozart"),
         ("K. 595", "II. Larghetto", "Mozart"),
