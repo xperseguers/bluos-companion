@@ -97,9 +97,10 @@ afterwards:
   numbers, tried by hand in the sidebar player on albums written in several ways (numbered movements with a colon, a
   hyphen or a space, movements without numbers, albums of several composers, a single movement of a work). The whole
   library (about 1,800 albums) was also read from the player to look for albums grouped by mistake. Adding a work
-  "next" was tried on the amplifier while it played a queue of 20 tracks: the three movements came right after the
-  playing track in their order, nothing playing was interrupted, and the queue was put back as it was. Playing a work
-  at once and adding it last were covered by automated tests only.
+  "next", adding it last and playing it at once were each tried on the amplifier while it played a queue of 20
+  tracks: the three movements landed in their order (right after the playing track, at the end of the queue, and
+  playing from the first movement), nothing else changed, and the queue and the track playing were put back as they
+  were.
 - **Presets and inputs by name**: a preset by a word of its name, inputs by common names, and the error for a name
   that fits several inputs.
 
