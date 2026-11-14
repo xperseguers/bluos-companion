@@ -101,6 +101,8 @@ afterwards:
   tracks: the three movements landed in their order (right after the playing track, at the end of the queue, and
   playing from the first movement), nothing else changed, and the queue and the track playing were put back as they
   were.
+- **Track playing in the album page**: the row of the track playing is highlighted and follows the player when the
+  track changes, tried by hand in the sidebar player on two albums (one of them in classical works).
 - **Presets and inputs by name**: a preset by a word of its name, inputs by common names, and the error for a name
   that fits several inputs.
 
