@@ -1058,7 +1058,10 @@ class BluOSCompanionPanel extends HTMLElement {
     // search; the key of its menu has the album and the artist of the album, which find the album page
     const parts = item.type === "track" ? (item.subtitle || "").split(" \u2022 ") : [];
     const keyed = new URLSearchParams((item.context_key || "").split("?")[1] || "");
-    let artist = parts.length ? parts[0] : null;
+    // The songs of an artist say only the album under the title, other lists say the artist first
+    const keyedAlbum = (keyed.get("album") || "").toLowerCase();
+    const onlyAlbum = parts.length === 1 && keyedAlbum && parts[0].toLowerCase() === keyedAlbum;
+    let artist = parts.length && !onlyAlbum ? parts[0] : null;
     let album = parts.length > 1 ? parts[parts.length - 1] : null;
     let albumArtist = keyed.get("album") ? keyed.get("artist") : null;
     if (keyed.get("album")) album = keyed.get("album");
@@ -1079,7 +1082,7 @@ class BluOSCompanionPanel extends HTMLElement {
       names,
       info: {
         type: item.type,
-        artist,
+        artist: artist || albumArtist,
         album,
         duration: item.duration,
         tracks: item.tracks,
