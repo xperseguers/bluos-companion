@@ -315,7 +315,9 @@ async def _async_add_album_details(
     if len({song.disc for _, song in tracks if song.disc}) >= 2:
         for item, song in tracks:
             item["disc"] = song.disc
-    movements = split_movements([song.title for _, song in tracks])
+    movements = split_movements(
+        [song.title for _, song in tracks], [song.composer for _, song in tracks]
+    )
     for (item, song), movement in zip(tracks, movements, strict=True):
         if movement:
             item["work"], item["movement"] = movement
