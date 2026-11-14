@@ -295,6 +295,25 @@ async def ws_control(
     connection.send_result(msg["id"])
 
 
+async def _async_add_discs(
+    client: BluOSClient, key: str | None, items: list[dict[str, Any]]
+) -> None:
+    """Give the tracks of an album of the library their disc number, when it has several discs."""
+    prefix = "LocalMusic:MG/LocalMusic-Album?"
+    if not key or not key.startswith(prefix):
+        return
+    try:
+        discs = await client.async_get_discs(key.removeprefix(prefix))
+    except BluOSError:
+        return
+    if len(set(discs.values())) < 2:
+        return
+    for item in items:
+        file = song_file_from_context_key(item.get("context_key") or "")
+        if file in discs:
+            item["disc"] = discs[file]
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "bluos_companion/browse",
@@ -314,10 +333,12 @@ async def ws_browse(
     if "key" not in msg:
         hidden = coordinator.config_entry.options.get(CONF_HIDDEN_SERVICES, [])
         nodes = [node for node in nodes if node.browse_key not in hidden]
+    items = _items(hass, msg["entry_id"], nodes, titles)
+    await _async_add_discs(coordinator.client, msg.get("key"), items)
     connection.send_result(
         msg["id"],
         {
-            "items": _items(hass, msg["entry_id"], nodes, titles),
+            "items": items,
             "search_key": page.search_key,
             "next_key": page.next_key,
         },

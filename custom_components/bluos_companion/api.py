@@ -909,6 +909,18 @@ class BluOSClient:
             self._albums_cache = (self._albums_cache[0], result)
         return result
 
+    async def async_get_discs(self, album_query: str) -> dict[str, int]:
+        """Return the disc number of each file of an album (the files without one are left out)."""
+        params = {k: v[0] for k, v in parse_qs(album_query).items()}
+        params["service"] = "LocalMusic"
+        root = await self._get_xml("/Songs", params)
+        discs = {}
+        for song in root.iter("song"):
+            number = (song.findtext("discno") or "").split("/")[0].strip()
+            if number.isdigit() and int(number) > 0 and (file := song.findtext("fn")):
+                discs[file] = int(number)
+        return discs
+
     async def async_get_tracks(self, album_key: str) -> list[Track]:
         """Return the tracks of an album."""
         root = await self._get_xml("/Browse", {"key": album_key})

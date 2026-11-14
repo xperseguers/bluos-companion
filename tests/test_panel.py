@@ -1423,3 +1423,48 @@ async def test_add_to_playlist_creates_a_new_playlist(
         "/AddToPlaylist",
         {"sourceService": "LocalMusic", "name": "TEST", "songid": "/a.m4a", "create": "1"},
     )
+
+
+@pytest.mark.parametrize(
+    ("discs", "expected"),
+    [
+        (("1/3", "2/3"), [1, 2]),
+        (("1", "2"), [1, 2]),
+        (("1/1", "1/1"), [None, None]),
+        (("", ""), [None, None]),
+    ],
+)
+async def test_browse_album_gives_tracks_their_disc(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    discs: tuple[str, str],
+    expected: list[int | None],
+) -> None:
+    """The tracks of an album of several discs carry their disc number (total ignored)."""
+    key = "LocalMusic:MG/LocalMusic-Album?album=Back+To+Black&artist=Amy+Winehouse&service=LocalMusic"
+    respond(
+        player_api,
+        browse_url(key),
+        text="""<browse>
+  <item type="track" text="1. Rehab" playURL="/Play?url=/Add?file=a" contextMenuKey="LocalMusic:CM/LocalMusic-Song?filename=a.m4a"/>
+  <item type="track" text="1. Valerie" playURL="/Play?url=/Add?file=b" contextMenuKey="LocalMusic:CM/LocalMusic-Song?filename=b.m4a"/>
+</browse>""",
+    )
+    respond(
+        player_api,
+        f"{BASE}/Songs",
+        text=f"""<songs>
+  <song><fn>a.m4a</fn><discno>{discs[0]}</discno></song>
+  <song><fn>b.m4a</fn><discno>{discs[1]}</discno></song>
+</songs>""",
+    )
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {"type": "bluos_companion/browse", "entry_id": init_integration.entry_id, "key": key}
+    )
+    items = (await client.receive_json())["result"]["items"]
+
+    assert [item.get("disc") for item in items] == expected

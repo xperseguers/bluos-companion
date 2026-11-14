@@ -247,6 +247,7 @@
     "panel_input": "Input",
     "panel_play_all": "Play all",
     "panel_tracks_count": "{count} tracks",
+    "panel_disc": "Disc {number}",
     "panel_info": "Info",
     "panel_info_artist": "Artist",
     "panel_info_album": "Album",
