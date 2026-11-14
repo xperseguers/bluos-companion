@@ -62,8 +62,16 @@ Presets belong to a player: a player without presets has no presets row.
 - **Going back**: the arrow goes up one level. From the second level on, a **home** button next to it takes you
   straight back to the start page.
 - **An album** opens on a page with its cover, the artist, the number of tracks and **Play all** and **Shuffle**
-  (Add next, Add last and Favourite behind a ⋮), then its tracks as numbered rows. Every tile has a **⋮** menu and a
-  play button on albums.
+  (Add next, Add last and Favourite behind a ⋮), then its tracks as numbered rows. The number of tracks comes with the
+  length of the album, in whole minutes (*17 tracks, 46 minutes*). Every tile has a **⋮** menu and a play button on
+  albums.
+  - The **track playing** is highlighted in its album, with a speaker (or pause) sign in place of its number.
+  - An album of several discs has a **Disc 1**, **Disc 2**... heading between its tracks.
+  - **Classical works** are grouped: the composer and the name of the work, then its movements in roman numbers
+    (*I. Allegro*), with the length of the work, a play button and a ⋮ menu to **Play now**, **Add next** or **Add
+    last** the whole work, its movements in order. The player does not give the work and the movement as tags, so
+    they are recognised in the titles (*Work: 1. Movement*, *Work - 1. Movement*, *Work 1. Movement*, or *Work-
+    Movement* for several tracks of the same composer) and the tracks need a composer. Anything else stays a plain list.
 - **Favourites**: albums, artists and songs of your library also offer **Add to favourites** (or **Remove from
   favourites** when they are one), on their page and in their **⋮** menu. For the **track that is playing**, use
   the heart in the full-screen view. The favourites are the player's own, you
