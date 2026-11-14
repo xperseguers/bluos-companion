@@ -1189,6 +1189,24 @@ class BluOSClient:
             {"file": path, "playnow": "-1", "service": "LocalMusic", "where": "last"},
         )
 
+    async def async_add_files(self, files: list[str], mode: str) -> None:
+        """Queue files of the music share in their order: `now` plays the first one at once, `next`
+        puts them after the track playing, `last` at the end of the queue."""
+        queue_empty = mode != "last" and await self.async_get_queue_length() == 0
+        if mode == "last" or (mode == "next" and queue_empty):
+            for file in files:
+                await self.async_add_file(file)
+            return
+        base = {"service": "LocalMusic", "where": "next"}
+        if mode == "now":
+            await self.async_command(
+                "/Add", {**base, "file": files[0], "playnow": "1", "clear": "0"}
+            )
+            files = files[1:]
+        # Each file goes right after the track playing: the last one first keeps the order
+        for file in reversed(files):
+            await self.async_command("/Add", {**base, "file": file, "playnow": "-1"})
+
     async def async_get_queue_length(self) -> int:
         """Return the number of tracks of the queue."""
         root = await self._get_xml("/Playlist", {"length": "1"})

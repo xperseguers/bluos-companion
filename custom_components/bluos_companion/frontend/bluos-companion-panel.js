@@ -214,9 +214,13 @@ const STYLE = `
   .lrow .text { flex: 1; min-width: 0; }
   .lrow .text div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .disc { padding: 14px 12px 4px; font-size: 13px; font-weight: 600; color: var(--secondary-text-color); }
-  .work { padding: 14px 12px 4px; }
+  .work { display: flex; align-items: center; gap: 4px; padding: 14px 4px 4px 12px; }
+  .work .wtext { flex: 1; min-width: 0; }
+  .work .wtext div { overflow: hidden; text-overflow: ellipsis; }
   .work .sub { font-size: 13px; color: var(--secondary-text-color); }
   .work .wtitle { font-weight: 600; }
+  .work .time { color: var(--secondary-text-color); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .work button { --mdc-icon-size: 24px; padding: 6px; }
   .lrow .sub { font-size: 12px; color: var(--secondary-text-color); }
   .lrow .time { color: var(--secondary-text-color); font-size: 13px; font-variant-numeric: tabular-nums; }
   .lrow button { --mdc-icon-size: 24px; padding: 6px; }
@@ -781,7 +785,11 @@ class BluOSCompanionPanel extends HTMLElement {
       this._refreshLevelActions();
       return;
     }
-    await this._call({ type: "bluos_companion/play", entry_id: this._playerId, path: action.path });
+    const request = action.work
+      ? { type: "bluos_companion/play_work", entry_id: this._playerId, key: action.work.key, work: action.work.name, mode: action.work.mode }
+      : { type: "bluos_companion/play", entry_id: this._playerId, path: action.path };
+    const done = await this._call(request);
+    if (done === undefined) return;
     this._notify(`${this._actionTitle(action)}: ${label}`);
   }
 
@@ -2426,6 +2434,13 @@ class BluOSCompanionPanel extends HTMLElement {
     let grid = null;
     let disc = null;
     let work = null;
+    // What a work lasts and holds, from its movements
+    const totals = new Map();
+    for (const item of items) {
+      if (!item.work) continue;
+      const total = totals.get(item.work) || { duration: 0, tracks: 0 };
+      totals.set(item.work, { duration: total.duration + (item.duration || 0), tracks: total.tracks + 1 });
+    }
     for (const item of items) {
       if (ROW_TYPES.includes(item.type) || (item.type === "album" && this._albumRows)) {
         grid = null;
@@ -2438,11 +2453,7 @@ class BluOSCompanionPanel extends HTMLElement {
         // A classical work: its composer and name once, then its movements
         if (album && item.work !== work) {
           work = item.work;
-          if (work) {
-            rows.append(
-              el("div", { class: "work" }, item.composer ? el("div", { class: "sub" }, item.composer) : null, el("div", { class: "wtitle" }, work)),
-            );
-          }
+          if (work) rows.append(this._workHead(level, work, item.composer, totals.get(work)));
         }
         rows.append(this._row(item, album));
       } else {
@@ -2451,6 +2462,40 @@ class BluOSCompanionPanel extends HTMLElement {
         grid.append(this._tile(item));
       }
     }
+  }
+
+  // A classical work stands for its movements: its length, and play it or queue it as a whole
+  _workHead(level, name, composer, total) {
+    const actions = ["add-now", "add-next", "add-last"].map((type) => ({
+      type,
+      work: { key: level.key, name, mode: { "add-now": "now", "add-next": "next", "add-last": "last" }[type] },
+    }));
+    return el(
+      "div",
+      { class: "work" },
+      el(
+        "div",
+        { class: "wtext" },
+        composer ? el("div", { class: "sub" }, composer) : null,
+        el("div", { class: "wtitle", title: name }, name),
+      ),
+      total && total.duration ? el("div", { class: "time" }, formatTime(total.duration)) : null,
+      el("button", { title: this._t("action_play_now"), onclick: () => this._runAction(actions[0], name) }, icon("mdi:play")),
+      el(
+        "button",
+        {
+          title: this._t("more"),
+          onclick: () =>
+            this._itemMenu({
+              title: name,
+              subtitle: composer,
+              actions,
+              info: total ? { type: "work", duration: total.duration, tracks: total.tracks } : null,
+            }),
+        },
+        icon("mdi:dots-vertical"),
+      ),
+    );
   }
 
   // The number of a track of an album is part of its title ("3. Title")
@@ -2505,6 +2550,13 @@ class BluOSCompanionPanel extends HTMLElement {
   _albumHead(level) {
     const tracks = level.tracks || (this._groups || []).reduce((sum, group) => sum + group.items.filter((item) => item.type === "track").length, 0);
     this._albumActions = el("div", { class: "ah-actions" });
+    // The length of the album, once every track is on the page; whole minutes, even above an hour
+    const seconds = this._nextKey ? 0 : (this._groups || []).reduce((sum, group) => sum + group.items.filter((item) => item.type === "track").reduce((total, item) => total + (item.duration || 0), 0), 0);
+    const minutes = Math.round(seconds / 60);
+    const meta = [
+      tracks ? this._t("tracks_count", { count: tracks }) : null,
+      seconds ? this._t(minutes === 1 ? "minute_one" : "minutes_count", { count: minutes }) : null,
+    ].filter(Boolean);
     const head = el(
       "div",
       { class: "album-head" },
@@ -2521,7 +2573,7 @@ class BluOSCompanionPanel extends HTMLElement {
           { class: "ah-text" },
           el("h2", {}, level.title),
           level.subtitle ? el("div", { class: "ah-artist" }, level.subtitle) : null,
-          tracks ? el("div", { class: "ah-meta" }, this._t("tracks_count", { count: tracks })) : null,
+          meta.length ? el("div", { class: "ah-meta" }, meta.join(", ")) : null,
           this._albumActions,
         ),
       ),

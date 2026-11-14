@@ -87,6 +87,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_queue)
     websocket_api.async_register_command(hass, ws_queue_action)
     websocket_api.async_register_command(hass, ws_play)
+    websocket_api.async_register_command(hass, ws_play_work)
 
 
 def _coordinator(hass: HomeAssistant, entry_id: str) -> BluOSCoordinator:
@@ -1258,6 +1259,40 @@ async def ws_play(
     if starts_playback(msg["path"]):
         await coordinator.async_prepare_playback()
     await _async_call(coordinator.client.async_command(msg["path"]))
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/play_work",
+        vol.Required("entry_id"): str,
+        vol.Required("key"): str,
+        vol.Required("work"): vol.All(str, vol.Length(min=1, max=300)),
+        vol.Required("mode"): vol.In(["now", "next", "last"]),
+    }
+)
+@websocket_api.async_response
+async def ws_play_work(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Play a classical work of an album of the library, or queue it, its movements in order."""
+    prefix = "LocalMusic:MG/LocalMusic-Album?"
+    if not msg["key"].startswith(prefix):
+        raise HomeAssistantError("This item cannot be played")
+    coordinator = _coordinator(hass, msg["entry_id"])
+    songs = await _async_call(coordinator.client.async_get_album_songs(msg["key"].removeprefix(prefix)))
+    files = list(songs)
+    movements = split_movements(
+        [songs[file].title for file in files], [songs[file].composer for file in files]
+    )
+    work_files = [
+        file for file, movement in zip(files, movements, strict=True) if movement and movement[0] == msg["work"]
+    ]
+    if not work_files:
+        raise HomeAssistantError("This work is not in the album")
+    if msg["mode"] == "now":
+        await coordinator.async_prepare_playback()
+    await _async_call(coordinator.client.async_add_files(work_files, msg["mode"]))
     connection.send_result(msg["id"])
 
 

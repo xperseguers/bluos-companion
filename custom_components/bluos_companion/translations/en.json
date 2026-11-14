@@ -247,6 +247,8 @@
     "panel_input": "Input",
     "panel_play_all": "Play all",
     "panel_tracks_count": "{count} tracks",
+    "panel_minutes_count": "{count} minutes",
+    "panel_minute_one": "1 minute",
     "panel_disc": "Disc {number}",
     "panel_info": "Info",
     "panel_info_artist": "Artist",

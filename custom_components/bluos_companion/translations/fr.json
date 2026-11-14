@@ -247,6 +247,8 @@
     "panel_input": "Entrée",
     "panel_play_all": "Tout lire",
     "panel_tracks_count": "{count} titres",
+    "panel_minutes_count": "{count} minutes",
+    "panel_minute_one": "1 minute",
     "panel_disc": "Disque {number}",
     "panel_info": "Info",
     "panel_info_artist": "Artiste",

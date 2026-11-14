@@ -1506,3 +1506,114 @@ async def test_browse_album_gives_movements_their_work(
         ("K. 595", "II. Larghetto", "Mozart"),
     ]
     assert all("disc" not in item for item in items)
+
+
+WORK_ALBUM = "LocalMusic:MG/LocalMusic-Album?album=Mozart&artist=Pires&service=LocalMusic"
+WORK_SONGS = """<songs>
+  <song><fn>a.m4a</fn><title>K. 595: 1. Allegro</title><composer>Mozart</composer></song>
+  <song><fn>b.m4a</fn><title>K. 595: 2. Larghetto</title><composer>Mozart</composer></song>
+  <song><fn>c.m4a</fn><title>K. 595: 3. Allegro</title><composer>Mozart</composer></song>
+  <song><fn>d.m4a</fn><title>K. 466: 1. Allegro</title><composer>Mozart</composer></song>
+  <song><fn>e.m4a</fn><title>K. 466: 2. Romance</title><composer>Mozart</composer></song>
+</songs>"""
+
+
+def _added(player_api: AiohttpClientMocker) -> list[tuple[str, str, str, str | None]]:
+    """The (file, playnow, where, clear) of each /Add made."""
+    return [
+        (q["file"], q["playnow"], q["where"], q.get("clear"))
+        for path, q in calls(player_api)
+        if path == "/Add"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("mode", "queue_length", "expected"),
+    [
+        (
+            "now",
+            4,
+            [
+                ("a.m4a", "1", "next", "0"),
+                ("c.m4a", "-1", "next", None),
+                ("b.m4a", "-1", "next", None),
+            ],
+        ),
+        (
+            "next",
+            4,
+            [("c.m4a", "-1", "next", None), ("b.m4a", "-1", "next", None), ("a.m4a", "-1", "next", None)],
+        ),
+        # Nothing in the queue: the first track added starts playing, so they go in order
+        (
+            "next",
+            0,
+            [("a.m4a", "-1", "last", None), ("b.m4a", "-1", "last", None), ("c.m4a", "-1", "last", None)],
+        ),
+        (
+            "last",
+            4,
+            [("a.m4a", "-1", "last", None), ("b.m4a", "-1", "last", None), ("c.m4a", "-1", "last", None)],
+        ),
+    ],
+)
+async def test_play_work_queues_the_movements_in_order(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    mode: str,
+    queue_length: int,
+    expected: list[tuple[str, str, str, str | None]],
+) -> None:
+    """A work is played or queued as a whole, only its own movements, in their order."""
+    respond(player_api, f"{BASE}/Songs", text=WORK_SONGS)
+    respond(player_api, f"{BASE}/Playlist", text=f"<playlist><length>{queue_length}</length></playlist>")
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/play_work",
+            "entry_id": init_integration.entry_id,
+            "key": WORK_ALBUM,
+            "work": "K. 595",
+            "mode": mode,
+        }
+    )
+    response = await client.receive_json()
+
+    assert response["success"]
+    assert _added(player_api) == expected
+
+
+@pytest.mark.parametrize(
+    ("key", "work"),
+    [
+        (WORK_ALBUM, "K. 999"),
+        ("LocalMusic:MG/LocalMusic-Artist?artist=Pires", "K. 595"),
+    ],
+)
+async def test_play_work_refuses_what_is_not_a_work_of_an_album(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    init_integration: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+    key: str,
+    work: str,
+) -> None:
+    """An unknown work, or something that is not an album of the library, queues nothing."""
+    respond(player_api, f"{BASE}/Songs", text=WORK_SONGS)
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {
+            "type": "bluos_companion/play_work",
+            "entry_id": init_integration.entry_id,
+            "key": key,
+            "work": work,
+            "mode": "last",
+        }
+    )
+
+    assert not (await client.receive_json())["success"]
+    assert not _added(player_api)
