@@ -13,7 +13,7 @@ models or firmware may behave differently: please report what you find.
 
 ## Automated tests
 
-More than 565 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
+More than 595 automated tests run with `pytest-homeassistant-custom-component`, against a **simulated player**
 (no real device is needed), on **Home Assistant 2025.6** (the oldest supported version) and on the latest one,
 for every change. They cover the client, the setup and the options, the media player entity and
 the media browser, the data and commands of the sidebar player and the cards, the search (with typos), the
@@ -92,6 +92,11 @@ afterwards:
   so it no longer begins with the same song.
 - **Clear history**: the Clear buttons of the recent stations and of the recently played rows of the home page, with
   their confirmation, on the Pulse mini 2i.
+- **Discs and classical works in the album page**: albums of several discs (with and without the total of discs in the
+  tag) show a "Disc N" heading, and classical albums show each work with its composer and its movements in roman
+  numbers, tried by hand in the sidebar player on albums written in several ways (numbered movements with a colon, a
+  hyphen or a space, movements without numbers, albums of several composers, a single movement of a work). The whole
+  library (about 1,800 albums) was also read from the player to look for albums grouped by mistake.
 - **Presets and inputs by name**: a preset by a word of its name, inputs by common names, and the error for a name
   that fits several inputs.
 
@@ -120,6 +125,9 @@ please tell us in an [issue](https://github.com/xperseguers/bluos-companion/issu
   covered by automated tests only)
 - the accounts of the music services other than Amazon Music (Deezer, Tidal...)
 - selecting the HDMI ARC input or using the sleep timer of the NODE
+- the grouping of classical works for libraries tagged in other ways than the titles seen here (the player does not
+  give the work and movement tags, so the works are rebuilt from the titles and a composer tag is needed), and the discs
+  and works in the Home Assistant media browser (flat lists there)
 - the sidebar player in browsers and tablets other than the ones used during development, and live use on Home
   Assistant versions other than 2026.10 and 2026.11
 
