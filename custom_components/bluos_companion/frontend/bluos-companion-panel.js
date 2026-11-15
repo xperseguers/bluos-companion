@@ -1203,6 +1203,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   connectedCallback() {
+    this._watchSubscription();
     if (this._hass && !this._unsubscribe) this._subscribe();
     this._ticker = setInterval(() => this._tick(), 1000);
     this._fit = () => this._fitHeight();
@@ -1225,6 +1226,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this._unwatchSubscription();
     window.removeEventListener("resize", this._fit);
     window.removeEventListener("resize", this._onResize);
     for (const name of ACTIVITY_EVENTS) window.removeEventListener(name, this._onActivity, { capture: true });
@@ -1237,6 +1239,36 @@ class BluOSCompanionPanel extends HTMLElement {
 
   get _player() {
     return this._players.find((player) => player.entry_id === this._playerId);
+  }
+
+  // A tablet puts a page to sleep and its connection with it, and nothing tells the page it missed
+  // anything: subscribe again when the page is back (the answer is the current state) and now and then
+  async _resubscribe() {
+    if (!this._hass || !this.isConnected || document.hidden) return;
+    const previous = this._unsubscribe;
+    this._unsubscribe = null;
+    try {
+      await this._subscribe();
+    } catch (err) {
+      this._unsubscribe = previous;
+      return;
+    }
+    if (previous) Promise.resolve().then(previous).catch(() => {});
+  }
+
+  _watchSubscription() {
+    this._wake = () => this._resubscribe();
+    document.addEventListener("visibilitychange", this._wake);
+    window.addEventListener("pageshow", this._wake);
+    window.addEventListener("online", this._wake);
+    this._watchdog = setInterval(this._wake, 60000);
+  }
+
+  _unwatchSubscription() {
+    document.removeEventListener("visibilitychange", this._wake);
+    window.removeEventListener("pageshow", this._wake);
+    window.removeEventListener("online", this._wake);
+    clearInterval(this._watchdog);
   }
 
   async _subscribe() {

@@ -176,6 +176,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
   }
 
   connectedCallback() {
+    this._watchSubscription();
     if (this._hass && this._strings && !this._unsubscribe) this._subscribe();
     this._ticker = setInterval(() => this._tick(), 1000);
     // The width changes with the layout of the page: measure again
@@ -184,12 +185,43 @@ class BluOSCompanionPlayerCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this._unwatchSubscription();
     clearInterval(this._ticker);
     if (this._resizer) this._resizer.disconnect();
     if (this._unsubscribe) {
       this._unsubscribe();
       this._unsubscribe = null;
     }
+  }
+
+  // A tablet puts a page to sleep and its connection with it, and nothing tells the page it missed
+  // anything: subscribe again when the page is back (the answer is the current state) and now and then
+  async _resubscribe() {
+    if (!this._hass || !this.isConnected || document.hidden) return;
+    const previous = this._unsubscribe;
+    this._unsubscribe = null;
+    try {
+      await this._subscribe();
+    } catch (err) {
+      this._unsubscribe = previous;
+      return;
+    }
+    if (previous) Promise.resolve().then(previous).catch(() => {});
+  }
+
+  _watchSubscription() {
+    this._wake = () => this._resubscribe();
+    document.addEventListener("visibilitychange", this._wake);
+    window.addEventListener("pageshow", this._wake);
+    window.addEventListener("online", this._wake);
+    this._watchdog = setInterval(this._wake, 60000);
+  }
+
+  _unwatchSubscription() {
+    document.removeEventListener("visibilitychange", this._wake);
+    window.removeEventListener("pageshow", this._wake);
+    window.removeEventListener("online", this._wake);
+    clearInterval(this._watchdog);
   }
 
   async _subscribe() {
