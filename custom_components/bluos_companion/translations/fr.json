@@ -41,16 +41,22 @@
   "options": {
     "step": {
       "init": {
-        "title": "Services affichés dans le panneau",
+        "title": "Services et commandes du lecteur",
         "description": "Masquez les services que vous n'utilisez pas, par exemple un service de musique sans compte. Ils restent disponibles dans l'application BluOS. Le volume maximal s'applique à Home Assistant (panneau, cartes, services), pas à l'application BluOS ni à la télécommande.",
         "data": {
           "hidden_services": "Services masqués",
           "max_volume": "Volume maximal",
           "backup_playlists": "Sauvegarder les listes de lecture et les favoris de ce lecteur",
-          "before_playback_script": "Script à lancer avant le début d'une lecture"
+          "before_playback_script": "Script à lancer avant le début d'une lecture",
+          "volume_entity": "Volume d'une autre entité",
+          "source_entity": "Entrées d'une autre entité",
+          "power_entity": "Alimentation d'une autre entité"
         },
         "data_description": {
-          "before_playback_script": "Facultatif. Un script que Home Assistant lance, et attend, quand une lecture démarre alors que le lecteur ne joue pas encore, par exemple pour allumer l'amplificateur qu'il alimente et choisir son entrée. Il reçoit le lecteur sous le nom `player`."
+          "before_playback_script": "Facultatif. Un script que Home Assistant lance, et attend, quand une lecture démarre alors que le lecteur ne joue pas encore, par exemple pour allumer l'amplificateur qu'il alimente et choisir son entrée. Il reçoit le lecteur sous le nom `player`.",
+          "volume_entity": "Facultatif. Le panneau et les cartes règlent le volume de ce lecteur multimédia à la place de celui du lecteur, par exemple l'amplificateur qu'il alimente.",
+          "source_entity": "Facultatif. Le panneau et les cartes listent et choisissent les entrées de ce lecteur multimédia à la place de celles du lecteur.",
+          "power_entity": "Facultatif. Le bouton d'alimentation du panneau et des cartes commande ce lecteur multimédia, cet interrupteur ou ce booléen."
         }
       }
     }
@@ -209,6 +215,7 @@
     "panel_sleep_off": "Minuterie : arrêt",
     "panel_minutes": "{minutes} min",
     "panel_card_not_found": "Lecteur introuvable. Vérifiez l'entité de la carte.",
+    "panel_card_other_entities_moved": "Déplacez les entités de volume, d'entrée et d'alimentation de cette carte vers les options de l'intégration, elles sont ignorées ici.",
     "panel_no_presets": "Ce lecteur n'a pas de préréglages.",
     "panel_editor_player": "Lecteur",
     "panel_editor_columns": "Colonnes",
@@ -218,10 +225,6 @@
     "panel_editor_show_input": "Afficher le bouton d'entrée",
     "panel_editor_show_playback": "Afficher le bouton lecture / pause",
     "panel_editor_show_move": "Afficher le bouton pour transférer la lecture",
-    "panel_editor_other_entities": "Commander une autre entité (facultatif)",
-    "panel_editor_volume_entity": "Volume d'une autre entité",
-    "panel_editor_source_entity": "Entrées d'une autre entité",
-    "panel_editor_power_entity": "Alimentation d'une autre entité (lecteur multimédia, interrupteur)",
     "panel_editor_show_power": "Afficher le bouton d'alimentation de l'amplificateur",
     "panel_play_button_choose": "Choisissez ce que ce bouton lance.",
     "panel_play_button_play": "Lancer",

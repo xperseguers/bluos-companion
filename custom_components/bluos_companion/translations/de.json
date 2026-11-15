@@ -41,16 +41,22 @@
   "options": {
     "step": {
       "init": {
-        "title": "Im Panel angezeigte Dienste",
+        "title": "Dienste und Bedienung des Players",
         "description": "Blenden Sie die Dienste aus, die Sie nicht nutzen, zum Beispiel einen Musikdienst, für den Sie kein Konto haben. Sie bleiben in der BluOS-App verfügbar. Die maximale Lautstärke gilt für Home Assistant (Panel, Karten, Dienste), nicht für die BluOS-App oder die Fernbedienung.",
         "data": {
           "hidden_services": "Ausgeblendete Dienste",
           "max_volume": "Maximale Lautstärke",
           "backup_playlists": "Wiedergabelisten und Favoriten dieses Players sichern",
-          "before_playback_script": "Skript vor dem Start einer Wiedergabe"
+          "before_playback_script": "Skript vor dem Start einer Wiedergabe",
+          "volume_entity": "Lautstärke einer anderen Entität",
+          "source_entity": "Eingänge einer anderen Entität",
+          "power_entity": "Ein/Aus einer anderen Entität"
         },
         "data_description": {
-          "before_playback_script": "Optional. Ein Skript, das Home Assistant startet und abwartet, wenn eine Wiedergabe beginnt und der Player noch nicht spielt, zum Beispiel um den angeschlossenen Verstärker einzuschalten und seinen Eingang zu wählen. Es erhält den Player als `player`."
+          "before_playback_script": "Optional. Ein Skript, das Home Assistant startet und abwartet, wenn eine Wiedergabe beginnt und der Player noch nicht spielt, zum Beispiel um den angeschlossenen Verstärker einzuschalten und seinen Eingang zu wählen. Es erhält den Player als `player`.",
+          "volume_entity": "Optional. Panel und Karten regeln die Lautstärke dieses Mediaplayers statt der des Players, zum Beispiel des Verstärkers, den der Player speist.",
+          "source_entity": "Optional. Panel und Karten listen die Eingänge dieses Mediaplayers auf und wählen sie aus, statt die des Players.",
+          "power_entity": "Optional. Die Ein/Aus-Taste von Panel und Karten schaltet diesen Mediaplayer, Schalter oder diese Eingabe-Boolesche."
         }
       }
     }
@@ -209,6 +215,7 @@
     "panel_sleep_off": "Sleep-Timer: aus",
     "panel_minutes": "{minutes} Min.",
     "panel_card_not_found": "Player nicht gefunden. Prüfen Sie die Entität der Karte.",
+    "panel_card_other_entities_moved": "Verschieben Sie die Entitäten für Lautstärke, Eingang und Ein/Aus dieser Karte in die Optionen der Integration, sie werden hier ignoriert.",
     "panel_no_presets": "Dieser Player hat keine Presets.",
     "panel_editor_player": "Player",
     "panel_editor_columns": "Spalten",
@@ -218,10 +225,6 @@
     "panel_editor_show_input": "Eingangs-Taste anzeigen",
     "panel_editor_show_playback": "Wiedergabe-/Pause-Taste anzeigen",
     "panel_editor_show_move": "Taste zum Übertragen der Wiedergabe anzeigen",
-    "panel_editor_other_entities": "Eine andere Entität steuern (optional)",
-    "panel_editor_volume_entity": "Lautstärke einer anderen Entität",
-    "panel_editor_source_entity": "Eingänge einer anderen Entität",
-    "panel_editor_power_entity": "Ein/Aus einer anderen Entität (Mediaplayer, Schalter)",
     "panel_editor_show_power": "Ein/Aus-Taste des Verstärkers anzeigen",
     "panel_play_button_choose": "Wählen Sie, was diese Taste abspielt.",
     "panel_play_button_play": "Abspielen",

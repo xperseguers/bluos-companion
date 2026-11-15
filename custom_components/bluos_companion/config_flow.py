@@ -36,7 +36,10 @@ from .const import (
     CONF_BEFORE_PLAYBACK,
     CONF_HIDDEN_SERVICES,
     CONF_MAX_VOLUME,
+    CONF_POWER_ENTITY,
     CONF_PORT,
+    CONF_SOURCE_ENTITY,
+    CONF_VOLUME_ENTITY,
     DEFAULT_PORT,
     DOMAIN,
 )
@@ -258,6 +261,22 @@ class BluOSOptionsFlow(OptionsFlow):
                         CONF_BEFORE_PLAYBACK,
                         description={"suggested_value": options.get(CONF_BEFORE_PLAYBACK)},
                     ): EntitySelector(EntitySelectorConfig(domain="script")),
+                    vol.Optional(
+                        CONF_VOLUME_ENTITY,
+                        description={"suggested_value": options.get(CONF_VOLUME_ENTITY)},
+                    ): EntitySelector(EntitySelectorConfig(domain="media_player")),
+                    vol.Optional(
+                        CONF_SOURCE_ENTITY,
+                        description={"suggested_value": options.get(CONF_SOURCE_ENTITY)},
+                    ): EntitySelector(EntitySelectorConfig(domain="media_player")),
+                    vol.Optional(
+                        CONF_POWER_ENTITY,
+                        description={"suggested_value": options.get(CONF_POWER_ENTITY)},
+                    ): EntitySelector(
+                        EntitySelectorConfig(
+                            domain=["media_player", "switch", "input_boolean"]
+                        )
+                    ),
                 }
             ),
         )

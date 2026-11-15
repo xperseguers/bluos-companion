@@ -1,6 +1,6 @@
 /* Shared by the dashboard cards: a row with the volume ring, the input popup and the power button.
- * Each control drives the BluOS player of the card or, when the card is set up that way, another
- * entity of Home Assistant (an amplifier, for instance). Plain JavaScript, no build step. */
+ * Each control drives the player, or the entities chosen in the options of the integration (an
+ * amplifier, for instance). Plain JavaScript, no build step. */
 
 export const CONTROLS_STYLE = `
   .ctl-row { display: flex; align-items: center; gap: 4px; min-height: 48px; }
@@ -86,88 +86,38 @@ function el(tag, props = {}, ...children) {
 
 const icon = (name) => el("ha-icon", { icon: name });
 
-function notify(card, err) {
-  card.dispatchEvent(
-    new CustomEvent("hass-notification", {
-      detail: { message: err.message || String(err) },
-      bubbles: true,
-      composed: true,
-    }),
-  );
-}
-
-function entity(card, id) {
-  return id ? card._hass.states[id] : undefined;
-}
-
-function call(card, domain, service, data) {
-  return card._hass.callService(domain, service, data).catch((err) => notify(card, err));
-}
-
-// The volume of the BluOS player, or of another media player
+// The volume, the inputs and the power are those of the player the integration reports: it
+// already stands for the entities chosen in the options (an amplifier the player feeds)
 const volume = {
   read(card) {
-    const id = card._config.other_entities?.volume_entity;
-    if (id) {
-      const state = entity(card, id);
-      const level = state && state.attributes.volume_level;
-      if (typeof level !== "number") return null;
-      return { level: Math.round(level * 100), max: 100, muted: state.attributes.is_volume_muted === true, fixed: false };
-    }
     const player = card._player;
     if (!player) return null;
     return { level: Math.max(player.volume, 0), max: player.max_volume, muted: player.muted, fixed: player.volume < 0 };
   },
   set(card, value) {
-    const id = card._config.other_entities?.volume_entity;
-    if (id) return call(card, "media_player", "volume_set", { entity_id: id, volume_level: value / 100 });
     return card._control("volume", value);
   },
   mute(card, muted) {
-    const id = card._config.other_entities?.volume_entity;
-    if (id) return call(card, "media_player", "volume_mute", { entity_id: id, is_volume_muted: muted });
     return card._control("mute", muted);
   },
 };
 
-// The inputs of the BluOS player, or of another media player
 const sources = {
   read(card) {
-    const id = card._config.other_entities?.source_entity;
-    if (id) {
-      const state = entity(card, id);
-      const list = state && state.attributes.source_list;
-      return Array.isArray(list) && list.length ? { names: list, current: state.attributes.source } : null;
-    }
     const player = card._player;
     return player && player.sources.length ? { names: player.sources, current: player.source } : null;
   },
   select(card, name) {
-    const id = card._config.other_entities?.source_entity;
-    if (id) return call(card, "media_player", "select_source", { entity_id: id, source: name });
     return card._control("source", name);
   },
 };
 
-// The amplifier of the BluOS player, or another media player, switch...
 const power = {
   read(card) {
-    const id = card._config.other_entities?.power_entity;
-    if (id) {
-      const state = entity(card, id);
-      if (!state || ["unavailable", "unknown"].includes(state.state)) return null;
-      return { on: !["off", "standby"].includes(state.state) };
-    }
     const player = card._player;
     return player && typeof player.power === "boolean" ? { on: player.power } : null;
   },
   toggle(card, on) {
-    const id = card._config.other_entities?.power_entity;
-    if (id) {
-      const domain = id.split(".")[0];
-      const service = on ? "turn_off" : "turn_on";
-      return call(card, domain === "media_player" ? "media_player" : "homeassistant", service, { entity_id: id });
-    }
     return card._control("power", !on);
   },
 };

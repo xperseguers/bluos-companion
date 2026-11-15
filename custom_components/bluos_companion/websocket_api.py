@@ -12,7 +12,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import CONF_HOST
+from homeassistant.const import CONF_HOST, EVENT_STATE_CHANGED
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
@@ -26,6 +26,12 @@ from .covers import async_playlist_covers, async_preset_images, image_path
 from .http import THUMB_WIDTH, async_artwork_url
 from .playlist_backup import async_build_playlist
 from .playlist_edit import async_delete_playlist, async_rename_playlist
+from .override import (
+    ACTIONS as OVERRIDE_ACTIONS,
+    async_override_control,
+    override_entities,
+    override_snapshot,
+)
 from .media_source import (
     async_get_titles,
     is_play_path,
@@ -151,6 +157,7 @@ def _snapshot(
         "power": coordinator.amplifier.data.power if coordinator.amplifier else None,
         "sources": coordinator.source_names,
         "source": coordinator.active_source,
+        # What the options chose for the volume, the inputs and the power replaces the player's own
         "group": {
             "name": sync.group if sync else None,
             "master": sync and sync.master and entry_ids.get(sync.master.host),
@@ -160,6 +167,7 @@ def _snapshot(
                 if member.host in entry_ids
             ],
         },
+        **override_snapshot(hass, entry),
     }
 
 
@@ -250,6 +258,25 @@ def ws_subscribe(
         for remove in unsubscribes:
             remove()
 
+    # The entities chosen in the options stand for the volume, the inputs and the power: follow
+    # them, and the options themselves (they are read at every change)
+    @callback
+    def is_chosen(event_data: Any) -> bool:
+        return any(
+            event_data["entity_id"] in override_entities(entry).values()
+            for entry in hass.config_entries.async_loaded_entries(DOMAIN)
+        )
+
+    @callback
+    def on_chosen_changed(_: Any) -> None:
+        publish()
+
+    unsubscribes.append(
+        hass.bus.async_listen(
+            EVENT_STATE_CHANGED, on_chosen_changed, event_filter=is_chosen
+        )
+    )
+
     connection.subscriptions[msg["id"]] = unsubscribe
     connection.send_result(msg["id"])
     publish()
@@ -271,6 +298,16 @@ async def ws_control(
     """Send a transport, volume or mode command to a player."""
     coordinator = _coordinator(hass, msg["entry_id"])
     value = msg.get("value", 0)
+    # The volume of a whole group stays with the players
+    if (
+        msg["action"] in OVERRIDE_ACTIONS
+        and not msg.get("group")
+        and await async_override_control(
+            hass, coordinator.config_entry, msg["action"], value
+        )
+    ):
+        connection.send_result(msg["id"])
+        return
     if msg["action"] == "volume":
         msg = {**msg, "value": min(int(value), coordinator.max_volume)}
     elif (

@@ -313,12 +313,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: BluOSConfigEntry) -> boo
     # Not every player has settings, and none is needed to play: never block the setup
     await coordinator.settings.async_refresh()
 
+    # The options are read when they are needed; the panel and the cards show them at once
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_register_panel(hass)
     entry.async_create_background_task(
         hass, coordinator.async_long_poll(), "bluos_companion_long_poll"
     )
     return True
+
+
+async def _async_options_updated(hass: HomeAssistant, entry: BluOSConfigEntry) -> None:
+    """Tell the panel and the cards, they show the entities chosen in the options."""
+    entry.runtime_data.async_update_listeners()
 
 
 async def _async_register_device(

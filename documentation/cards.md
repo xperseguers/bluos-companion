@@ -59,23 +59,13 @@ show_control_panel: false  # true shows the "Open control panel" link
 ## Driving another entity
 
 When the amplifier is not a BluOS device (for instance a standalone streamer feeding an amplifier that has its own
-integration), the volume, the inputs and the power of a card can be those of **another entity** instead of the
-BluOS player. Each is optional, set separately, and comes with a picker in the editor ("Control another entity"):
+integration), the volume, the inputs and the power can be those of **another entity** instead of the BluOS player.
+This is set once per player in the options of the integration (see [Configuration](configuration.md)), and the
+sidebar player and every card follow it. The cards have nothing to set.
 
-```yaml
-type: custom:bluos-companion-presets-card
-entity: media_player.node            # the presets and the playback stay with the BluOS player
-other_entities:
-  volume_entity: media_player.amplifier   # volume ring: volume and mute of that media player
-  source_entity: media_player.amplifier   # input button: its source list
-  power_entity: switch.amplifier_power    # power button: a media player, a switch or an input boolean
-show_power: true
-```
-
-The cards use the standard Home Assistant services (`volume_set`, `volume_mute`, `select_source`, `turn_on` and
-`turn_off`), so any entity that supports them works. A control whose entity does not offer it (a media player without
-volume, without a source list, unavailable) is hidden. The **maximum volume** of the BluOS player does not apply to
-another entity, and the volume buttons there move by 2 %.
+**Cards written before version 4.0.0** carried `other_entities` (`volume_entity`, `source_entity`, `power_entity`) in
+their own settings. These are ignored now: the card shows a hint, and the three entities go to the options of the
+player instead. Once moved, delete `other_entities` from the card.
 
 ## Good to know
 

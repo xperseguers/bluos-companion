@@ -33,10 +33,10 @@ def test_scripts_have_no_syntax_error(script: Path, tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("script", ["bluos-companion-card-controls.js", "bluos-companion-presets-card.js", "bluos-companion-player-card.js"])
-def test_other_entities_are_read_under_their_group(script: str) -> None:
-    """The entities of another player are only read under `other_entities`, as the card editor saves them."""
+def test_cards_do_not_pick_other_entities(script: str) -> None:
+    """The volume, the inputs and the power of other entities come from the options of the integration."""
     source = (FRONTEND / script).read_text()
-    assert not re.search(r"_config\.(volume|source|power)_entity", source)
+    assert not re.search(r"_config\.(volume|source|power)_entity|other_entities\?\.", source)
 
 
 def test_the_play_button_card_uses_what_exists() -> None:

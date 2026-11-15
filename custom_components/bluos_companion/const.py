@@ -7,6 +7,10 @@ CONF_HIDDEN_SERVICES = "hidden_services"
 CONF_MAX_VOLUME = "max_volume"
 CONF_BACKUP_PLAYLISTS = "backup_playlists"
 CONF_BEFORE_PLAYBACK = "before_playback_script"
+# Entities that stand for the volume, the inputs and the power of a player (an amplifier the player feeds)
+CONF_VOLUME_ENTITY = "volume_entity"
+CONF_SOURCE_ENTITY = "source_entity"
+CONF_POWER_ENTITY = "power_entity"
 # How long the script run before a new playback may take (an amplifier takes a few seconds to wake up)
 BEFORE_PLAYBACK_TIMEOUT = 60
 DEFAULT_PORT = 11000

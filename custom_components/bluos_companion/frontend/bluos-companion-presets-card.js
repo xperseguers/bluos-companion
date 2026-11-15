@@ -96,15 +96,7 @@ class BluOSCompanionPresetsCard extends HTMLElement {
         this._render();
         if (this.isConnected) this._subscribe();
       });
-    } else if (this._controls && this._usesOtherEntities()) {
-      this._renderFooter();
     }
-  }
-
-  // The volume, the input or the power can be those of another entity: follow its states
-  _usesOtherEntities() {
-    const { volume_entity: volume, source_entity: source, power_entity: power } = this._config.other_entities || {};
-    return Boolean(volume || source || power);
   }
 
   // The texts come from the integration, in the language of the user (English if unknown).
@@ -194,6 +186,8 @@ class BluOSCompanionPresetsCard extends HTMLElement {
   _build() {
     this._grid = el("div", { class: "grid" });
     this._message = el("div", { class: "message" });
+    // Cards written before the options of the integration had the entities in their own settings
+    this._hint = el("div", { class: "message" });
     this._toggle = el(
       "button",
       {
@@ -206,7 +200,7 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     this._footer = el("footer", {}, this._controls.row, this._controls.dialog);
     this.shadowRoot.replaceChildren(
       el("style", {}, CARD_STYLE),
-      el("ha-card", {}, this._grid, this._message, this._footer),
+      el("ha-card", {}, this._hint, this._grid, this._message, this._footer),
     );
   }
 
@@ -224,6 +218,8 @@ class BluOSCompanionPresetsCard extends HTMLElement {
         ? this._t("no_presets")
         : "";
     this._message.hidden = !this._message.textContent;
+    this._hint.textContent = this._config.other_entities ? this._t("card_other_entities_moved") : "";
+    this._hint.hidden = !this._hint.textContent;
 
     this._renderFooter();
   }
@@ -308,16 +304,6 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
       { name: "show_playback", selector: { boolean: {} } },
       { name: "show_input", selector: { boolean: {} } },
       { name: "show_power", selector: { boolean: {} } },
-      {
-        type: "expandable",
-        name: "other_entities",
-        title: this._t("editor_other_entities"),
-        schema: [
-          { name: "volume_entity", selector: { entity: { domain: "media_player" } } },
-          { name: "source_entity", selector: { entity: { domain: "media_player" } } },
-          { name: "power_entity", selector: { entity: { domain: ["media_player", "switch", "input_boolean"] } } },
-        ],
-      },
     ];
   }
 
@@ -339,9 +325,6 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
       show_playback: "editor_show_playback",
       show_input: "editor_show_input",
       show_power: "editor_show_power",
-      volume_entity: "editor_volume_entity",
-      source_entity: "editor_source_entity",
-      power_entity: "editor_power_entity",
     };
     this._form.computeLabel = (schema) => this._t(labels[schema.name] || schema.name);
     this._form.schema = this._schema();

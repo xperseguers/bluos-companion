@@ -41,16 +41,22 @@
   "options": {
     "step": {
       "init": {
-        "title": "Services shown in the panel",
+        "title": "Services and controls of the player",
         "description": "Hide the services you do not use, for example a music service you have no account for. They stay available in the BluOS app. The maximum volume applies to Home Assistant (panel, cards, services), not to the BluOS app or the remote.",
         "data": {
           "hidden_services": "Hidden services",
           "max_volume": "Maximum volume",
           "backup_playlists": "Back up the playlists and favourites of this player",
-          "before_playback_script": "Script to run before something starts playing"
+          "before_playback_script": "Script to run before something starts playing",
+          "volume_entity": "Volume of another entity",
+          "source_entity": "Inputs of another entity",
+          "power_entity": "Power of another entity"
         },
         "data_description": {
-          "before_playback_script": "Optional. A script that Home Assistant runs, and waits for, when something starts playing and the player is not playing yet, for example to switch on the amplifier it feeds and choose its input. It receives the player as `player`."
+          "before_playback_script": "Optional. A script that Home Assistant runs, and waits for, when something starts playing and the player is not playing yet, for example to switch on the amplifier it feeds and choose its input. It receives the player as `player`.",
+          "volume_entity": "Optional. The panel and the cards control the volume of this media player instead of the player's, for example the amplifier the player feeds.",
+          "source_entity": "Optional. The panel and the cards list and select the inputs of this media player instead of the player's.",
+          "power_entity": "Optional. The power button of the panel and the cards switches this media player, switch or input boolean."
         }
       }
     }
@@ -209,6 +215,7 @@
     "panel_sleep_off": "Sleep: off",
     "panel_minutes": "{minutes} min",
     "panel_card_not_found": "Player not found. Check the entity of the card.",
+    "panel_card_other_entities_moved": "Move the volume, input and power entities of this card to the options of the integration, they are ignored here.",
     "panel_no_presets": "This player has no presets.",
     "panel_editor_player": "Player",
     "panel_editor_columns": "Columns",
@@ -218,10 +225,6 @@
     "panel_editor_show_input": "Show the input button",
     "panel_editor_show_playback": "Show the play / pause button",
     "panel_editor_show_move": "Show the move playback button",
-    "panel_editor_other_entities": "Control another entity (optional)",
-    "panel_editor_volume_entity": "Volume of another entity",
-    "panel_editor_source_entity": "Inputs of another entity",
-    "panel_editor_power_entity": "Power of another entity (media player, switch)",
     "panel_editor_show_power": "Show the power button of the amplifier",
     "panel_play_button_choose": "Choose what this button plays.",
     "panel_play_button_play": "Play",

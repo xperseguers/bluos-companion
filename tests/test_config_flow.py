@@ -275,3 +275,27 @@ async def test_migrate_unique_id(hass: HomeAssistant) -> None:
     assert registry.async_get_entity_id("select", DOMAIN, f"{new}_sleep_timer")
     assert dr.async_get(hass).async_get(device.id).identifiers == {(DOMAIN, new)}
 
+
+
+async def test_options_choose_the_entities_of_the_amplifier(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    player_api: AiohttpClientMocker,
+) -> None:
+    """The volume, the inputs and the power can be those of other entities, and are optional."""
+    player_api.get(f"{BASE}/Browse", text="<browse></browse>")
+    config_entry.add_to_hass(hass)
+    with patch("custom_components.bluos_companion.async_setup_entry", return_value=True):
+        result = await hass.config_entries.options.async_init(config_entry.entry_id)
+        schema = result["data_schema"].schema
+        assert schema["volume_entity"].config["domain"] == ["media_player"]
+        assert schema["power_entity"].config["domain"] == ["media_player", "switch", "input_boolean"]
+
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {"volume_entity": "media_player.amplifier", "power_entity": "switch.plug"},
+        )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert config_entry.options["volume_entity"] == "media_player.amplifier"
+    assert config_entry.options["power_entity"] == "switch.plug"
+    assert "source_entity" not in config_entry.options

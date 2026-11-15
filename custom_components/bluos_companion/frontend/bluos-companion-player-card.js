@@ -141,15 +141,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
         this._render();
         if (this.isConnected) this._subscribe();
       });
-    } else if (this._controls && this._usesOtherEntities()) {
-      this._renderControls();
     }
-  }
-
-  // The volume, the input or the power can be those of another entity: follow its states
-  _usesOtherEntities() {
-    const { volume_entity: volume, source_entity: source, power_entity: power } = this._config.other_entities || {};
-    return Boolean(volume || source || power);
   }
 
   // The texts come from the integration, in the language of the user (English if unknown).
@@ -262,6 +254,8 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     this._bottom = pel("div", { class: "bottom" }, this._controls.row);
     this._link = pel("a", { class: "link", target: "_blank", rel: "noopener" }, picon("mdi:open-in-new"), pel("span"));
     this._message = pel("div", { class: "sub", style: "padding: 16px; text-align: center" });
+    // Cards written before the options of the integration had the entities in their own settings
+    this._hint = pel("div", { class: "sub", style: "padding: 16px 16px 0; text-align: center" });
     this._content = pel(
       "div",
       {},
@@ -273,7 +267,7 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     );
     this.shadowRoot.replaceChildren(
       pel("style", {}, PLAYER_CARD_STYLE),
-      pel("ha-card", {}, this._message, this._content, this._dialog, this._controls.dialog),
+      pel("ha-card", {}, this._hint, this._message, this._content, this._dialog, this._controls.dialog),
     );
   }
 
@@ -281,6 +275,8 @@ class BluOSCompanionPlayerCard extends HTMLElement {
     if (!this._content) return;
     const player = this._player;
     this._content.hidden = !player;
+    this._hint.textContent = this._config.other_entities ? this._t("card_other_entities_moved") : "";
+    this._hint.hidden = !this._hint.textContent;
     this._message.hidden = Boolean(player);
     if (!player) {
       this._message.textContent = this._t("card_not_found");
@@ -415,16 +411,6 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
       { name: "show_power", selector: { boolean: {} } },
       { name: "show_move", selector: { boolean: {} } },
       { name: "show_control_panel", selector: { boolean: {} } },
-      {
-        type: "expandable",
-        name: "other_entities",
-        title: this._t("editor_other_entities"),
-        schema: [
-          { name: "volume_entity", selector: { entity: { domain: "media_player" } } },
-          { name: "source_entity", selector: { entity: { domain: "media_player" } } },
-          { name: "power_entity", selector: { entity: { domain: ["media_player", "switch", "input_boolean"] } } },
-        ],
-      },
     ];
   }
 
@@ -445,9 +431,6 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
       show_power: "editor_show_power",
       show_move: "editor_show_move",
       show_control_panel: "editor_show_control_panel",
-      volume_entity: "editor_volume_entity",
-      source_entity: "editor_source_entity",
-      power_entity: "editor_power_entity",
     };
     this._form.computeLabel = (schema) => this._t(labels[schema.name] || schema.name);
     this._form.schema = this._schema();

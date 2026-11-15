@@ -22,6 +22,7 @@ is still recommended.
 |---|---|
 | **Hidden services** | Hide, in the sidebar player, the sources you do not use (a music service you have no account for, Radio...). They stay available in the BluOS app. |
 | **Maximum volume** | The highest volume (10 to 100) that Home Assistant will set: the sidebar player, the cards, voice and AI commands and the `media_player` services are limited. The BluOS app and the remote are not. Useful for a wall tablet that everybody can reach. |
+| **Volume of another entity**, **Inputs of another entity**, **Power of another entity** | Optional. For a player that feeds an amplifier Home Assistant controls through another integration: the volume ring, the inputs and the power button of the sidebar player and the cards drive that media player (the power can be a switch or an input boolean too). Each one is set separately; what is empty stays with the player. The volume of a group stays with the players, and the maximum volume does not apply to another entity. |
 | **Back up the playlists of this player** | Whether this player is a source of the playlist backup, see [Playlist backup and restore](backup-and-restore.md). When two players have the same playlist, the one added first is saved. |
 | **Script to run before something starts playing** | An optional script that Home Assistant runs, and waits for, before something new plays and while the player is not playing yet. See below. |
 
