@@ -49,9 +49,8 @@ afterwards:
   amplifier's inputs and power, and the volume shows as fixed while the amplifier is off. The commands sent to the
   amplifier (volume, input, power) were covered by automated tests only, not tried on the real amplifier.
 - **Grid of playlists and favourite albums** (presets card with `content`): the lists read on the NAD (playlists with
-  their covers, favourite albums with theirs), then the playlists and the presets tried by hand on a dashboard
-  (tiles, tap to play). The favourite albums grid and the `max_items` option were not tried by hand yet; the paths of
-  the album tiles are covered by automated tests only.
+  their covers, favourite albums with theirs), then the presets, the playlists and the favourite albums grids and the
+  `max_items` option tried by hand on a dashboard (tiles, tap to play).
 - **Card picker previews**: the three cards shown live in the "Add card" dialog of the dashboard editor, on a
   Home Assistant that also has players of other integrations.
 - **Groups**: muting a whole group from each of its members, and the own volume and mute of a secondary player.
