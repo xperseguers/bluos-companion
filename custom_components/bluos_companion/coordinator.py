@@ -10,7 +10,7 @@ from functools import partial
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -39,7 +39,9 @@ from .const import (
     INDEXING_START_TIMEOUT,
     LONG_POLL_TIMEOUT,
     MIN_POLL_INTERVAL,
+    REFRESH_AFTER_COMMAND,
     RETRY_INTERVAL,
+    UNREACHABLE_INTERVAL,
     VOLUME_IDLE_INTERVAL,
 )
 
@@ -59,6 +61,8 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
         """Initialize the coordinator."""
         super().__init__(hass, _LOGGER, config_entry=entry, name=DOMAIN)
         self.client = client
+        client.on_command = self._schedule_refresh
+        self._refreshing = False
         self.sync: SyncStatus | None = None
         self.settings = BluOSSettingsCoordinator(hass, entry, client)
         self.sources: list[Source] = []
@@ -341,6 +345,32 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
             elif started:
                 return
 
+    @callback
+    def _schedule_refresh(self) -> None:
+        """Read the status again shortly after a command: the long poll alone may be late."""
+        if self._refreshing or not self.data:
+            return
+        self._refreshing = True
+        self.config_entry.async_create_background_task(
+            self.hass, self._async_refresh_after_command(), f"{DOMAIN} refresh"
+        )
+
+    async def _async_refresh_after_command(self) -> None:
+        try:
+            waited = 0
+            for delay in REFRESH_AFTER_COMMAND:
+                await asyncio.sleep(delay - waited)
+                waited = delay
+                try:
+                    status = await self.client.async_get_status()
+                    await self._async_refresh_sync(status)
+                except BluOSError as err:
+                    _LOGGER.debug("Refresh after a command failed: %s", err)
+                    continue
+                self.async_set_updated_data(status)
+        finally:
+            self._refreshing = False
+
     async def _async_update_data(self) -> Status:
         try:
             status = await self.client.async_get_status()
@@ -401,9 +431,17 @@ class BluOSCoordinator(DataUpdateCoordinator[Status]):
                 await self._async_refresh_sync(status)
             except BluOSError as err:
                 _LOGGER.debug("Status poll failed: %s", err)
-                self.last_update_success = False
-                self.async_update_listeners()
-                await asyncio.sleep(RETRY_INTERVAL)
+                await self._async_mark_unreachable()
+                continue
+            except Exception:  # noqa: BLE001
+                # Whatever happens, keep following the player: a dead loop leaves it stale for good
+                _LOGGER.exception("Unexpected error while polling %s", self.config_entry.title)
+                await self._async_mark_unreachable()
                 continue
             self.async_set_updated_data(status)
             await asyncio.sleep(MIN_POLL_INTERVAL)
+
+    async def _async_mark_unreachable(self) -> None:
+        self.last_update_success = False
+        self.async_update_listeners()
+        await asyncio.sleep(UNREACHABLE_INTERVAL)

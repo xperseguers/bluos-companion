@@ -18,6 +18,10 @@ DEFAULT_PORT = 11000
 LONG_POLL_TIMEOUT = 100
 MIN_POLL_INTERVAL = 1
 RETRY_INTERVAL = 15
+# A player that cannot be reached is looked at more often, to show it back as soon as it answers
+UNREACHABLE_INTERVAL = 4
+# After a command, the status is read again after these delays (seconds), whatever the long poll does
+REFRESH_AFTER_COMMAND = (1, 4)
 # How often a player that is not a secondary looks whether it became one
 VOLUME_IDLE_INTERVAL = 5
 # While the player reads its library: how often the scan is looked at, and how long to wait for it to start

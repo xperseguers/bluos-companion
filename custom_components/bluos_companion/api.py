@@ -5,13 +5,17 @@ from __future__ import annotations
 import asyncio
 import html
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from xml.etree import ElementTree as ET
 
-from aiohttp import ClientError, ClientSession, ClientTimeout
+from aiohttp import ClientConnectorError, ClientError, ClientSession, ClientTimeout
 
 REQUEST_TIMEOUT = 20
+# A player may refuse a connection for a moment (it wakes up or restarts its service): try again briefly
+CONNECT_RETRIES = 2
+CONNECT_RETRY_DELAY = 1
 MAX_BROWSE_PAGES = 8
 MAX_EMPTY_BROWSE_PAGES = 60
 MAX_PLAYLIST_PAGES = 2000
@@ -528,6 +532,8 @@ class BluOSClient:
         self.base_url = f"http://{host}:{port}"
         # The albums of the library, kept while the library does not change
         self._albums_cache: tuple[str, list[Album]] | None = None
+        # Called after a control command was accepted (the coordinator then refreshes the status)
+        self.on_command: Callable[[], None] | None = None
 
     async def _get(
         self,
@@ -536,17 +542,23 @@ class BluOSClient:
         timeout: float = REQUEST_TIMEOUT,
         headers: dict[str, str] | None = None,
     ) -> bytes:
-        try:
-            async with self._session.get(
-                f"{self.base_url}{path}",
-                params=params,
-                headers=headers,
-                timeout=ClientTimeout(total=timeout),
-            ) as response:
-                response.raise_for_status()
-                return await response.read()
-        except (ClientError, TimeoutError) as err:
-            raise BluOSError(str(err)) from err
+        for attempt in range(CONNECT_RETRIES + 1):
+            try:
+                async with self._session.get(
+                    f"{self.base_url}{path}",
+                    params=params,
+                    headers=headers,
+                    timeout=ClientTimeout(total=timeout),
+                ) as response:
+                    response.raise_for_status()
+                    return await response.read()
+            except ClientConnectorError as err:
+                if attempt == CONNECT_RETRIES:
+                    raise BluOSError(str(err)) from err
+                await asyncio.sleep(CONNECT_RETRY_DELAY)
+            except (ClientError, TimeoutError) as err:
+                raise BluOSError(str(err)) from err
+        raise AssertionError("unreachable")  # pragma: no cover
 
     async def _get_xml(
         self,
@@ -1091,6 +1103,8 @@ class BluOSClient:
     ) -> None:
         """Send a control command, e.g. /Play or a play URL of a browse item."""
         await self._get(path, params)
+        if self.on_command:
+            self.on_command()
 
     async def async_play(self) -> None:
         """Start or resume playback."""

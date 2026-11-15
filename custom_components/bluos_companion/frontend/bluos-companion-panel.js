@@ -2827,19 +2827,22 @@ class BluOSCompanionPanel extends HTMLElement {
     const player = this._player;
     const now = this._now;
     if (!this._nowOpen || !player) return;
-    const playing = ACTIVE_STATES.includes(player.state);
+    // Unreachable: the name and "unavailable", not the track it last played
+    const reachable = player.available;
+    const playing = reachable && ACTIVE_STATES.includes(player.state);
+    const image = reachable ? player.image : null;
     now.player.textContent = this._groupName(player) || player.name;
-    if (imageKey(player.image) !== now.imageKey) {
-      now.imageKey = imageKey(player.image);
-      now.bg.style.backgroundImage = player.image ? `url("${player.image}")` : "";
+    if (imageKey(image) !== now.imageKey) {
+      now.imageKey = imageKey(image);
+      now.bg.style.backgroundImage = image ? `url("${image}")` : "";
       now.art.replaceWith(
-        (now.art = player.image ? el("img", { class: "art", src: player.image, alt: "" }) : el("div", { class: "art" })),
+        (now.art = image ? el("img", { class: "art", src: player.image, alt: "" }) : el("div", { class: "art" })),
       );
     }
-    this._nowDialog.classList.toggle("has-art", Boolean(player.image));
+    this._nowDialog.classList.toggle("has-art", Boolean(image));
     this._refreshNowFavourite(player);
-    now.title.textContent = player.title || player.name;
-    now.sub.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
+    now.title.textContent = (reachable && player.title) || player.name;
+    now.sub.textContent = reachable ? [player.artist, player.album].filter(Boolean).join(" - ") : this._t("unavailable");
     now.toggle.firstChild.setAttribute("icon", playing ? "mdi:pause" : "mdi:play");
     now.mute.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
     now.volRing.firstChild.setAttribute("icon", player.muted ? "mdi:volume-off" : "mdi:volume-high");
@@ -2848,7 +2851,7 @@ class BluOSCompanionPanel extends HTMLElement {
     now.volume.disabled = player.volume < 0;
     now.volume.max = player.max_volume;
     now.volume.value = Math.max(player.volume, 0);
-    now.progress.hidden = !(player.duration > 0);
+    now.progress.hidden = !(reachable && player.duration > 0);
     now.seek.disabled = !player.can_seek;
     now.seek.max = player.duration || 0;
     this._nowSeeking = false;
@@ -4137,13 +4140,18 @@ class BluOSCompanionPanel extends HTMLElement {
     const player = this._player;
     this._footer.hidden = !player;
     if (!player) return;
-    const playing = ACTIVE_STATES.includes(player.state);
-    this._track.textContent = player.title || player.name;
-    this._artist.textContent = [player.artist, player.album].filter(Boolean).join(" - ");
-    if (imageKey(player.thumb) !== this._coverKey) {
-      this._coverKey = imageKey(player.thumb);
+    // A player that cannot be reached shows its name and that it is unavailable, not the track it last played
+    const reachable = player.available;
+    const playing = reachable && ACTIVE_STATES.includes(player.state);
+    const thumb = reachable ? player.thumb : null;
+    this._track.textContent = (reachable && player.title) || player.name;
+    this._artist.textContent = reachable
+      ? [player.artist, player.album].filter(Boolean).join(" - ")
+      : this._t("unavailable");
+    if (imageKey(thumb) !== this._coverKey) {
+      this._coverKey = imageKey(thumb);
       this._cover.replaceWith(
-        (this._cover = player.thumb ? el("img", { class: "cover", src: player.thumb, alt: "" }) : el("div", { class: "cover" })),
+        (this._cover = thumb ? el("img", { class: "cover", src: thumb, alt: "" }) : el("div", { class: "cover" })),
       );
     }
     this._buttons.toggle.firstChild.setAttribute("icon", playing ? "mdi:pause" : "mdi:play");
@@ -4160,8 +4168,9 @@ class BluOSCompanionPanel extends HTMLElement {
     this._volume.max = player.max_volume;
     this._volume.value = Math.max(player.volume, 0);
     this._buttons.next.disabled = this._buttons.previous.disabled = !player.available;
-    this._progress.hidden = !(player.duration > 0);
-    if (!(player.duration > 0)) this._miniFill.style.width = "0";
+    const timed = reachable && player.duration > 0;
+    this._progress.hidden = !timed;
+    if (!timed) this._miniFill.style.width = "0";
     this._seek.disabled = !player.can_seek;
     this._seek.max = player.duration || 0;
     this._seeking = false;

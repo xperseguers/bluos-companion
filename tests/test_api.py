@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import aiohttp
 import pytest
 from homeassistant.core import HomeAssistant
@@ -380,3 +382,19 @@ async def test_a_genre_gets_the_menu_the_player_does_not_list(
     )
     [node] = await client.async_browse("genres")
     assert node.context_key == "LocalMusic:CM/LocalMusic-Genre?genre=A+Capella"
+
+
+async def test_refused_connection_is_retried_then_reported(
+    client: BluOSClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """A refused connection is tried again twice, then reported."""
+    refused = aiohttp.ClientConnectorError(
+        aiohttp.client_reqrep.ConnectionKey(HOST, 11000, False, False, None, None, None),
+        ConnectionRefusedError(),
+    )
+    aioclient_mock.get(f"{BASE}/Pause", exc=refused)
+    with patch("custom_components.bluos_companion.api.asyncio.sleep", AsyncMock()) as sleep:
+        with pytest.raises(BluOSError):
+            await client.async_pause()
+    assert sleep.await_count == 2
+    assert len(calls(aioclient_mock)) == 3
