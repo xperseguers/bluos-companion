@@ -468,6 +468,8 @@ const STYLE = `
   .qrow .sub { font-size: 12px; color: var(--secondary-text-color); }
   .qrow button { --mdc-icon-size: 24px; padding: 6px; }
   dialog label { display: block; margin-bottom: 12px; }
+  dialog label.check { display: flex; align-items: center; gap: 8px; }
+  dialog label.check span { margin: 0; font-size: 14px; color: var(--primary-text-color); }
   dialog label span { display: block; margin-bottom: 4px; font-size: 13px; color: var(--secondary-text-color); }
   dialog label input[type="text"], dialog label ha-icon-picker { margin-bottom: 0; }
   dialog select {
@@ -1946,7 +1948,7 @@ class BluOSCompanionPanel extends HTMLElement {
     return (this._hass.localize && this._hass.localize(known)) || panel.title || panel.url_path;
   }
 
-  // What the back button is called: the name typed in the settings, else the name of the dashboard
+  // What the back button is called: the name typed in the settings, else the title of the dashboard
   _backItem() {
     const back = this._tablet().back;
     if (!back || !back.path) return null;
@@ -1954,11 +1956,13 @@ class BluOSCompanionPanel extends HTMLElement {
     const name = back.label || (panel ? this._panelTitle(panel) : "");
     return {
       icon: back.icon || (panel && panel.icon) || "mdi:view-dashboard",
-      label: name ? this._t("back_to", { name }) : this._t("back"),
+      label: name || this._t("back"),
     };
   }
 
   _canAssist() {
+    // Not everybody uses Assist: this device can leave the button out
+    if (this._tablet().assist === false) return false;
     const external = this._hass.auth && this._hass.auth.external;
     return Boolean((external && external.config && external.config.hasAssist) || (this._hass.config.components || []).includes("conversation"));
   }
@@ -2051,6 +2055,15 @@ class BluOSCompanionPanel extends HTMLElement {
     const iconRow = el("label", {}, el("span", {}, this._t("back_icon")), picker);
     const labelInput = el("input", { type: "text", placeholder: known ? this._panelTitle(known) : "", value: back.label || "" });
     const labelRow = el("label", {}, el("span", {}, this._t("back_label")), labelInput);
+    const assistBox = el("input", { type: "checkbox" });
+    assistBox.checked = this._tablet().assist !== false;
+    assistBox.addEventListener("change", () => {
+      const settings = this._tablet();
+      if (assistBox.checked) delete settings.assist;
+      else settings.assist = false;
+      this._saveTablet(settings);
+      this._renderBack();
+    });
     const pathRow = el("label", {}, el("span", {}, this._t("back_path")), path);
     const change = () => {
       const custom = select.value === "__custom__";
@@ -2084,6 +2097,7 @@ class BluOSCompanionPanel extends HTMLElement {
       pathRow,
       iconRow,
       labelRow,
+      el("label", { class: "check" }, assistBox, el("span", {}, this._t("settings_assist"))),
       el(
         "div",
         { class: "list" },
