@@ -1,16 +1,26 @@
 # Dashboard cards
 
 The integration adds three cards to the card picker of your dashboards, with no resource to register:
-**BluOS Companion presets**, **BluOS Companion player** and **BluOS Companion play button**. They all follow one
+**BluOS Companion grid** (the presets card), **BluOS Companion player** and **BluOS Companion play button**. They all follow one
 BluOS Companion player (the `media_player` entity of that player) and have a visual editor.
 
 ![The two cards](images/cards-dashboard.jpg)
 
-## Presets card
+## Presets card (grid)
 
-The presets of a player as a grid of artworks, like a wall of radio stations. Tap one to start it.
+The presets of a player as a grid of artworks, like a wall of radio stations. Tap one to start it. The same grid
+can show the **saved playlists** or the **favourite albums** instead, with the `content` option: add the card once
+for each grid you want. (The card keeps the type `bluos-companion-presets-card` so that existing dashboards work; the
+picker calls it "BluOS Companion grid".)
 
-- The preset that is **playing** has a coloured outline.
+- `content: presets` (the default): the presets of the player. The one that is **playing** has a coloured outline.
+- `content: playlists`: the saved playlists in alphabetical order, with the cover of their first track. A tap plays the
+  playlist (the queue is kept and the playlist plays now, as the *Play now* of the panel).
+- `content: favourites`: the albums among the favourites of the library, with their cover. A tap plays the album.
+  Favourite songs and artists are not shown.
+- `max_items` limits the number of tiles. Without it a grid shows all the presets and at most 24 playlists or albums
+  (the library may hold hundreds). Playlists and albums are read when the card is loaded or its options change: reload
+  the dashboard to see a new favourite.
 - A preset that loads a saved playlist and has no image of its own shows the **cover of that playlist**.
 - Under the grid, **one row of buttons**: the **volume** as a ring on the left (tap it and the row turns into a
   slider with mute, **−** and **+**, then comes back after a few seconds), and on the right play / pause, an
@@ -19,11 +29,13 @@ The presets of a player as a grid of artworks, like a wall of radio stations. Ta
 - The power button is for the amplifier a player is built into (off by default): it is highlighted while the
   amplifier is on and waits for the amplifier to answer (a few seconds when switching on). It only shows for a
   player that has an *Amplifier power* switch, see [Configuration](configuration.md).
-- A player without presets shows a short message.
+- A grid without anything to show (no presets, no playlist, no favourite album) says so.
 
 ```yaml
 type: custom:bluos-companion-presets-card
 entity: media_player.living_room
+content: presets    # presets (default), playlists or favourites
+max_items: 12       # optional, the number of tiles
 columns: 3          # 1 to 8, default 3
 show_footer: true   # false hides the whole row of controls
 show_volume: true   # the volume ring

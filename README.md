@@ -80,7 +80,7 @@ Download the latest [release](https://github.com/xperseguers/bluos-companion/rel
 | | |
 |---|---|
 | [The sidebar player](documentation/panel.md) | home, library, search, queue, groups, kiosk use |
-| [Dashboard cards](documentation/cards.md) | the presets card, the player card and the play button card, with their options |
+| [Dashboard cards](documentation/cards.md) | the presets (grid) card, the player card and the play button card, with their options |
 | [Configuration](documentation/configuration.md) | options of a player, entities, services |
 | [Playlist and favourites backup, restore and import](documentation/backup-and-restore.md) | text files, restoring, importing from Apple Music, moving your music share |
 | [Voice and AI](documentation/voice-and-ai.md) | sentences, typos, volume, AI agents |

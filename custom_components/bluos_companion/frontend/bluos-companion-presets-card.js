@@ -6,6 +6,8 @@ const { createControls, CONTROLS_STYLE } = await import(
   new URL(`./bluos-companion-card-controls.js${new URL(import.meta.url).search}`, import.meta.url)
 );
 
+const CONTENTS = ["presets", "playlists", "favourites"];
+
 const CARD_STYLE = CONTROLS_STYLE + `
   [hidden] { display: none !important; }
   ha-card { overflow: hidden; }
@@ -61,8 +63,8 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._player = null;
-    this._presets = null;
-    this._presetsId = undefined;
+    this._items = null;
+    this._loadedKey = undefined;
     this._unsubscribe = null;
   }
 
@@ -74,12 +76,17 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     // A player of this integration, so that the preview of the card picker shows something
     const players = Object.keys(hass.states).filter((id) => id.startsWith("media_player."));
     const entity = players.find((id) => hass.entities?.[id]?.platform === "bluos_companion") || players[0];
-    return { entity: entity || "", columns: 3, show_footer: true };
+    return { entity: entity || "", content: "presets", columns: 3, show_footer: true };
   }
 
   setConfig(config) {
     if (!config.entity) throw new Error("Choose the BluOS Companion player (entity)");
-    this._config = { columns: 3, show_footer: true, ...config };
+    this._config = { content: "presets", columns: 3, show_footer: true, ...config };
+    if (!CONTENTS.includes(this._config.content)) throw new Error("The content must be presets, playlists or favourites");
+    // What the grid shows may have changed (the editor): load it again
+    this._loadedKey = undefined;
+    this._items = null;
+    if (this._player) this._loadItems();
     this._build();
     this._render();
   }
@@ -137,26 +144,51 @@ class BluOSCompanionPresetsCard extends HTMLElement {
   }
 
   _onPlayers(players) {
-    const player = players.find((candidate) => candidate.entity_id === this._config.entity) || null;
-    this._player = player;
-    if (player && player.presets_id !== this._presetsId) {
-      this._presetsId = player.presets_id;
-      this._loadPresets(player.entry_id);
-    }
+    this._player = players.find((candidate) => candidate.entity_id === this._config.entity) || null;
+    this._loadItems();
     this._render();
   }
 
-  async _loadPresets(entryId) {
+  // The presets follow the player (it tells when they change); playlists and favourites are read
+  // again when the card is set up differently, and every time the card is loaded.
+  async _loadItems() {
+    const player = this._player;
+    if (!player) return;
+    const { content, max_items: limit } = this._config;
+    const key = content === "presets" ? `presets:${player.presets_id}` : `${content}:${limit}`;
+    if (key === this._loadedKey) return;
+    this._loadedKey = key;
     try {
-      const result = await this._hass.connection.sendMessagePromise({
-        type: "bluos_companion/presets",
-        entry_id: entryId,
-      });
-      this._presets = result.presets;
+      this._items =
+        content === "presets"
+          ? await this._loadPresets(player.entry_id)
+          : (
+              await this._hass.connection.sendMessagePromise({
+                type: "bluos_companion/card_items",
+                entry_id: player.entry_id,
+                content,
+                ...(limit ? { limit: Number(limit) } : {}),
+              })
+            ).items;
     } catch (err) {
-      this._presets = [];
+      this._items = [];
     }
-    this._render();
+    // The card may have been set up differently while the player answered
+    if (key === this._loadedKey) this._render();
+  }
+
+  async _loadPresets(entryId) {
+    const result = await this._hass.connection.sendMessagePromise({
+      type: "bluos_companion/presets",
+      entry_id: entryId,
+    });
+    const limit = Number(this._config.max_items) || result.presets.length;
+    return result.presets.slice(0, limit).map((preset) => ({
+      name: preset.name,
+      image: preset.image,
+      path: `/Preset?id=${preset.id}`,
+      url: preset.url,
+    }));
   }
 
   _notify(message) {
@@ -209,13 +241,13 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     const player = this._player;
     this._grid.style.gridTemplateColumns = `repeat(${Math.max(1, Number(this._config.columns) || 3)}, 1fr)`;
     this._grid.replaceChildren(
-      ...(player && this._presets ? this._presets.map((preset) => this._tile(preset)) : []),
+      ...(player && this._items ? this._items.map((item) => this._tile(item)) : []),
     );
     this._grid.hidden = !this._grid.childNodes.length;
     this._message.textContent = !player
       ? this._t("card_not_found")
-      : this._presets && !this._presets.length
-        ? this._t("no_presets")
+      : this._items && !this._items.length
+        ? this._t(`no_${this._config.content}`)
         : "";
     this._message.hidden = !this._message.textContent;
     this._hint.textContent = this._config.other_entities ? this._t("card_other_entities_moved") : "";
@@ -246,19 +278,19 @@ class BluOSCompanionPresetsCard extends HTMLElement {
     return Boolean(player.preset_name) && preset.name === player.preset_name;
   }
 
-  _tile(preset) {
+  _tile(item) {
+    const label = item.subtitle ? `${item.name} - ${item.subtitle}` : item.name;
     return el(
       "button",
       {
-        class: this._isPlaying(preset) ? "preset playing" : "preset",
-        title: preset.name,
-        "aria-label": preset.name,
-        onclick: () =>
-          this._call({ type: "bluos_companion/play", path: `/Preset?id=${preset.id}` }),
+        class: this._config.content === "presets" && this._isPlaying(item) ? "preset playing" : "preset",
+        title: label,
+        "aria-label": label,
+        onclick: () => this._call({ type: "bluos_companion/play", path: item.path }),
       },
-      preset.image
-        ? el("img", { src: preset.image, alt: preset.name, loading: "lazy" })
-        : el("span", {}, preset.name),
+      item.image
+        ? el("img", { src: item.image, alt: item.name, loading: "lazy" })
+        : el("span", {}, item.name),
     );
   }
 }
@@ -298,6 +330,16 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
   _schema() {
     return [
       { name: "entity", required: true, selector: { entity: { domain: "media_player", integration: "bluos_companion" } } },
+      {
+        name: "content",
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: CONTENTS.map((value) => ({ value, label: this._t(`editor_content_${value}`) })),
+          },
+        },
+      },
+      { name: "max_items", selector: { number: { min: 1, max: 200, mode: "box" } } },
       { name: "columns", selector: { number: { min: 1, max: 8, mode: "box" } } },
       { name: "show_footer", selector: { boolean: {} } },
       { name: "show_volume", selector: { boolean: {} } },
@@ -319,6 +361,8 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
     }
     const labels = {
       entity: "editor_player",
+      content: "editor_content",
+      max_items: "editor_max_items",
       columns: "editor_columns",
       show_footer: "editor_show_footer",
       show_volume: "editor_show_volume",
@@ -330,6 +374,7 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
     this._form.schema = this._schema();
     this._form.hass = this._hass;
     this._form.data = {
+      content: "presets",
       columns: 3,
       show_footer: true,
       show_volume: true,
@@ -346,7 +391,7 @@ if (!customElements.get("bluos-companion-presets-card-editor")) customElements.d
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "bluos-companion-presets-card",
-  name: "BluOS Companion presets",
-  description: "The presets of a BluOS player as a grid, with input selection and volume.",
+  name: "BluOS Companion grid",
+  description: "The presets, playlists or favourites of a BluOS player as a grid of covers, with input selection and volume.",
   preview: true,
 });

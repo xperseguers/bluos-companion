@@ -18,7 +18,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.translation import async_get_translations
 
-from .api import LIBRARY_ALBUMS_KEY, SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket, song_file_from_context_key, starts_playback
+from .api import LIBRARY_ALBUMS_KEY, playlist_play_path, SLEEP_OPTIONS, BluOSClient, BluOSError, Favourite, Node, sleep_bucket, song_file_from_context_key, starts_playback
 from .classical import split_movements
 from .const import CONF_HIDDEN_SERVICES, CONF_PORT, DOMAIN
 from .coordinator import BluOSConfigEntry, BluOSCoordinator
@@ -87,6 +87,7 @@ def async_setup_websocket_api(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_locate)
     websocket_api.async_register_command(hass, ws_presets)
     websocket_api.async_register_command(hass, ws_play_button_items)
+    websocket_api.async_register_command(hass, ws_card_items)
     websocket_api.async_register_command(hass, ws_clear_history)
     websocket_api.async_register_command(hass, ws_playlist_delete)
     websocket_api.async_register_command(hass, ws_playlist_rename)
@@ -105,6 +106,9 @@ def _coordinator(hass: HomeAssistant, entry_id: str) -> BluOSCoordinator:
     ):
         raise HomeAssistantError("Unknown player")
     return entry.runtime_data
+
+
+CARD_ITEMS_LIMIT = 24
 
 
 async def _async_call(call: Awaitable[Any]) -> Any:
@@ -833,6 +837,82 @@ async def ws_play_button_items(
             for name in sorted(genres, key=str.casefold)
             if chosen(name)
         ]
+    connection.send_result(msg["id"], {"items": items})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "bluos_companion/card_items",
+        vol.Required("entry_id"): str,
+        vol.Required("content"): vol.In(["playlists", "favourites"]),
+        vol.Optional("limit", default=CARD_ITEMS_LIMIT): vol.All(
+            int, vol.Range(min=1, max=200)
+        ),
+    }
+)
+@websocket_api.async_response
+async def ws_card_items(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the playlists or the favourite albums of a player as tiles, for the presets card.
+
+    Every tile carries the path that plays it. Playlists come in alphabetical order, favourites
+    in the order of the library.
+    """
+    coordinator = _coordinator(hass, msg["entry_id"])
+    client, limit = coordinator.client, msg["limit"]
+    items: list[dict[str, Any]] = []
+    if msg["content"] == "playlists":
+        page = await _async_call(client.async_browse_page("BluOS:", None, 1))
+        nodes = sorted(
+            (node for node in page.nodes if node.type == "playlist"),
+            key=lambda node: node.title.casefold(),
+        )[:limit]
+        covers = (
+            await async_playlist_covers(coordinator, [node.browse_key for node in nodes])
+            if nodes
+            else {}
+        )
+        items = [
+            {
+                "name": node.title,
+                "subtitle": node.subtitle,
+                "path": playlist_play_path(node.title),
+                "image": covers.get(node.browse_key)
+                and async_artwork_url(
+                    hass, msg["entry_id"], covers[node.browse_key], THUMB_WIDTH
+                ),
+            }
+            for node in nodes
+        ]
+    else:
+        # The albums among the favourites of the library (the section also holds songs and artists)
+        section = await _async_call(
+            client.async_browse_page("LocalMusic:MG/LocalMusic-Favourites", None, 1)
+        )
+        albums = next(
+            (
+                node.browse_key
+                for node in section.nodes
+                if node.browse_key and node.browse_key.startswith("LocalMusic:Album/")
+            ),
+            None,
+        )
+        page = await _async_call(client.async_browse_page(albums, None, 1)) if albums else None
+        for node in (page.nodes if page else [])[:limit]:
+            if node.type != "album" or not (node.play_path and is_play_path(node.play_path)):
+                continue
+            path = image_path(node)
+            items.append(
+                {
+                    "name": node.title,
+                    "subtitle": node.subtitle,
+                    "path": node.play_path,
+                    "image": async_artwork_url(hass, msg["entry_id"], path, THUMB_WIDTH)
+                    if path
+                    else None,
+                }
+            )
     connection.send_result(msg["id"], {"items": items})
 
 
