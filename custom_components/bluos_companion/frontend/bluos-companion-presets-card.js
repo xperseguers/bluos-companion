@@ -37,6 +37,23 @@ const CARD_STYLE = CONTROLS_STYLE + `
     font-size: 13px;
     overflow-wrap: anywhere;
   }
+  /* The name over the cover, as on the play button card */
+  .preset .name {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 24px 6px 8px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .message { padding: 16px; color: var(--secondary-text-color); text-align: center; }
   footer { padding: 4px 12px 12px; }
 `;
@@ -323,6 +340,8 @@ class BluOSCompanionPresetsCard extends HTMLElement {
       item.image
         ? el("img", { src: item.image, alt: item.name, loading: "lazy" })
         : el("span", {}, item.name),
+      // A tile without a cover already shows its name
+      item.image && this._config.name_on_cover ? el("div", { class: "name" }, item.name) : null,
     );
   }
 }
@@ -373,6 +392,7 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
       },
       { name: "max_items", selector: { number: { min: 1, max: 200, mode: "box" } } },
       { name: "columns", selector: { number: { min: 1, max: 8, mode: "box" } } },
+      { name: "name_on_cover", selector: { boolean: {} } },
       { name: "show_footer", selector: { boolean: {} } },
       { name: "show_volume", selector: { boolean: {} } },
       { name: "show_playback", selector: { boolean: {} } },
@@ -396,6 +416,7 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
       content: "editor_content",
       max_items: "editor_max_items",
       columns: "editor_columns",
+      name_on_cover: "editor_name_on_cover",
       show_footer: "editor_show_footer",
       show_volume: "editor_show_volume",
       show_playback: "editor_show_playback",
@@ -408,6 +429,7 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
     this._form.data = {
       content: "presets",
       columns: 3,
+      name_on_cover: false,
       show_footer: true,
       show_volume: true,
       show_playback: true,

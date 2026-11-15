@@ -244,6 +244,7 @@
     "panel_editor_max_items": "Nombre maximal de tuiles (vide : tous les préréglages, 24 listes ou albums)",
     "panel_editor_player": "Lecteur",
     "panel_editor_columns": "Colonnes",
+    "panel_editor_name_on_cover": "Afficher le nom sur la pochette",
     "panel_editor_show_footer": "Afficher la rangée de commandes (volume, entrée, alimentation)",
     "panel_editor_show_volume": "Afficher le volume",
     "panel_editor_show_control_panel": "Afficher le lien vers le panneau de contrôle",

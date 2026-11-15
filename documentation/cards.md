@@ -21,6 +21,8 @@ picker calls it "BluOS Companion grid".)
 - `max_items` limits the number of tiles. Without it a grid shows all the presets and at most 24 playlists or albums
   (the library may hold hundreds). Playlists and albums are read when the card is loaded or its options change: reload
   the dashboard to see a new favourite.
+- `name_on_cover: true` writes the name of each tile **on top of its cover**, at the bottom, whatever the content
+  (presets, playlists or favourites). Off by default; a tile without a cover always shows its name.
 - A preset that loads a saved playlist and has no image of its own shows the **cover of that playlist**.
 - Under the grid, **one row of buttons**: the **volume** as a ring on the left (tap it and the row turns into a
   slider with mute, **−** and **+**, then comes back after a few seconds), and on the right play / pause, an
@@ -37,6 +39,7 @@ entity: media_player.living_room
 content: presets    # presets (default), playlists or favourites
 max_items: 12       # optional, the number of tiles
 columns: 3          # 1 to 8, default 3
+name_on_cover: false # true writes the name on top of the cover
 show_footer: true   # false hides the whole row of controls
 show_volume: true   # the volume ring
 show_playback: true # the play / pause button

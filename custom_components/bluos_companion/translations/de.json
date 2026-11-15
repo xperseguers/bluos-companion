@@ -244,6 +244,7 @@
     "panel_editor_max_items": "Höchstzahl der Kacheln (leer: alle Presets, 24 Wiedergabelisten oder Alben)",
     "panel_editor_player": "Player",
     "panel_editor_columns": "Spalten",
+    "panel_editor_name_on_cover": "Namen auf dem Cover anzeigen",
     "panel_editor_show_footer": "Reihe mit Bedienelementen anzeigen (Lautstärke, Eingang, Ein/Aus)",
     "panel_editor_show_volume": "Lautstärke anzeigen",
     "panel_editor_show_control_panel": "Link zum Bedienfeld anzeigen",
