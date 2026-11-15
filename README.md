@@ -22,7 +22,7 @@ backup carries along.
   a library you browse as in the BluOS app (letters you jump to, albums as a list or a grid, pages for an artist or a
   genre), search, a full-screen view with the blurred cover, the queue, playlists with covers, group and volume of
   each player, move the music to another player. [Read more](documentation/panel.md)
-- **Dashboard cards**: the presets of a player as a grid, a compact player, and play buttons for a genre, a preset or
+- **Dashboard cards**: the presets, playlists or favourite albums of a player as a grid, a compact player, and play buttons for a genre, a preset or
   a playlist.
   [Read more](documentation/cards.md)
 - **Voice and AI**: "play Adele on Kitchen" through Assist or an AI agent, with tolerance for typos.
@@ -72,7 +72,7 @@ Download the latest [release](https://github.com/xperseguers/bluos-companion/rel
    enter its IP address ([add it directly](https://my.home-assistant.io/redirect/config_flow_start/?domain=bluos_companion)). Repeat for each player (a player is identified by its MAC address, so a new IP address just
    updates the existing entry).
 2. Open **BluOS Companion** in the sidebar. Pick the player with the button in the bottom bar.
-3. On a dashboard, **Add card** and pick *BluOS Companion presets*, *BluOS Companion player* or *BluOS Companion play button*.
+3. On a dashboard, **Add card** and pick *BluOS Companion grid*, *BluOS Companion player* or *BluOS Companion play button*.
 4. Optional: expose the players to Assist, then type or say "play Adele on Kitchen".
 
 ## Documentation
