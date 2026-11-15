@@ -71,7 +71,9 @@ class BluOSCompanionPresetsCard extends HTMLElement {
   }
 
   static getStubConfig(hass) {
-    const entity = Object.keys(hass.states).find((id) => id.startsWith("media_player."));
+    // A player of this integration, so that the preview of the card picker shows something
+    const players = Object.keys(hass.states).filter((id) => id.startsWith("media_player."));
+    const entity = players.find((id) => hass.entities?.[id]?.platform === "bluos_companion") || players[0];
     return { entity: entity || "", columns: 3, show_footer: true };
   }
 
@@ -363,4 +365,5 @@ window.customCards.push({
   type: "bluos-companion-presets-card",
   name: "BluOS Companion presets",
   description: "The presets of a BluOS player as a grid, with input selection and volume.",
+  preview: true,
 });

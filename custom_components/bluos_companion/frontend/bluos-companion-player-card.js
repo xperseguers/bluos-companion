@@ -116,7 +116,9 @@ class BluOSCompanionPlayerCard extends HTMLElement {
   }
 
   static getStubConfig(hass) {
-    const entity = Object.keys(hass.states).find((id) => id.startsWith("media_player."));
+    // A player of this integration, so that the preview of the card picker shows something
+    const players = Object.keys(hass.states).filter((id) => id.startsWith("media_player."));
+    const entity = players.find((id) => hass.entities?.[id]?.platform === "bluos_companion") || players[0];
     return { entity: entity || "", show_volume: true };
   }
 
@@ -472,4 +474,5 @@ window.customCards.push({
   type: "bluos-companion-player-card",
   name: "BluOS Companion player",
   description: "What a BluOS player plays, with transport buttons and volume.",
+  preview: true,
 });
