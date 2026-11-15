@@ -66,6 +66,12 @@ Download the latest [release](https://github.com/xperseguers/bluos-companion/rel
 `custom_components/bluos_companion` into the `custom_components` folder of your Home Assistant configuration (next to
 `configuration.yaml`), then restart. You will have to update it yourself.
 
+### After an update
+
+Restart Home Assistant, then reload the page **without cache** (Cmd/Ctrl + Shift + R). A tablet or phone app keeps
+the old script of the panel and the cards until its cache is cleared: reload it, or clear its cache once. See
+[Troubleshooting](documentation/troubleshooting.md#the-sidebar-player-or-a-card-looks-old-after-an-update).
+
 ## Quick start
 
 1. **Settings → Devices & services → Add integration → BluOS Companion**, and pick a discovered player or
