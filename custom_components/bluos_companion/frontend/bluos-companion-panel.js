@@ -1742,8 +1742,25 @@ class BluOSCompanionPanel extends HTMLElement {
   _build() {
     this._menuButton = el("button", { onclick: () => this._toggleMenu() }, icon("mdi:menu"));
     this._menuButton.hidden = !this._narrow;
-    this._backButton = el("button", { onclick: () => this._goBack() }, icon("mdi:view-dashboard"));
+    this._backButton = el("button", {}, icon("mdi:view-dashboard"));
     this._backButton.hidden = true;
+    // A tap goes back, a long press opens the settings of the device (nothing else shows them in the header)
+    let pressTimer = null;
+    let pressed = false;
+    const release = () => clearTimeout(pressTimer);
+    this._backButton.addEventListener("pointerdown", () => {
+      pressed = false;
+      pressTimer = setTimeout(() => {
+        pressed = true;
+        this._openSettings();
+      }, 700);
+    });
+    for (const name of ["pointerup", "pointerleave", "pointercancel"]) this._backButton.addEventListener(name, release);
+    this._backButton.addEventListener("contextmenu", (event) => event.preventDefault());
+    this._backButton.addEventListener("click", () => {
+      if (pressed) pressed = false;
+      else this._goBack();
+    });
     this._playerName = el("span");
     this._playerButton = el(
       "button",
@@ -1872,7 +1889,6 @@ class BluOSCompanionPanel extends HTMLElement {
         this._menuButton,
         el("h1", { onclick: () => this._home() }, this._t("title")),
         this._backButton,
-        el("button", { title: this._t("settings"), onclick: () => this._openSettings() }, icon("mdi:cog-outline")),
       ),
       this._browseBox,
       footer,
@@ -2354,6 +2370,7 @@ class BluOSCompanionPanel extends HTMLElement {
     }
     if (this._canMove(player)) list.append(row(this._t("move_playback"), "mdi:transfer-right", () => this._showMove()));
     list.append(...this._settingRows(player));
+    list.append(row(this._t("settings"), "mdi:cog-outline", () => this._openSettings()));
     this._dialogMode = "more";
     this._dialog.replaceChildren(el("h2", {}, this._t("more")), list);
     if (!this._dialog.open) this._dialog.showModal();

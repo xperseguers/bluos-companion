@@ -151,11 +151,11 @@ TV...) and the **sleep timer**.
 - To keep a wall tablet from being turned up too loud, set the **maximum volume** of the player in its options
   (it applies to the panel, the cards and voice control, not to the BluOS app or the remote).
 - The panel remembers the last player you chose in each browser.
-- **A way back to your dashboard.** With the sidebar hidden, nothing leads out of the panel. The **gear** in the header
-  opens the settings of *this device*: choose a dashboard (or type another address, for example a view such as
-  `/lovelace/lights`) and, if you like, an icon. A button with that icon, or the icon of the dashboard, then
-  appears in the header and takes you back. The settings stay in this browser only, so each tablet has its own;
-  *Reset the settings of this device* removes them.
+- **A way back to your dashboard.** With the sidebar hidden, nothing leads out of the panel. Open the **More**
+  menu (⋯) and choose *Settings of this device*: pick a dashboard (or type another address, for example a view such
+  as `/lovelace/lights`) and, if you like, an icon. A button with that icon, or the icon of the dashboard, then
+  appears in the header and takes you back; a **long press** on it opens the settings again. The settings stay in
+  this browser only, so each tablet has its own; *Reset the settings of this device* removes them.
 
 ## Languages
 
