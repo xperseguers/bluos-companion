@@ -65,9 +65,9 @@ the buttons below.
 type: custom:bluos-companion-player-card
 entity: media_player.living_room
 show_volume: true          # the volume ring
+show_move: true            # the move playback button
 show_input: true           # the input selection
 show_power: false          # true shows the power button of the amplifier
-show_move: true            # the move playback button
 show_control_panel: false  # true shows the "Open control panel" link
 ```
 

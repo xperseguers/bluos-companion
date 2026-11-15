@@ -447,10 +447,11 @@ class BluOSCompanionPlayerCardEditor extends HTMLElement {
   _schema() {
     return [
       { name: "entity", required: true, selector: { entity: { domain: "media_player", integration: "bluos_companion" } } },
+      // In the order of the row of the card: volume, move playback, input, power
       { name: "show_volume", selector: { boolean: {} } },
+      { name: "show_move", selector: { boolean: {} } },
       { name: "show_input", selector: { boolean: {} } },
       { name: "show_power", selector: { boolean: {} } },
-      { name: "show_move", selector: { boolean: {} } },
       { name: "show_control_panel", selector: { boolean: {} } },
     ];
   }
