@@ -1756,6 +1756,7 @@ class BluOSCompanionPanel extends HTMLElement {
       pressed = false;
       pressTimer = setTimeout(() => {
         pressed = true;
+        this._keepOpenUntil = Date.now() + 800;
         this._openSettings();
       }, 700);
     });
@@ -1797,7 +1798,8 @@ class BluOSCompanionPanel extends HTMLElement {
         clearInterval(this._groupTimer);
       },
       onclick: (event) => {
-        if (event.target === this._dialog) this._dialog.close();
+        // Lifting the finger after a long press lands on the backdrop of the dialog it just opened
+        if (event.target === this._dialog && Date.now() > (this._keepOpenUntil || 0)) this._dialog.close();
       },
     });
     this._grid = el("div");
