@@ -340,7 +340,23 @@ const STYLE = `
   }
   .list-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .list-controls button { border-radius: 20px; padding: 6px 14px; gap: 8px; font: inherit; border: 1px solid var(--divider-color); background: var(--card-background-color); }
-  .list-controls select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
+  /* A pill as high as the button beside it; Safari draws a native dropdown that ignores the height, so it is drawn here */
+  .list-controls select {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 42px;
+    padding: 0 38px 0 14px;
+    font: inherit;
+    border-radius: 20px;
+    border: 1px solid var(--divider-color);
+    color: var(--primary-text-color);
+    background-color: var(--card-background-color);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23888' d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 24px;
+  }
+  @media (pointer: coarse) { .list-controls select { height: 48px; } }
   /* The first icon lines up with the search field and the cards; the labels may be wider than the icons */
   /* A little more on the left: against rounded borders, an icon that is exactly in line looks too far left */
   .shortcuts { display: flex; gap: 10px; overflow-x: auto; padding: 0 8px 4px 14px; margin: 0 -8px; }
@@ -770,9 +786,6 @@ const STYLE = `
     line-clamp: 4;
     overflow: hidden;
   }
-  .list-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-  .list-controls button { border-radius: 20px; padding: 6px 14px; gap: 8px; font: inherit; border: 1px solid var(--divider-color); background: var(--card-background-color); }
-  .list-controls select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
   /* The first icon lines up with the search field and the cards; the labels may be wider than the icons */
   /* A little more on the left: against rounded borders, an icon that is exactly in line looks too far left */
   .shortcuts { display: flex; gap: 10px; overflow-x: auto; padding: 0 8px 4px 14px; margin: 0 -8px; }
