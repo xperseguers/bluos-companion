@@ -228,6 +228,8 @@
     "panel_back": "Retour",
     "panel_back_to": "Retour vers {name}",
     "panel_settings_reset": "Réinitialiser les réglages de cet appareil",
+    "panel_assist": "Assist",
+    "panel_back_label": "Nom du bouton (facultatif)",
     "panel_no_playlists": "Ce lecteur n'a aucune liste de lecture enregistrée.",
     "panel_no_favourites": "Il n'y a aucun album favori.",
     "panel_editor_content": "Contenu de la grille",

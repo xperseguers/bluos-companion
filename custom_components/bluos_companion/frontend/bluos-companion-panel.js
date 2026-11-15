@@ -720,6 +720,8 @@ class BluOSCompanionPanel extends HTMLElement {
     this._ticker = setInterval(() => this._tick(), 1000);
     this._fit = () => this._fitHeight();
     window.addEventListener("resize", this._fit);
+    this._onResize = () => this._renderBack();
+    window.addEventListener("resize", this._onResize);
     requestAnimationFrame(this._fit);
   }
 
@@ -732,6 +734,7 @@ class BluOSCompanionPanel extends HTMLElement {
 
   disconnectedCallback() {
     window.removeEventListener("resize", this._fit);
+    window.removeEventListener("resize", this._onResize);
     clearInterval(this._ticker);
     if (this._unsubscribe) {
       this._unsubscribe();
@@ -1746,6 +1749,10 @@ class BluOSCompanionPanel extends HTMLElement {
   _build() {
     this._menuButton = el("button", { onclick: () => this._toggleMenu() }, icon("mdi:menu"));
     this._menuButton.hidden = !this._narrow;
+    // The actions of the header, as on a dashboard: all of them on a tablet, behind the three dots on a phone
+    this._searchButton = el("button", { title: this._t("search"), onclick: () => this._focusSearch() }, icon("mdi:magnify"));
+    this._assistButton = el("button", { title: this._t("assist"), onclick: () => this._openAssist() }, icon("mdi:forum-outline"));
+    this._actionsButton = el("button", { title: this._t("more"), onclick: () => this._showHeaderActions() }, icon("mdi:dots-vertical"));
     this._backButton = el("button", {}, icon("mdi:view-dashboard"));
     this._backButton.hidden = true;
     // A tap goes back, a long press opens the settings of the device (nothing else shows them in the header)
@@ -1894,7 +1901,10 @@ class BluOSCompanionPanel extends HTMLElement {
         {},
         this._menuButton,
         el("h1", { onclick: () => this._home() }, this._t("title")),
+        this._searchButton,
+        this._assistButton,
         this._backButton,
+        this._actionsButton,
       ),
       this._browseBox,
       footer,
@@ -1936,13 +1946,78 @@ class BluOSCompanionPanel extends HTMLElement {
     return (this._hass.localize && this._hass.localize(known)) || panel.title || panel.url_path;
   }
 
-  _renderBack() {
+  // What the back button is called: the name typed in the settings, else the name of the dashboard
+  _backItem() {
     const back = this._tablet().back;
-    this._backButton.hidden = !(back && back.path);
-    if (this._backButton.hidden) return;
+    if (!back || !back.path) return null;
     const panel = this._panelOf(back.path);
-    this._backButton.title = panel ? this._t("back_to", { name: this._panelTitle(panel) }) : this._t("back");
-    this._backButton.firstChild.setAttribute("icon", back.icon || (panel && panel.icon) || "mdi:view-dashboard");
+    const name = back.label || (panel ? this._panelTitle(panel) : "");
+    return {
+      icon: back.icon || (panel && panel.icon) || "mdi:view-dashboard",
+      label: name ? this._t("back_to", { name }) : this._t("back"),
+    };
+  }
+
+  _canAssist() {
+    const external = this._hass.auth && this._hass.auth.external;
+    return Boolean((external && external.config && external.config.hasAssist) || (this._hass.config.components || []).includes("conversation"));
+  }
+
+  // The header: search, Assist and back as icons; on a phone, one button with the three dots (the texts
+  // are in its menu), the way a dashboard of Home Assistant does it
+  _renderBack() {
+    if (!this._built) return;
+    const phone = this._isPhone();
+    const back = this._backItem();
+    this._searchButton.hidden = phone;
+    this._assistButton.hidden = phone || !this._canAssist();
+    this._backButton.hidden = phone || !back;
+    this._actionsButton.hidden = !phone;
+    if (back) {
+      this._backButton.title = back.label;
+      this._backButton.firstChild.setAttribute("icon", back.icon);
+    }
+  }
+
+  _showHeaderActions() {
+    const back = this._backItem();
+    this._dialog.replaceChildren(
+      el("h2", {}, this._t("title")),
+      el(
+        "div",
+        { class: "list" },
+        this._menuRow("mdi:magnify", this._t("search"), () => this._focusSearch()),
+        this._canAssist() ? this._menuRow("mdi:forum-outline", this._t("assist"), () => this._openAssist()) : null,
+        back ? this._menuRow(back.icon, back.label, () => this._goBack()) : null,
+      ),
+    );
+    if (!this._dialog.open) this._dialog.showModal();
+  }
+
+  // Scroll to the search field, which scrolls away on a long page, and put the cursor in it
+  _focusSearch() {
+    const focus = () => {
+      this._main.scrollTo({ top: 0, behavior: "smooth" });
+      this._searchInput.focus();
+    };
+    if (this._searchForm.hidden) {
+      this._home();
+      setTimeout(focus, 300);
+    } else focus();
+  }
+
+  // Home Assistant has no call for a panel to open Assist: the app has a message for it, and a browser
+  // has the keyboard shortcut ("a") that works when the shortcuts are on in the profile
+  _openAssist() {
+    const external = this._hass.auth && this._hass.auth.external;
+    if (external && external.config && external.config.hasAssist) {
+      external.fireMessage({ type: "assist/show", payload: { pipeline_id: "last_used", start_listening: true } });
+      return;
+    }
+    window.getSelection()?.removeAllRanges();
+    document.body.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", code: "KeyA", bubbles: true, composed: true, cancelable: true }),
+    );
   }
 
   _goBack() {
@@ -1974,21 +2049,29 @@ class BluOSCompanionPanel extends HTMLElement {
       ? Object.assign(document.createElement("ha-icon-picker"), { hass: this._hass, value: iconValue })
       : el("input", { type: "text", placeholder: "mdi:lightbulb", value: iconValue });
     const iconRow = el("label", {}, el("span", {}, this._t("back_icon")), picker);
+    const labelInput = el("input", { type: "text", placeholder: known ? this._panelTitle(known) : "", value: back.label || "" });
+    const labelRow = el("label", {}, el("span", {}, this._t("back_label")), labelInput);
     const pathRow = el("label", {}, el("span", {}, this._t("back_path")), path);
     const change = () => {
       const custom = select.value === "__custom__";
       pathRow.hidden = !custom;
       const target = custom ? path.value.trim() : select.value ? `/${select.value}` : "";
       iconRow.hidden = !target;
+      labelRow.hidden = !target;
       const settings = this._tablet();
       // Only an address inside Home Assistant: it starts with a slash, and not with two
-      if (/^\/(?!\/)/.test(target)) settings.back = { path: target, ...(iconValue ? { icon: iconValue } : {}) };
+      if (/^\/(?!\/)/.test(target)) settings.back = {
+          path: target,
+          ...(iconValue ? { icon: iconValue } : {}),
+          ...(labelInput.value.trim() ? { label: labelInput.value.trim() } : {}),
+        };
       else delete settings.back;
       this._saveTablet(settings);
       this._renderBack();
     };
     select.addEventListener("change", change);
     path.addEventListener("input", change);
+    labelInput.addEventListener("input", change);
     picker.addEventListener(picker.localName === "input" ? "input" : "value-changed", (event) => {
       iconValue = (picker.localName === "input" ? picker.value : event.detail.value || "").trim();
       change();
@@ -2000,6 +2083,7 @@ class BluOSCompanionPanel extends HTMLElement {
       el("label", {}, el("span", {}, this._t("back_target")), select),
       pathRow,
       iconRow,
+      labelRow,
       el(
         "div",
         { class: "list" },

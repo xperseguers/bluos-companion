@@ -228,6 +228,8 @@
     "panel_back": "Back",
     "panel_back_to": "Back to {name}",
     "panel_settings_reset": "Reset the settings of this device",
+    "panel_assist": "Assist",
+    "panel_back_label": "Name of the button (optional)",
     "panel_no_playlists": "This player has no saved playlists.",
     "panel_no_favourites": "There are no favourite albums.",
     "panel_editor_content": "What the grid shows",
