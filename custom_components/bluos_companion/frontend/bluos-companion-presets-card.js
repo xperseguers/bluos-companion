@@ -379,6 +379,8 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
   }
 
   _schema() {
+    // The buttons of the row make no sense without the row: shown greyed out, their choice is kept
+    const noRow = this._config?.show_footer === false;
     return [
       { name: "entity", required: true, selector: { entity: { domain: "media_player", integration: "bluos_companion" } } },
       {
@@ -394,10 +396,10 @@ class BluOSCompanionPresetsCardEditor extends HTMLElement {
       { name: "columns", selector: { number: { min: 1, max: 8, mode: "box" } } },
       { name: "name_on_cover", selector: { boolean: {} } },
       { name: "show_footer", selector: { boolean: {} } },
-      { name: "show_volume", selector: { boolean: {} } },
-      { name: "show_playback", selector: { boolean: {} } },
-      { name: "show_input", selector: { boolean: {} } },
-      { name: "show_power", selector: { boolean: {} } },
+      { name: "show_volume", disabled: noRow, selector: { boolean: {} } },
+      { name: "show_playback", disabled: noRow, selector: { boolean: {} } },
+      { name: "show_input", disabled: noRow, selector: { boolean: {} } },
+      { name: "show_power", disabled: noRow, selector: { boolean: {} } },
     ];
   }
 

@@ -317,6 +317,8 @@ class BluOSCompanionPlayButtonCardEditor extends HTMLElement {
 
   _schema(data) {
     const mode = data.mode;
+    // Our own picture and icon make no sense without a picture: shown greyed out, their choice is kept
+    const noImage = data.show_image === false;
     const options = [...this._options];
     // An item that the player does not list any more stays visible, so that it can be seen and replaced
     if (data.item && !options.some((option) => option.value === String(data.item))) {
@@ -353,8 +355,8 @@ class BluOSCompanionPlayButtonCardEditor extends HTMLElement {
       { name: "show_image", selector: { boolean: {} } },
       { name: "show_name", selector: { boolean: {} } },
       { name: "name", selector: { text: {} } },
-      { name: "image", selector: { text: {} } },
-      { name: "icon", selector: { icon: {} } },
+      { name: "image", disabled: noImage, selector: { text: {} } },
+      { name: "icon", disabled: noImage, selector: { icon: {} } },
     ];
   }
 

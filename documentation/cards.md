@@ -43,7 +43,7 @@ name_on_cover: false # true writes the name on top of the cover
 show_footer: true   # false hides the whole row of controls
 show_volume: true   # the volume ring
 show_playback: true # the play / pause button
-show_input: true    # the input button
+show_input: true    # the input selection
 show_power: false   # true shows the power button of the amplifier
 ```
 
@@ -65,7 +65,7 @@ the buttons below.
 type: custom:bluos-companion-player-card
 entity: media_player.living_room
 show_volume: true          # the volume ring
-show_input: true           # the input button
+show_input: true           # the input selection
 show_power: false          # true shows the power button of the amplifier
 show_move: true            # the move playback button
 show_control_panel: false  # true shows the "Open control panel" link

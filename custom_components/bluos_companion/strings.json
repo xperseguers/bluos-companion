@@ -248,7 +248,7 @@
     "panel_editor_show_footer": "Show the row of controls (volume, input, power)",
     "panel_editor_show_volume": "Show the volume",
     "panel_editor_show_control_panel": "Show the link to the control panel",
-    "panel_editor_show_input": "Show the input button",
+    "panel_editor_show_input": "Show the input selection",
     "panel_editor_show_playback": "Show the play / pause button",
     "panel_editor_show_move": "Show the move playback button",
     "panel_editor_show_power": "Show the power button of the amplifier",

@@ -248,7 +248,7 @@
     "panel_editor_show_footer": "Afficher la rangée de commandes (volume, entrée, alimentation)",
     "panel_editor_show_volume": "Afficher le volume",
     "panel_editor_show_control_panel": "Afficher le lien vers le panneau de contrôle",
-    "panel_editor_show_input": "Afficher le bouton d'entrée",
+    "panel_editor_show_input": "Afficher la sélection d'entrée",
     "panel_editor_show_playback": "Afficher le bouton lecture / pause",
     "panel_editor_show_move": "Afficher le bouton pour transférer la lecture",
     "panel_editor_show_power": "Afficher le bouton d'alimentation de l'amplificateur",
