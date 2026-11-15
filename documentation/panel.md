@@ -151,6 +151,11 @@ TV...) and the **sleep timer**.
 - To keep a wall tablet from being turned up too loud, set the **maximum volume** of the player in its options
   (it applies to the panel, the cards and voice control, not to the BluOS app or the remote).
 - The panel remembers the last player you chose in each browser.
+- **Full screen player when idle.** In the settings of the device you can choose a delay (30 seconds to 10 minutes):
+  when nothing has been touched for that long **and something is playing**, the panel opens the full screen player,
+  which suits a tablet on the wall. It does not open over a dialog, while you type in the search field, or when
+  nothing plays. A touch anywhere counts as activity, and the cross of the full screen view brings you back to the page you
+  were on. It is off by default and, like the back button, set for this device only.
 - **The header** has, on the right, the same actions as a dashboard: **Search** (scrolls to the search field and puts the
   cursor in it, handy after scrolling down a long list), **Assist** (opens the Assist dialog of Home Assistant, if
   Assist is set up) and, once configured, the **back** button. On a phone they sit behind the three dots,

@@ -1078,6 +1078,9 @@ const INITIALS_FROM = 40; // a list this long gets a bar of first letters
 const STORAGE_KEY = "bluos_companion_player";
 // What belongs to one device (a tablet on the wall), not to the household: kept in its browser
 const TABLET_KEY = "bluos_companion_tablet";
+// After how many seconds without a touch the full screen player opens (0: never)
+const IDLE_CHOICES = [0, 30, 60, 120, 300, 600];
+const ACTIVITY_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel", "scroll", "touchstart"];
 const DISPLAY_KEY = "bluos_companion_display"; // the lists of albums: list or grid
 const ALBUM_SORT_KEY = "bluos_companion_album_sort";
 const ALBUMS_KEY = "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic"; // all the albums
@@ -1156,6 +1159,8 @@ class BluOSCompanionPanel extends HTMLElement {
     this._unsubscribe = null;
     this._ticker = null;
     this._built = false;
+    this._lastActivity = Date.now();
+    this._idleSeconds = 0;
   }
 
   set hass(hass) {
@@ -1204,6 +1209,11 @@ class BluOSCompanionPanel extends HTMLElement {
     window.addEventListener("resize", this._fit);
     this._onResize = () => this._renderBack();
     window.addEventListener("resize", this._onResize);
+    // Anything the user does counts as activity (scrolling does not bubble: listen while it goes down)
+    this._onActivity = () => {
+      this._lastActivity = Date.now();
+    };
+    for (const name of ACTIVITY_EVENTS) window.addEventListener(name, this._onActivity, { capture: true, passive: true });
     requestAnimationFrame(this._fit);
   }
 
@@ -1217,6 +1227,7 @@ class BluOSCompanionPanel extends HTMLElement {
   disconnectedCallback() {
     window.removeEventListener("resize", this._fit);
     window.removeEventListener("resize", this._onResize);
+    for (const name of ACTIVITY_EVENTS) window.removeEventListener(name, this._onActivity, { capture: true });
     clearInterval(this._ticker);
     if (this._unsubscribe) {
       this._unsubscribe();
@@ -2394,6 +2405,7 @@ class BluOSCompanionPanel extends HTMLElement {
       this._nowDialog,
     );
     this._built = true;
+    this._idleSeconds = Number(this._tablet().idle) || 0;
     this._renderBack();
     this._fitHeight();
     this._renderPlayers();
@@ -2411,6 +2423,7 @@ class BluOSCompanionPanel extends HTMLElement {
   }
 
   _saveTablet(settings) {
+    this._idleSeconds = Number(settings.idle) || 0;
     try {
       if (Object.keys(settings).length) localStorage.setItem(TABLET_KEY, JSON.stringify(settings));
       else localStorage.removeItem(TABLET_KEY);
@@ -2511,6 +2524,12 @@ class BluOSCompanionPanel extends HTMLElement {
     window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
   }
 
+  _idleLabel(seconds) {
+    if (!seconds) return this._t("idle_off");
+    if (seconds < 60) return this._t("idle_seconds", { n: seconds });
+    return seconds === 60 ? this._t("idle_minute") : this._t("idle_minutes", { n: seconds / 60 });
+  }
+
   _openSettings() {
     const back = this._tablet().back || {};
     const own = (this._panel && this._panel.url_path) || "bluos-companion";
@@ -2535,6 +2554,14 @@ class BluOSCompanionPanel extends HTMLElement {
     const iconRow = el("label", {}, el("span", {}, this._t("back_icon")), picker);
     const labelInput = el("input", { type: "text", placeholder: known ? this._panelTitle(known) : "", value: back.label || "" });
     const labelRow = el("label", {}, el("span", {}, this._t("back_label")), labelInput);
+    const idle = el("select", {}, ...IDLE_CHOICES.map((seconds) => el("option", { value: String(seconds) }, this._idleLabel(seconds))));
+    idle.value = String(Number(this._tablet().idle) || 0);
+    idle.addEventListener("change", () => {
+      const settings = this._tablet();
+      if (Number(idle.value)) settings.idle = Number(idle.value);
+      else delete settings.idle;
+      this._saveTablet(settings);
+    });
     const assistBox = el("input", { type: "checkbox" });
     assistBox.checked = this._tablet().assist !== false;
     assistBox.addEventListener("change", () => {
@@ -2581,6 +2608,7 @@ class BluOSCompanionPanel extends HTMLElement {
         iconRow,
         labelRow,
         el("label", { class: "check" }, assistBox, el("span", {}, this._t("settings_assist"))),
+        el("label", {}, el("span", {}, this._t("settings_idle")), idle),
       ),
       // Everything is saved as it is changed, and a tap outside closes the dialog: only the rare reset is offered
       el(
@@ -4127,7 +4155,19 @@ class BluOSCompanionPanel extends HTMLElement {
     this._tick();
   }
 
+  // A wall tablet that nobody touches shows what plays, in the full screen view: only while something plays,
+  // and never over a dialog, a search being typed or a hidden page
+  _checkIdle() {
+    const player = this._player;
+    if (!this._idleSeconds || !this._built || !player || !ACTIVE_STATES.includes(player.state)) return;
+    if (this._nowOpen || this._dialog.open || document.hidden || this.shadowRoot.activeElement === this._searchInput) return;
+    if (Date.now() - this._lastActivity < this._idleSeconds * 1000) return;
+    this._lastActivity = Date.now();
+    this._showNow();
+  }
+
   _tick() {
+    this._checkIdle();
     this._tickNow();
     const player = this._player;
     if (!this._built || !player || !(player.duration > 0) || this._seeking) return;
