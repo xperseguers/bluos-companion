@@ -64,6 +64,8 @@ const STYLE = `
   .now .top button { min-width: 48px; min-height: 48px; }
   @media (pointer: coarse) {
     button { min-width: 48px; min-height: 48px; }
+    /* A field is as high as the buttons around it */
+    dialog select, dialog input[type="text"] { min-height: 48px; }
     input[type="range"] { height: 32px; }
   }
   dialog.now {
@@ -475,6 +477,7 @@ const STYLE = `
   dialog select {
     width: 100%;
     box-sizing: border-box;
+    min-height: 44px;
     font: inherit;
     padding: 10px 14px;
     border: 1px solid var(--divider-color);
@@ -485,6 +488,7 @@ const STYLE = `
   dialog input[type="text"] {
     width: 100%;
     box-sizing: border-box;
+    min-height: 44px;
     font: inherit;
     padding: 10px 14px;
     margin-bottom: 12px;
@@ -558,12 +562,26 @@ const STYLE = `
     background: var(--card-background-color);
   }
   .vol-ring ha-icon { position: relative; --mdc-icon-size: 22px; }
-  dialog .more-list select {
-    font: inherit;
-    padding: 10px;
+  /* Air under the title, and above the first field as between the fields */
+  dialog h2 + .list { margin-top: 12px; }
+  dialog .more-list button.action + label { margin-top: 12px; }
+  /* The settings of the device are rarely needed: a small link at the end, not a button */
+  dialog .more-list button.link {
+    align-self: center;
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    margin-top: 4px;
+    padding: 4px 8px;
+    gap: 4px;
+    border: none;
     border-radius: 8px;
-    width: 100%;
-    box-sizing: border-box;
+    background: none;
+    color: var(--secondary-text-color);
+    font: inherit;
+    font-size: 12px;
+    text-decoration: underline;
+    --mdc-icon-size: 14px;
   }
   dialog .more-list label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--secondary-text-color); }
   /* Phone: a compact bar (cover, title, play, volume, more) and a strip for the volume */
@@ -2474,7 +2492,9 @@ class BluOSCompanionPanel extends HTMLElement {
     }
     if (this._canMove(player)) list.append(row(this._t("move_playback"), "mdi:transfer-right", () => this._showMove()));
     list.append(...this._settingRows(player));
-    list.append(row(this._t("settings"), "mdi:cog-outline", () => this._openSettings()));
+    list.append(
+      el("button", { class: "link", onclick: () => this._openSettings() }, icon("mdi:cog-outline"), this._t("settings")),
+    );
     this._dialogMode = "more";
     this._dialog.replaceChildren(el("h2", {}, this._t("more")), list);
     if (!this._dialog.open) this._dialog.showModal();
