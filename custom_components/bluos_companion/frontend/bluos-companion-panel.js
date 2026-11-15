@@ -22,6 +22,10 @@ const STYLE = `
     min-height: 56px;
     box-sizing: border-box;
     border-bottom: 1px solid var(--divider-color);
+    /* A long press on the back button opens the settings: it must not select text (iOS) */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
   header h1 { font-size: 20px; font-weight: 400; margin: 0; flex: 1; cursor: pointer; }
   button {

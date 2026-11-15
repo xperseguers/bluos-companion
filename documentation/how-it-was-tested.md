@@ -51,6 +51,8 @@ afterwards:
 - **Grid of playlists and favourite albums** (presets card with `content`): the lists read on the NAD (playlists with
   their covers, favourite albums with theirs), then the presets, the playlists and the favourite albums grids and the
   `max_items` option tried by hand on a dashboard (tiles, tap to play).
+- **Back button and settings of the device** (panel): the settings from the More menu, the back button with a dashboard
+  and an icon, the long press on the button and the reset, tried by hand on a computer and on an iPhone.
 - **Card picker previews**: the three cards shown live in the "Add card" dialog of the dashboard editor, on a
   Home Assistant that also has players of other integrations.
 - **Groups**: muting a whole group from each of its members, and the own volume and mute of a secondary player.
