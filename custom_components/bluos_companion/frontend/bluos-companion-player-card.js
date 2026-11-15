@@ -197,7 +197,16 @@ class BluOSCompanionPlayerCard extends HTMLElement {
       (event) => {
         this._all = event.players;
         this._player = event.players.find((player) => player.entity_id === this._config.entity) || null;
-        this._receivedAt = Date.now();
+        // The same position again (an update about something else) must not restart the count of the time
+        // since the last status, or the bar jumps back
+        const player = this._player;
+        const key = player
+          ? [player.entry_id, player.state, player.position, player.duration, player.file, player.queue_position].join("|")
+          : "";
+        if (key !== this._positionKey) {
+          this._positionKey = key;
+          this._receivedAt = Date.now();
+        }
         this._render();
       },
       { type: "bluos_companion/subscribe" },

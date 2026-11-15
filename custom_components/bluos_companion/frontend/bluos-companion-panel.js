@@ -1246,11 +1246,24 @@ class BluOSCompanionPanel extends HTMLElement {
     );
   }
 
+  // The position of a track is the one of the last status of the player; the time since then is counted
+  // here. An update about anything else (another player, a volume) brings the same position again: it
+  // must not restart the count, or the bar jumps back by the time since the last status.
+  _markPosition() {
+    const player = this._player;
+    const key = player
+      ? [player.entry_id, player.state, player.position, player.duration, player.file, player.queue_position].join("|")
+      : "";
+    if (key === this._positionKey) return;
+    this._positionKey = key;
+    this._receivedAt = Date.now();
+  }
+
   _onPlayers(players) {
     this._players = players;
-    this._receivedAt = Date.now();
     const previous = this._playerId;
     if (!this._player && players.length) this._playerId = players[0].entry_id;
+    this._markPosition();
     if (this._playerId !== previous) {
       localStorage.setItem(STORAGE_KEY, this._playerId);
       this._stack = [];
