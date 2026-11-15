@@ -463,6 +463,19 @@ const STYLE = `
   .qrow .text div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .qrow .sub { font-size: 12px; color: var(--secondary-text-color); }
   .qrow button { --mdc-icon-size: 24px; padding: 6px; }
+  dialog label { display: block; margin-bottom: 12px; }
+  dialog label span { display: block; margin-bottom: 4px; font-size: 13px; color: var(--secondary-text-color); }
+  dialog label input[type="text"], dialog label ha-icon-picker { margin-bottom: 0; }
+  dialog select {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    padding: 10px 14px;
+    border: 1px solid var(--divider-color);
+    border-radius: 12px;
+    background: var(--card-background-color);
+    color: var(--primary-text-color);
+  }
   dialog input[type="text"] {
     width: 100%;
     box-sizing: border-box;
@@ -577,6 +590,8 @@ const REPEAT_CYCLE = { 2: 0, 0: 1, 1: 2 }; // off -> queue -> track -> off
 const ACTIVE_STATES = ["play", "stream"];
 const INITIALS_FROM = 40; // a list this long gets a bar of first letters
 const STORAGE_KEY = "bluos_companion_player";
+// What belongs to one device (a tablet on the wall), not to the household: kept in its browser
+const TABLET_KEY = "bluos_companion_tablet";
 const DISPLAY_KEY = "bluos_companion_display"; // the lists of albums: list or grid
 const ALBUM_SORT_KEY = "bluos_companion_album_sort";
 const ALBUMS_KEY = "LocalMusic:bySection:Album/%2Flibrary%2Fv1%2FAlbums%3Fservice=LocalMusic"; // all the albums
@@ -1727,6 +1742,8 @@ class BluOSCompanionPanel extends HTMLElement {
   _build() {
     this._menuButton = el("button", { onclick: () => this._toggleMenu() }, icon("mdi:menu"));
     this._menuButton.hidden = !this._narrow;
+    this._backButton = el("button", { onclick: () => this._goBack() }, icon("mdi:view-dashboard"));
+    this._backButton.hidden = true;
     this._playerName = el("span");
     this._playerButton = el(
       "button",
@@ -1849,16 +1866,138 @@ class BluOSCompanionPanel extends HTMLElement {
 
     this.shadowRoot.append(
       el("style", {}, STYLE),
-      el("header", {}, this._menuButton, el("h1", { onclick: () => this._home() }, this._t("title"))),
+      el(
+        "header",
+        {},
+        this._menuButton,
+        el("h1", { onclick: () => this._home() }, this._t("title")),
+        this._backButton,
+        el("button", { title: this._t("settings"), onclick: () => this._openSettings() }, icon("mdi:cog-outline")),
+      ),
       this._browseBox,
       footer,
       this._dialog,
       this._nowDialog,
     );
     this._built = true;
+    this._renderBack();
     this._fitHeight();
     this._renderPlayers();
     this._renderNowPlaying();
+  }
+
+  // The settings of this device: a button in the header that goes back to a dashboard (the way out of
+  // the panel on a tablet in kiosk mode, where the sidebar is hidden)
+  _tablet() {
+    try {
+      return JSON.parse(localStorage.getItem(TABLET_KEY)) || {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  _saveTablet(settings) {
+    try {
+      if (Object.keys(settings).length) localStorage.setItem(TABLET_KEY, JSON.stringify(settings));
+      else localStorage.removeItem(TABLET_KEY);
+    } catch (err) {
+      // not kept, that is all
+    }
+  }
+
+  _panelOf(path) {
+    return Object.values(this._hass.panels || {}).find((panel) => panel.url_path && path === `/${panel.url_path}`);
+  }
+
+  _panelTitle(panel) {
+    const known = panel.url_path === "lovelace" ? "panel.states" : `panel.${panel.title}`;
+    return (this._hass.localize && this._hass.localize(known)) || panel.title || panel.url_path;
+  }
+
+  _renderBack() {
+    const back = this._tablet().back;
+    this._backButton.hidden = !(back && back.path);
+    if (this._backButton.hidden) return;
+    const panel = this._panelOf(back.path);
+    this._backButton.title = panel ? this._t("back_to", { name: this._panelTitle(panel) }) : this._t("back");
+    this._backButton.firstChild.setAttribute("icon", back.icon || (panel && panel.icon) || "mdi:view-dashboard");
+  }
+
+  _goBack() {
+    const back = this._tablet().back;
+    if (!back || !back.path) return;
+    history.pushState(null, "", back.path);
+    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+  }
+
+  _openSettings() {
+    const back = this._tablet().back || {};
+    const own = (this._panel && this._panel.url_path) || "bluos-companion";
+    const panels = Object.values(this._hass.panels || {})
+      .filter((panel) => panel.url_path && panel.url_path !== own && (panel.title || panel.url_path === "lovelace"))
+      .sort((a, b) => this._panelTitle(a).localeCompare(this._panelTitle(b)));
+    const known = back.path && this._panelOf(back.path);
+    const select = el(
+      "select",
+      {},
+      el("option", { value: "" }, this._t("back_none")),
+      ...panels.map((panel) => el("option", { value: panel.url_path }, this._panelTitle(panel))),
+      el("option", { value: "__custom__" }, this._t("back_custom")),
+    );
+    select.value = !back.path ? "" : known ? known.url_path : "__custom__";
+    const path = el("input", { type: "text", placeholder: "/lovelace/lights", value: known ? "" : back.path || "" });
+    // The icon picker of Home Assistant when it is loaded, a text field otherwise
+    let iconValue = back.icon || "";
+    const picker = customElements.get("ha-icon-picker")
+      ? Object.assign(document.createElement("ha-icon-picker"), { hass: this._hass, value: iconValue })
+      : el("input", { type: "text", placeholder: "mdi:lightbulb", value: iconValue });
+    const iconRow = el("label", {}, el("span", {}, this._t("back_icon")), picker);
+    const pathRow = el("label", {}, el("span", {}, this._t("back_path")), path);
+    const change = () => {
+      const custom = select.value === "__custom__";
+      pathRow.hidden = !custom;
+      const target = custom ? path.value.trim() : select.value ? `/${select.value}` : "";
+      iconRow.hidden = !target;
+      const settings = this._tablet();
+      // Only an address inside Home Assistant: it starts with a slash, and not with two
+      if (/^\/(?!\/)/.test(target)) settings.back = { path: target, ...(iconValue ? { icon: iconValue } : {}) };
+      else delete settings.back;
+      this._saveTablet(settings);
+      this._renderBack();
+    };
+    select.addEventListener("change", change);
+    path.addEventListener("input", change);
+    picker.addEventListener(picker.localName === "input" ? "input" : "value-changed", (event) => {
+      iconValue = (picker.localName === "input" ? picker.value : event.detail.value || "").trim();
+      change();
+    });
+    change();
+    this._dialog.replaceChildren(
+      el("h2", {}, this._t("settings_title")),
+      el("p", {}, this._t("settings_text")),
+      el("label", {}, el("span", {}, this._t("back_target")), select),
+      pathRow,
+      iconRow,
+      el(
+        "div",
+        { class: "list" },
+        el(
+          "button",
+          {
+            class: "action",
+            onclick: () => {
+              this._saveTablet({});
+              this._renderBack();
+              this._dialog.close();
+            },
+          },
+          icon("mdi:restore"),
+          this._t("settings_reset"),
+        ),
+        el("button", { class: "action", onclick: () => this._dialog.close() }, icon("mdi:close"), this._t("close")),
+      ),
+    );
+    if (!this._dialog.open) this._dialog.showModal();
   }
 
   _toggleMenu() {
