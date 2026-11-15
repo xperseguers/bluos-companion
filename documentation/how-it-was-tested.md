@@ -53,7 +53,7 @@ afterwards:
   `max_items` option tried by hand on a dashboard (tiles, tap to play).
 - **Back button and settings of the device** (panel): the settings from the More menu, the back button with a dashboard
   and an icon, the long press on the button and the reset, tried by hand on a computer and on an iPhone. The settings
-  survived a restart of Safari; a restart of the Home Assistant app was not tried.
+  survived a restart of Safari and a restart of the Home Assistant app.
 - **Header actions and full screen player when idle** (panel): the Search, Assist and back buttons on a computer, a
   tablet and an iPhone (the three dots menu on the phone), the Assist switch of the device settings, and the idle
   delay: it waits while the search field has the cursor and while a dialog is open, and opens the full screen player
