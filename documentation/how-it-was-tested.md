@@ -44,6 +44,10 @@ afterwards:
 - **Clear queue button**: pressed from a dashboard tile on the Pulse mini 2i with a queue loaded.
 - **Play button card**: the editor (the lists of genres, presets and playlists, the options), the three layouts and
   a preset button, tried by hand on a dashboard.
+- **Volume, inputs and power of another entity**: a standalone streamer (NODE) feeding an Onkyo amplifier, both in the
+  dev Home Assistant, with the amplifier chosen in the options. Read only: the panel and the cards receive the
+  amplifier's inputs and power, and the volume shows as fixed while the amplifier is off. The commands sent to the
+  amplifier (volume, input, power) were covered by automated tests only, not tried on the real amplifier.
 - **Card picker previews**: the three cards shown live in the "Add card" dialog of the dashboard editor, on a
   Home Assistant that also has players of other integrations.
 - **Groups**: muting a whole group from each of its members, and the own volume and mute of a secondary player.
