@@ -1021,9 +1021,14 @@ const STYLE = `
   .vol-ring ha-icon { position: relative; --mdc-icon-size: 22px; }
   /* Air under the title, and above the first field as between the fields */
   dialog h2 + .list { margin-top: 12px; }
+  /* The settings of the device: air under the title, between the fields and before the reset link */
+  dialog p.intro { margin-top: 8px; }
+  dialog .settings-form { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+  dialog .settings-form label { margin: 0; }
+  dialog .settings-form + .list { margin-top: 16px; }
   dialog .more-list button.action + label { margin-top: 12px; }
   /* The settings of the device are rarely needed: a small link at the end, not a button */
-  dialog .more-list button.link {
+  dialog button.link {
     align-self: center;
     width: auto;
     min-width: 0;
@@ -2567,19 +2572,24 @@ class BluOSCompanionPanel extends HTMLElement {
     change();
     this._dialog.replaceChildren(
       el("h2", {}, this._t("settings_title")),
-      el("p", {}, this._t("settings_text")),
-      el("label", {}, el("span", {}, this._t("back_target")), select),
-      pathRow,
-      iconRow,
-      labelRow,
-      el("label", { class: "check" }, assistBox, el("span", {}, this._t("settings_assist"))),
+      el("p", { class: "intro" }, this._t("settings_text")),
+      el(
+        "div",
+        { class: "settings-form" },
+        el("label", {}, el("span", {}, this._t("back_target")), select),
+        pathRow,
+        iconRow,
+        labelRow,
+        el("label", { class: "check" }, assistBox, el("span", {}, this._t("settings_assist"))),
+      ),
+      // Everything is saved as it is changed, and a tap outside closes the dialog: only the rare reset is offered
       el(
         "div",
         { class: "list" },
         el(
           "button",
           {
-            class: "action",
+            class: "link",
             onclick: () => {
               this._saveTablet({});
               this._renderBack();
@@ -2589,7 +2599,6 @@ class BluOSCompanionPanel extends HTMLElement {
           icon("mdi:restore"),
           this._t("settings_reset"),
         ),
-        el("button", { class: "action", onclick: () => this._dialog.close() }, icon("mdi:close"), this._t("close")),
       ),
     );
     if (!this._dialog.open) this._dialog.showModal();
