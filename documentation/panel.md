@@ -158,10 +158,11 @@ TV...) and the **sleep timer**.
   user profile) and the app's own Assist in the Companion app.
 - **A way back to your dashboard.** With the sidebar hidden, nothing leads out of the panel. Open the **More**
   menu (⋯) and choose *Settings of this device*: pick a dashboard (or type another address, for example a view such
-  as `/lovelace/lights`) and, if you like, an icon and a name (the name of the dashboard is used otherwise, and shows
+  as `/lovelace/lights`) and, if you like, an icon and a name (the title of the dashboard is used otherwise, and shows
   in the menu of a phone). A button with that icon, or the icon of the dashboard, then
   appears in the header and takes you back; a **long press** on it opens the settings again. The settings stay in
-  this browser only, so each tablet has its own; *Reset the settings of this device* removes them.
+  this browser only, so each tablet has its own; a switch there hides the **Assist** button on this device, and
+  *Reset the settings of this device* removes everything.
 
 ## Languages
 
