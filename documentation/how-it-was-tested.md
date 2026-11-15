@@ -44,6 +44,8 @@ afterwards:
 - **Clear queue button**: pressed from a dashboard tile on the Pulse mini 2i with a queue loaded.
 - **Play button card**: the editor (the lists of genres, presets and playlists, the options), the three layouts and
   a preset button, tried by hand on a dashboard.
+- **Card picker previews**: the three cards shown live in the "Add card" dialog of the dashboard editor, on a
+  Home Assistant that also has players of other integrations.
 - **Groups**: muting a whole group from each of its members, and the own volume and mute of a secondary player.
 - **Favourites**: adding and removing an album, an artist and a song, the players sharing them, the backup, and the
   restore (including a favourite the library does not have); adding and removing a favourite by hand in the sidebar
