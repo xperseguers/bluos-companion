@@ -41,6 +41,40 @@ backup carries along.
 | ![Home page of the panel](documentation/images/panel-home-scrolled.jpg) | ![Library with the A–Z bar](documentation/images/panel-artists-letter.jpg) |
 | ![Full-screen view for a wall tablet](documentation/images/panel-fullscreen.jpg) | ![Dashboard cards](documentation/images/cards-dashboard.jpg) |
 
+## Is this for me?
+
+Home Assistant already ships a Bluesound integration that covers the basics well. BluOS Companion is for you if:
+
+- you want to **browse your library from Home Assistant** (artists, albums, genres, playlists, favourites) instead of
+  reaching for the BluOS app;
+- you have a **wall tablet** and would like a real player on it, not a row of buttons;
+- you would like to say **"play Adele in the kitchen"** to Assist or an AI agent;
+- you want **playlists and favourites that survive** a reset of the player or a move of your music share;
+- you want to **move the music** from one room to another, or manage groups and the queue, from one screen.
+
+If play, pause, volume and presets are all you need, the built-in integration is enough.
+
+### Compared with the built-in integration
+
+| | Built-in Bluesound | BluOS Companion |
+|---|:---:|:---:|
+| Media player: play, pause, seek, volume, mute, shuffle, cover art | ✅ | ✅ |
+| Presets and inputs as sources | ✅ | ✅ |
+| Grouping | ✅ | ✅ |
+| Sleep timer | Buttons (disabled by default) | Select entity |
+| Browse your BluOS library and services | ❌ | ✅ |
+| Search | ❌ | ✅ |
+| Sidebar player (home, library, full-screen view, queue) | ❌ | ✅ |
+| Dashboard cards (presets, player, play button) | ❌ | ✅ |
+| Playlists: edit, rename, delete | ❌ | ✅ |
+| Move playback to another player | ❌ | ✅ |
+| Voice and AI search | ❌ | ✅ |
+| Playlist and favourites backup and restore | ❌ | ✅ |
+| Included with Home Assistant | ✅ | Install with Marketplace (formerly HACS) |
+
+The comparison is based on the built-in integration's documentation and personal experience. Corrections are
+welcome in an [issue](https://github.com/xperseguers/bluos-companion/issues).
+
 ## Requirements
 
 - Home Assistant 2025.6 or newer (tested with 2025.6, 2026.10 and 2026.11)
