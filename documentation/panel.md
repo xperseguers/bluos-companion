@@ -145,8 +145,9 @@ TV...) and the **sleep timer**.
 
 ## Kiosk tips
 
-- Use Home Assistant's kiosk mode of your choice to hide the sidebar and the header, and open
-  `/bluos-companion` directly.
+- The official [Home Assistant Companion app](https://companion.home-assistant.io) has a built-in kiosk mode that
+  hides the sidebar and the header: no third-party app or extra integration is needed. Set it up, then open
+  `/bluos-companion` directly. Any other kiosk mode of your choice works as well.
 - An old tablet is enough. The panel has no build step and keeps its cards flat, and it has been used
   on a 12.9-inch iPad Pro (1st generation, from 2015) running iPadOS 16.7, the last version that model supports, and stays
   responsive there. This is one real-world report, not a guarantee: other models and setups may differ.
