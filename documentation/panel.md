@@ -147,6 +147,9 @@ TV...) and the **sleep timer**.
 
 - Use Home Assistant's kiosk mode of your choice to hide the sidebar and the header, and open
   `/bluos-companion` directly.
+- An old tablet is enough. The panel has no build step and keeps its cards flat, and it has been used
+  on a 12.9-inch iPad Pro (1st generation, from 2015) running iPadOS 16.7, the last version that model supports, and stays
+  responsive there. This is one real-world report, not a guarantee: other models and setups may differ.
 - Buttons get larger on touch screens.
 - To keep a wall tablet from being turned up too loud, set the **maximum volume** of the player in its options
   (it applies to the panel, the cards and voice control, not to the BluOS app or the remote).

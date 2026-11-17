@@ -47,7 +47,8 @@ Home Assistant already ships a Bluesound integration that covers the basics well
 
 - you want to **browse your library from Home Assistant** (artists, albums, genres, playlists, favourites) instead of
   reaching for the BluOS app;
-- you have a **wall tablet** and would like a real player on it, not a row of buttons;
+- you have a **wall tablet** and would like a real player on it, not a row of buttons (it runs
+  smoothly even on an old iPad: see [Kiosk tips](documentation/panel.md#kiosk-tips));
 - you would like to say **"play Adele in the kitchen"** to Assist or an AI agent;
 - you want **playlists and favourites that survive** a reset of the player or a move of your music share;
 - you want to **move the music** from one room to another, or manage groups and the queue, from one screen.
