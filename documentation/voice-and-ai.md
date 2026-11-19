@@ -115,7 +115,7 @@ of the agent, and expose the players.
 Some agents do not use the search of Assist and call `media_player.play_media` themselves, with the title as
 text (`media_content_id: les yeux revolver`, `media_content_type: music`). That works too: BluOS Companion
 searches the name like Assist does and plays the best match. The type can narrow the search (`artist`, `album`,
-`track`, `playlist`). If nothing matches, the action fails with "No results found for ...", which the agent can
+`track`, `playlist`, `genre`). If nothing matches, the action fails with "No results found for ...", which the agent can
 use to try again.
 
 ## Trying the search without playing anything
@@ -128,7 +128,7 @@ target:
   entity_id: media_player.kitchen
 data:
   search_query: adele
-  media_filter_classes:   # optional: artist, album, track, playlist
+  media_filter_classes:   # optional: artist, album, track, playlist, genre
     - artist
 ```
 
