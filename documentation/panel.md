@@ -61,6 +61,8 @@ Presets belong to a player: a player without presets has no presets row.
   title of the header goes home.
 - **Going back**: the arrow goes up one level. From the second level on, a **home** button next to it takes you
   straight back to the start page.
+- **The back button of the browser** does the same as the arrow: each page you open (artist, album, genre, search, queue)
+  is an entry of the browser history, so going back (or forward) walks through the pages of the panel before leaving it.
 - **An album** opens on a page with its cover, the artist, the number of tracks and **Play all** and **Shuffle**
   (Add next, Add last and Favourite behind a ⋮), then its tracks as numbered rows. The number of tracks comes with the
   length of the album, in whole minutes (*17 tracks, 46 minutes*). Every tile has a **⋮** menu and a play button on

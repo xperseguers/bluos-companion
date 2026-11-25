@@ -1144,6 +1144,9 @@ class BluOSCompanionPanel extends HTMLElement {
     this._players = [];
     this._playerId = localStorage.getItem(STORAGE_KEY);
     this._stack = []; // [{ title, key }], the root is implicit
+    // Coming back to the panel from another page: the history entry remembers where one was
+    const saved = history.state && history.state.bluos;
+    if (saved && saved.player === this._playerId && Array.isArray(saved.stack)) this._stack = saved.stack;
     this._groups = null; // [{ title, items }]
     this._nextKey = null; // where a list cut after a few pages continues
     this._levelActions = [];
@@ -1206,6 +1209,10 @@ class BluOSCompanionPanel extends HTMLElement {
     this._watchSubscription();
     if (this._hass && !this._unsubscribe) this._subscribe();
     this._ticker = setInterval(() => this._tick(), 1000);
+    // The first entry of the panel must know it is the root, or going back to it would do nothing
+    if (!(history.state && history.state.bluos)) this._remember(true);
+    this._onPopState = (event) => this._restore(event.state && event.state.bluos);
+    window.addEventListener("popstate", this._onPopState);
     this._fit = () => this._fitHeight();
     window.addEventListener("resize", this._fit);
     this._onResize = () => this._renderBack();
@@ -1227,6 +1234,7 @@ class BluOSCompanionPanel extends HTMLElement {
 
   disconnectedCallback() {
     this._unwatchSubscription();
+    window.removeEventListener("popstate", this._onPopState);
     window.removeEventListener("resize", this._fit);
     window.removeEventListener("resize", this._onResize);
     for (const name of ACTIVITY_EVENTS) window.removeEventListener(name, this._onActivity, { capture: true });
@@ -1299,6 +1307,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (this._playerId !== previous) {
       localStorage.setItem(STORAGE_KEY, this._playerId);
       this._stack = [];
+      this._remember(true);
       this._browse();
     } else if (this._groups === null && this._browsedFor !== this._playerId) {
       // Only a page that was never asked for: one still loading must not start over at every update
@@ -1438,6 +1447,7 @@ class BluOSCompanionPanel extends HTMLElement {
       return;
     }
     this._stack = stack;
+    this._remember();
     this._browse();
   }
 
@@ -1757,8 +1767,10 @@ class BluOSCompanionPanel extends HTMLElement {
   _search(query) {
     query = query.trim();
     if (!query) return;
-    if (this._stack.length && this._stack[this._stack.length - 1].search) this._stack.pop();
+    const replace = this._stack.length && this._stack[this._stack.length - 1].search;
+    if (replace) this._stack.pop();
     this._stack.push({ title: `\u201c${query}\u201d`, search: { key: this._searchKey, query } });
+    this._remember(Boolean(replace));
     this._browse();
   }
 
@@ -1774,6 +1786,7 @@ class BluOSCompanionPanel extends HTMLElement {
       return;
     }
     this._stack.push({ title: this._t("queue"), queue: true });
+    this._remember();
     this._browse();
   }
 
@@ -2130,6 +2143,7 @@ class BluOSCompanionPanel extends HTMLElement {
   _editPlaylist(level) {
     const name = new URLSearchParams((level.key || "").split("?")[1] || "").get("playlist") || level.title;
     this._stack.push({ title: name, editor: name });
+    this._remember();
     this._browse();
   }
 
@@ -2262,16 +2276,54 @@ class BluOSCompanionPanel extends HTMLElement {
       subtitle: item.subtitle,
       tracks: item.tracks,
     });
+    this._remember();
+    this._browse();
+  }
+
+  // Every page one opens is an entry of the history of the browser, so that its back button goes up
+  // one page, as the way back of the panel does (the pages are the ones remembered by the entries)
+  _remember(replace = false) {
+    const state = { bluos: { player: this._playerId, stack: this._stack } };
+    try {
+      if (replace) history.replaceState(state, "");
+      else history.pushState(state, "");
+    } catch (error) {
+      // A page that cannot be remembered is not a reason to stop browsing
+    }
+  }
+
+  _restore(saved) {
+    if (!saved || !Array.isArray(saved.stack)) return;
+    if (saved.player !== this._playerId && this._players.some((player) => player.entry_id === saved.player)) {
+      this._playerId = saved.player;
+      localStorage.setItem(STORAGE_KEY, this._playerId);
+      this._renderPlayers();
+      this._renderNowPlaying();
+    }
+    this._stack = saved.player === this._playerId ? saved.stack : [];
+    this._queueEdit = false;
     this._browse();
   }
 
   _up() {
+    const saved = history.state && history.state.bluos;
+    // The entry before this one is the page above it: let the browser go there
+    if (saved && saved.stack.length === this._stack.length && this._stack.length) {
+      history.back();
+      return;
+    }
     this._stack.pop();
     this._browse();
   }
 
   _home() {
+    if (!this._stack.length) {
+      this._browse();
+      this._main.scrollTop = 0;
+      return;
+    }
     this._stack = [];
+    this._remember();
     this._browse();
     this._main.scrollTop = 0;
   }
@@ -2703,6 +2755,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._playerId = entryId;
     localStorage.setItem(STORAGE_KEY, entryId);
     this._stack = [];
+    this._remember();
     this._browse();
     this._renderPlayers();
     this._renderNowPlaying();
