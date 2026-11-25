@@ -1147,6 +1147,7 @@ class BluOSCompanionPanel extends HTMLElement {
     // Coming back to the panel from another page: the history entry remembers where one was
     const saved = history.state && history.state.bluos;
     if (saved && saved.player === this._playerId && Array.isArray(saved.stack)) this._stack = saved.stack;
+    this._previous = structuredClone(this._stack); // the page before the one being opened, for the root entry
     this._groups = null; // [{ title, items }]
     this._nextKey = null; // where a list cut after a few pages continues
     this._levelActions = [];
@@ -1209,8 +1210,6 @@ class BluOSCompanionPanel extends HTMLElement {
     this._watchSubscription();
     if (this._hass && !this._unsubscribe) this._subscribe();
     this._ticker = setInterval(() => this._tick(), 1000);
-    // The first entry of the panel must know it is the root, or going back to it would do nothing
-    if (!(history.state && history.state.bluos)) this._remember(true);
     this._onPopState = (event) => this._restore(event.state && event.state.bluos);
     window.addEventListener("popstate", this._onPopState);
     this._fit = () => this._fitHeight();
@@ -1307,7 +1306,7 @@ class BluOSCompanionPanel extends HTMLElement {
     if (this._playerId !== previous) {
       localStorage.setItem(STORAGE_KEY, this._playerId);
       this._stack = [];
-      this._remember(true);
+      this._pushHistory(true);
       this._browse();
     } else if (this._groups === null && this._browsedFor !== this._playerId) {
       // Only a page that was never asked for: one still loading must not start over at every update
@@ -1447,7 +1446,7 @@ class BluOSCompanionPanel extends HTMLElement {
       return;
     }
     this._stack = stack;
-    this._remember();
+    this._pushHistory();
     this._browse();
   }
 
@@ -1770,7 +1769,7 @@ class BluOSCompanionPanel extends HTMLElement {
     const replace = this._stack.length && this._stack[this._stack.length - 1].search;
     if (replace) this._stack.pop();
     this._stack.push({ title: `\u201c${query}\u201d`, search: { key: this._searchKey, query } });
-    this._remember(Boolean(replace));
+    this._pushHistory(Boolean(replace));
     this._browse();
   }
 
@@ -1786,7 +1785,7 @@ class BluOSCompanionPanel extends HTMLElement {
       return;
     }
     this._stack.push({ title: this._t("queue"), queue: true });
-    this._remember();
+    this._pushHistory();
     this._browse();
   }
 
@@ -2143,7 +2142,7 @@ class BluOSCompanionPanel extends HTMLElement {
   _editPlaylist(level) {
     const name = new URLSearchParams((level.key || "").split("?")[1] || "").get("playlist") || level.title;
     this._stack.push({ title: name, editor: name });
-    this._remember();
+    this._pushHistory();
     this._browse();
   }
 
@@ -2276,17 +2275,22 @@ class BluOSCompanionPanel extends HTMLElement {
       subtitle: item.subtitle,
       tracks: item.tracks,
     });
-    this._remember();
+    this._pushHistory();
     this._browse();
   }
 
   // Every page one opens is an entry of the history of the browser, so that its back button goes up
   // one page, as the way back of the panel does (the pages are the ones remembered by the entries)
-  _remember(replace = false) {
-    const state = { bluos: { player: this._playerId, stack: this._stack } };
+  _pushHistory(replace = false) {
+    // What Home Assistant keeps in the state of an entry stays: it uses it to navigate
+    const mark = (stack) => ({ ...history.state, bluos: { player: this._playerId, stack } });
     try {
-      if (replace) history.replaceState(state, "");
-      else history.pushState(state, "");
+      // The entry one came from (Home Assistant writes its own state over it when the panel opens)
+      // becomes the page before this one, so that going back to it works
+      if (!replace && !(history.state && history.state.bluos)) history.replaceState(mark(this._previous), "");
+      if (replace) history.replaceState(mark(this._stack), "");
+      else history.pushState(mark(this._stack), "");
+      this._previous = structuredClone(this._stack);
     } catch (error) {
       // A page that cannot be remembered is not a reason to stop browsing
     }
@@ -2302,6 +2306,7 @@ class BluOSCompanionPanel extends HTMLElement {
     }
     this._stack = saved.player === this._playerId ? saved.stack : [];
     this._queueEdit = false;
+    this._previous = structuredClone(this._stack);
     this._browse();
   }
 
@@ -2323,7 +2328,7 @@ class BluOSCompanionPanel extends HTMLElement {
       return;
     }
     this._stack = [];
-    this._remember();
+    this._pushHistory();
     this._browse();
     this._main.scrollTop = 0;
   }
@@ -2755,7 +2760,7 @@ class BluOSCompanionPanel extends HTMLElement {
     this._playerId = entryId;
     localStorage.setItem(STORAGE_KEY, entryId);
     this._stack = [];
-    this._remember();
+    this._pushHistory();
     this._browse();
     this._renderPlayers();
     this._renderNowPlaying();
